@@ -1,13 +1,15 @@
 package com.example.viewmodel
 
+import android.app.Application
 import android.content.Context
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.BuildConfig
 import com.example.data.AuthRepository
 import com.example.data.FirebaseRepository
 import com.example.data.MusicRepository
-import com.example.data.SpotifyRepository
+import com.example.data.SpotifyAuthRepository
+import com.example.data.SpotifyWebApiRepository
 import com.example.data.UpdateRepository
 import com.example.data.VersionInfo
 import java.io.File
@@ -16,11 +18,13 @@ import com.example.model.Track
 import com.example.model.User
 import com.example.model.UserStats
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -64,7 +68,9 @@ data class MusicUiState(
     val updateReadyFile: File? = null
 )
 
-class MusicViewModel : ViewModel() {
+class MusicViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val appContext: Context = app.applicationContext
 
     private val _uiState = MutableStateFlow(MusicUiState())
     val uiState: StateFlow<MusicUiState> = _uiState.asStateFlow()
@@ -72,20 +78,33 @@ class MusicViewModel : ViewModel() {
     private var searchJob: Job? = null
     private var userSearchJob: Job? = null
     private var firebaseObserverJob: Job? = null
-    private var spotifyPlayerJob: Job? = null
+    private var spotifyPollingJob: Job? = null
 
     init {
+        SpotifyAuthRepository.loadTokens(appContext)
         checkForUpdate()
         val existingUser = AuthRepository.currentFirebaseUser
         if (existingUser != null) {
             viewModelScope.launch {
                 val user = existingUser.toAppUser()
-                _uiState.update { it.copy(currentUser = user, isLoggedIn = true) }
+                val spotifyConnected = SpotifyAuthRepository.isAuthorized
+                val services = mapOf("spotify" to spotifyConnected, "amazon_music" to false)
+                _uiState.update {
+                    it.copy(
+                        currentUser = user,
+                        isLoggedIn = true,
+                        isSpotifyConnected = spotifyConnected,
+                        connectedServices = services
+                    )
+                }
                 FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
+                if (spotifyConnected) startSpotifyPolling()
             }
         }
     }
+
+    // ===================== UPDATE =====================
 
     private fun checkForUpdate() {
         viewModelScope.launch {
@@ -113,25 +132,28 @@ class MusicViewModel : ViewModel() {
         _uiState.update { it.copy(availableUpdate = null) }
     }
 
-    fun clearSpotifyError() {
-        _uiState.update { it.copy(spotifyError = null) }
-    }
+    // ===================== AUTH =====================
 
     fun loginWithGoogle(context: Context) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoggingIn = true, loginError = null) }
             val result = AuthRepository.signInWithGoogle(context)
             result.onSuccess { user ->
+                val spotifyConnected = SpotifyAuthRepository.isAuthorized
+                val services = mapOf("spotify" to spotifyConnected, "amazon_music" to false)
                 _uiState.update {
                     it.copy(
                         currentUser = user,
                         isLoggedIn = true,
                         isLoggingIn = false,
-                        loginError = null
+                        loginError = null,
+                        isSpotifyConnected = spotifyConnected,
+                        connectedServices = services
                     )
                 }
                 FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
+                if (spotifyConnected) startSpotifyPolling()
             }.onFailure { error ->
                 _uiState.update {
                     it.copy(
@@ -144,16 +166,94 @@ class MusicViewModel : ViewModel() {
     }
 
     fun logout() {
+        stopSpotifyPolling()
         AuthRepository.signOut()
         firebaseObserverJob?.cancel()
         _uiState.value = MusicUiState()
     }
 
+    // ===================== SPOTIFY =====================
+
+    fun launchSpotifyAuth() {
+        SpotifyAuthRepository.launchAuthFlow(appContext)
+    }
+
+    fun handleSpotifyCallback(code: String) {
+        viewModelScope.launch {
+            val success = SpotifyAuthRepository.handleCallback(appContext, code)
+            if (success) {
+                val services = _uiState.value.connectedServices.toMutableMap().apply { put("spotify", true) }
+                val updatedUser = _uiState.value.currentUser.copy(isLiveNow = true)
+                _uiState.update {
+                    it.copy(
+                        isSpotifyConnected = true,
+                        connectedServices = services,
+                        currentUser = updatedUser,
+                        spotifyError = null,
+                        feedbackToast = "Spotify collegato"
+                    )
+                }
+                FirebaseRepository.syncCurrentUser(updatedUser)
+                startSpotifyPolling()
+            } else {
+                _uiState.update { it.copy(spotifyError = "Autorizzazione fallita") }
+            }
+        }
+    }
+
+    fun disconnectSpotify() {
+        stopSpotifyPolling()
+        SpotifyAuthRepository.clearTokens(appContext)
+        val services = _uiState.value.connectedServices.toMutableMap().apply { put("spotify", false) }
+        val updatedUser = _uiState.value.currentUser.copy(isLiveNow = false, currentTrack = null)
+        _uiState.update {
+            it.copy(
+                isSpotifyConnected = false,
+                connectedServices = services,
+                currentUser = updatedUser,
+                nowPlayingTrack = null,
+                feedbackToast = "Spotify disconnesso"
+            )
+        }
+        FirebaseRepository.syncCurrentUser(updatedUser)
+    }
+
+    fun startSpotifyPolling() {
+        if (!SpotifyAuthRepository.isAuthorized) return
+        if (spotifyPollingJob?.isActive == true) return
+        spotifyPollingJob = viewModelScope.launch {
+            while (isActive) {
+                fetchCurrentlyPlaying()
+                delay(5_000)
+            }
+        }
+    }
+
+    fun stopSpotifyPolling() {
+        spotifyPollingJob?.cancel()
+        spotifyPollingJob = null
+    }
+
+    private suspend fun fetchCurrentlyPlaying() {
+        val track = SpotifyWebApiRepository.getCurrentlyPlaying(appContext) ?: return
+        val currentTrackId = _uiState.value.nowPlayingTrack?.id
+        if (track.id == currentTrackId) return
+        val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
+        _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
+        FirebaseRepository.syncCurrentUser(updatedUser)
+    }
+
+    fun clearSpotifyError() {
+        _uiState.update { it.copy(spotifyError = null) }
+    }
+
+    // ===================== FIREBASE =====================
+
     private fun startFirebaseListener() {
         firebaseObserverJob?.cancel()
         firebaseObserverJob = viewModelScope.launch {
             FirebaseRepository.observeOtherUsers(_uiState.value.currentUser.id)
-                .catch { /* Fallback silenzioso se offline */ }
+                .catch { }
                 .collect { remoteUsers ->
                     _uiState.update { current ->
                         val merged = (remoteUsers + current.feedUsers).distinctBy { it.id }
@@ -165,6 +265,26 @@ class MusicViewModel : ViewModel() {
                 }
         }
     }
+
+    // ===================== SERVICES =====================
+
+    fun toggleConnectedService(serviceKey: String) {
+        val currentServices = _uiState.value.connectedServices.toMutableMap()
+        val newState = !(currentServices[serviceKey] ?: false)
+        currentServices[serviceKey] = newState
+        val serviceName = when (serviceKey) {
+            "amazon_music" -> "Amazon Music"
+            else -> serviceKey.replaceFirstChar { it.uppercase() }
+        }
+        _uiState.update {
+            it.copy(
+                connectedServices = currentServices,
+                feedbackToast = if (newState) "$serviceName collegato" else "$serviceName disconnesso"
+            )
+        }
+    }
+
+    // ===================== SEARCH =====================
 
     fun setSearchTab(tab: SearchTab) {
         _uiState.update { it.copy(searchTab = tab) }
@@ -189,12 +309,10 @@ class MusicViewModel : ViewModel() {
         userSearchJob?.cancel()
         userSearchJob = viewModelScope.launch {
             _uiState.update { it.copy(isSearchingUsers = true) }
-            val allPool = _uiState.value.feedUsers
-            val results = if (query.isBlank()) {
-                allPool
-            } else {
+            val pool = _uiState.value.feedUsers
+            val results = if (query.isBlank()) pool else {
                 val clean = query.trim().removePrefix("@").lowercase()
-                allPool.filter {
+                pool.filter {
                     it.username.lowercase().contains(clean) ||
                     it.name.lowercase().contains(clean) ||
                     it.stats.topArtist.lowercase().contains(clean)
@@ -203,6 +321,8 @@ class MusicViewModel : ViewModel() {
             _uiState.update { it.copy(userSearchResults = results, isSearchingUsers = false) }
         }
     }
+
+    // ===================== PROFILE =====================
 
     fun updateProfile(name: String, username: String, avatarUrl: String, coverUrl: String? = null) {
         val cleanUsername = username.trim().removePrefix("@")
@@ -222,102 +342,19 @@ class MusicViewModel : ViewModel() {
         FirebaseRepository.syncCurrentUser(updatedUser)
     }
 
+    // ===================== NAVIGATION =====================
+
     fun toggleFollowUser(targetUser: User) {
         val currentFeed = _uiState.value.feedUsers
         val isAlreadyInFeed = currentFeed.any { it.id == targetUser.id }
-        val newFeed = if (isAlreadyInFeed) {
-            currentFeed.filterNot { it.id == targetUser.id }
-        } else {
-            listOf(targetUser) + currentFeed
-        }
+        val newFeed = if (isAlreadyInFeed) currentFeed.filterNot { it.id == targetUser.id }
+                      else listOf(targetUser) + currentFeed
         _uiState.update {
             it.copy(
                 feedUsers = newFeed,
-                feedbackToast = if (isAlreadyInFeed) "Rimosso dal feed: @${targetUser.username}" else "Aggiunto al feed: @${targetUser.username}"
+                feedbackToast = if (isAlreadyInFeed) "Rimosso dal feed: @${targetUser.username}"
+                                else "Aggiunto al feed: @${targetUser.username}"
             )
-        }
-    }
-
-    fun toggleConnectedService(serviceKey: String) {
-        val currentServices = _uiState.value.connectedServices.toMutableMap()
-        val newState = !(currentServices[serviceKey] ?: false)
-        currentServices[serviceKey] = newState
-        val serviceName = when (serviceKey) {
-            "amazon_music" -> "Amazon Music"
-            else -> serviceKey.replaceFirstChar { it.uppercase() }
-        }
-        _uiState.update {
-            it.copy(
-                connectedServices = currentServices,
-                feedbackToast = if (newState) "$serviceName collegato" else "$serviceName disconnesso"
-            )
-        }
-    }
-
-    fun connectSpotify(context: Context) {
-        SpotifyRepository.connect(
-            context = context,
-            onConnected = {
-                val updatedServices = _uiState.value.connectedServices.toMutableMap().apply { put("spotify", true) }
-                val updatedUser = _uiState.value.currentUser.copy(isLiveNow = true)
-                _uiState.update {
-                    it.copy(
-                        isSpotifyConnected = true,
-                        connectedServices = updatedServices,
-                        currentUser = updatedUser,
-                        spotifyError = null,
-                        feedbackToast = "Spotify collegato"
-                    )
-                }
-                FirebaseRepository.syncCurrentUser(updatedUser)
-                subscribeToSpotifyPlayer()
-            },
-            onFailure = { error ->
-                val msg = error.message ?: "Errore sconosciuto"
-                _uiState.update { it.copy(spotifyError = msg) }
-            }
-        )
-    }
-
-    fun disconnectSpotify() {
-        SpotifyRepository.disconnect()
-        spotifyPlayerJob?.cancel()
-        val updatedServices = _uiState.value.connectedServices.toMutableMap().apply { put("spotify", false) }
-        val updatedUser = _uiState.value.currentUser.copy(isLiveNow = false, currentTrack = null)
-        _uiState.update {
-            it.copy(
-                isSpotifyConnected = false,
-                connectedServices = updatedServices,
-                currentUser = updatedUser,
-                nowPlayingTrack = null,
-                feedbackToast = "Spotify disconnesso"
-            )
-        }
-        FirebaseRepository.syncCurrentUser(updatedUser)
-    }
-
-    private fun subscribeToSpotifyPlayer() {
-        spotifyPlayerJob?.cancel()
-        spotifyPlayerJob = viewModelScope.launch {
-            SpotifyRepository.observePlayerState().collect { playerState ->
-                val spotifyTrack = playerState?.track ?: return@collect
-                val query = "${spotifyTrack.name} ${spotifyTrack.artist.name}"
-                val itunesResults = MusicRepository.searchTracks(query)
-                val best = itunesResults.firstOrNull()
-                val artwork = best?.coverUrl
-                    ?: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600"
-                val accent = best?.accentColorHex ?: 0xFF1DB954L
-
-                val track = SpotifyRepository.formatSpotifyTrack(playerState, artwork, accent)
-                    ?: return@collect
-
-                val updatedUser = _uiState.value.currentUser.copy(
-                    currentTrack = track,
-                    isLiveNow = true
-                )
-                _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
-                FirebaseRepository.syncCurrentUser(updatedUser)
-            }
         }
     }
 
@@ -356,9 +393,8 @@ class MusicViewModel : ViewModel() {
             val updatedFeed = if (_uiState.value.feedUsers.none { it.id == user.id } && !user.isCurrentUser) {
                 listOf(user.copy(isLiveNow = true)) + _uiState.value.feedUsers
             } else _uiState.value.feedUsers
-            val refreshedStories = if (user.isCurrentUser) {
-                listOf(_uiState.value.currentUser) + updatedFeed
-            } else updatedFeed
+            val refreshedStories = if (user.isCurrentUser) listOf(_uiState.value.currentUser) + updatedFeed
+                                   else updatedFeed
             val newIdx = refreshedStories.indexOfFirst { it.id == user.id }.coerceAtLeast(0)
             _uiState.update { it.copy(feedUsers = updatedFeed, activeStoryUserIndex = newIdx) }
         }
@@ -367,9 +403,8 @@ class MusicViewModel : ViewModel() {
     fun nextStory() {
         val allStories = getStoriesList()
         val currentIndex = _uiState.value.activeStoryUserIndex ?: return
-        if (currentIndex < allStories.size - 1) {
-            _uiState.update { it.copy(activeStoryUserIndex = currentIndex + 1) }
-        } else closeStory()
+        if (currentIndex < allStories.size - 1) _uiState.update { it.copy(activeStoryUserIndex = currentIndex + 1) }
+        else closeStory()
     }
 
     fun previousStory() {
@@ -377,32 +412,20 @@ class MusicViewModel : ViewModel() {
         if (currentIndex > 0) _uiState.update { it.copy(activeStoryUserIndex = currentIndex - 1) }
     }
 
-    fun closeStory() {
-        _uiState.update { it.copy(activeStoryUserIndex = null) }
-    }
+    fun closeStory() { _uiState.update { it.copy(activeStoryUserIndex = null) } }
 
-    fun openProfile(user: User) {
-        _uiState.update { it.copy(activeProfileUser = user) }
-    }
+    fun openProfile(user: User) { _uiState.update { it.copy(activeProfileUser = user) } }
 
-    fun closeProfile() {
-        _uiState.update { it.copy(activeProfileUser = null) }
-    }
+    fun closeProfile() { _uiState.update { it.copy(activeProfileUser = null) } }
 
     fun openChat(user: User, initialTrack: Track? = null) {
         _uiState.update { it.copy(activeChatUser = user, activeStoryUserIndex = null) }
         if (initialTrack != null) {
-            sendMessage(
-                recipientId = user.id,
-                text = "Ho visto che stavi ascoltando \"${initialTrack.title}\"!",
-                attachedTrack = initialTrack
-            )
+            sendMessage(user.id, "Ho visto che stavi ascoltando \"${initialTrack.title}\"!", initialTrack)
         }
     }
 
-    fun closeChat() {
-        _uiState.update { it.copy(activeChatUser = null) }
-    }
+    fun closeChat() { _uiState.update { it.copy(activeChatUser = null) } }
 
     fun sendMessage(recipientId: String, text: String, attachedTrack: Track? = null) {
         if (text.isBlank()) return
@@ -424,17 +447,11 @@ class MusicViewModel : ViewModel() {
         _uiState.update { it.copy(selectedTrackDetail = Pair(track, user)) }
     }
 
-    fun closeTrackInspector() {
-        _uiState.update { it.copy(selectedTrackDetail = null) }
-    }
+    fun closeTrackInspector() { _uiState.update { it.copy(selectedTrackDetail = null) } }
 
-    fun clearToast() {
-        _uiState.update { it.copy(feedbackToast = null) }
-    }
+    fun clearToast() { _uiState.update { it.copy(feedbackToast = null) } }
 
-    fun clearLoginError() {
-        _uiState.update { it.copy(loginError = null) }
-    }
+    fun clearLoginError() { _uiState.update { it.copy(loginError = null) } }
 
     fun getStoriesList(): List<User> {
         val state = _uiState.value

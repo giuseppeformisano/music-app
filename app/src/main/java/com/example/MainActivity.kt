@@ -1,5 +1,6 @@
 package com.example
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -68,10 +69,35 @@ class MainActivity : ComponentActivity() {
             .build()
         Coil.setImageLoader(imageLoader)
 
+        handleSpotifyCallback(intent)
+
         setContent {
             MyApplicationTheme {
                 MusicApp(viewModel = viewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleSpotifyCallback(intent)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        viewModel.startSpotifyPolling()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        viewModel.stopSpotifyPolling()
+    }
+
+    private fun handleSpotifyCallback(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme == "com.aistudio.music.livefeed" && uri.host == "callback") {
+            val code = uri.getQueryParameter("code") ?: return
+            viewModel.handleSpotifyCallback(code)
         }
     }
 }
@@ -147,7 +173,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     connectedServices = uiState.connectedServices,
                     spotifyError = uiState.spotifyError,
                     onToggleService = { viewModel.toggleConnectedService(it) },
-                    onConnectSpotify = { ctx -> viewModel.connectSpotify(ctx) },
+                    onConnectSpotify = { _ -> viewModel.launchSpotifyAuth() },
                     onDisconnectSpotify = { viewModel.disconnectSpotify() },
                     onUpdateProfile = { name, username, avatarUrl, coverUrl ->
                         viewModel.updateProfile(name, username, avatarUrl, coverUrl)
