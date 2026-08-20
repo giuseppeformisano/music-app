@@ -62,6 +62,7 @@ class MainActivity : ComponentActivity() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 "com.spotify.music.metadatachanged" -> {
+                    // Broadcast ancora supportato da versioni Spotify più vecchie
                     val trackName = intent.getStringExtra("track") ?: return
                     val artist = intent.getStringExtra("artist") ?: ""
                     val album = intent.getStringExtra("album") ?: ""
@@ -69,8 +70,12 @@ class MainActivity : ComponentActivity() {
                     viewModel.updateNowPlayingFromBroadcast(trackId, trackName, artist, album)
                 }
                 "com.spotify.music.playbackstatechanged" -> {
-                    if (!intent.getBooleanExtra("playing", false)) {
+                    val playing = intent.getBooleanExtra("playing", false)
+                    if (!playing) {
                         viewModel.clearNowPlayingFromBroadcast()
+                    } else {
+                        // Spotify in play ma non abbiamo info brano: chiedi al Web API
+                        viewModel.startSpotifyPolling()
                     }
                 }
             }

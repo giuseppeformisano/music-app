@@ -199,23 +199,18 @@ object FirebaseRepository {
     fun getUsersByIds(ids: List<String>, onResult: (List<User>) -> Unit) {
         val db = firestore ?: run { onResult(emptyList()); return }
         if (ids.isEmpty()) { onResult(emptyList()); return }
-        val chunks = ids.chunked(10)
-        val allUsers = mutableListOf<User>()
-        var pending = chunks.size
-        for (chunk in chunks) {
-            db.collection(USERS_COLLECTION)
-                .whereIn("id", chunk)
-                .get()
-                .addOnSuccessListener { snap ->
-                    snap.documents.mapNotNull { doc ->
-                        mapDocToUser(doc.data, doc.getString("id") ?: doc.id)
-                    }.also { allUsers.addAll(it) }
-                    pending--
-                    if (pending == 0) onResult(allUsers)
+        // Usa get() per document ID — più affidabile di whereIn("id",...) che richiede il campo "id" nel documento
+        val allUsers = java.util.Collections.synchronizedList(mutableListOf<User>())
+        val pending = java.util.concurrent.atomic.AtomicInteger(ids.size)
+        for (id in ids) {
+            db.collection(USERS_COLLECTION).document(id).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) mapDocToUser(doc.data, doc.id)?.let { allUsers.add(it) }
+                    if (pending.decrementAndGet() == 0) onResult(allUsers)
                 }
                 .addOnFailureListener {
-                    pending--
-                    if (pending == 0) onResult(allUsers)
+                    Log.w(TAG, "getUsersByIds: failed to fetch $id")
+                    if (pending.decrementAndGet() == 0) onResult(allUsers)
                 }
         }
     }

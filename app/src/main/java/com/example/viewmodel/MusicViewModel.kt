@@ -239,7 +239,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         spotifyPollingJob = viewModelScope.launch {
             while (isActive) {
                 fetchCurrentlyPlaying()
-                delay(5_000)
+                delay(3_000) // 3s: più reattivo, rileva Spotify già in play rapidamente
             }
         }
     }
@@ -339,13 +339,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             FirebaseRepository.observeCurrentUserSocial(userId)
                 .catch { }
                 .collect { (followerIds, followingIds) ->
-                    _uiState.update { current ->
-                        current.copy(
-                            currentUser = current.currentUser.copy(
-                                followerIds = followerIds,
-                                followingIds = followingIds
-                            )
-                        )
+                    val updatedUser = _uiState.value.currentUser.copy(
+                        followerIds = followerIds,
+                        followingIds = followingIds
+                    )
+                    _uiState.update { it.copy(currentUser = updatedUser) }
+                    // Se il profilo dell'utente corrente è aperto, aggiorna i dettagli social
+                    if (_uiState.value.activeProfileUser?.isCurrentUser == true) {
+                        loadSocialDetails(updatedUser)
                     }
                 }
         }
@@ -608,12 +609,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openProfile(user: User) {
         _uiState.update { it.copy(activeProfileUser = user) }
-        if (user.isCurrentUser) loadSocialDetails(user)
+        if (user.isCurrentUser) {
+            // Usa sempre i dati freschi dallo stato (non l'oggetto passato che potrebbe essere stale)
+            loadSocialDetails(_uiState.value.currentUser)
+        }
     }
 
     fun loadSocialDetails(user: User) {
-        if (user.followerIds.isEmpty() && user.followingIds.isEmpty()) return
-        FirebaseRepository.getUsersByIds(user.followerIds + user.followingIds) { allUsers ->
+        val ids = (user.followerIds + user.followingIds).distinct()
+        if (ids.isEmpty()) return
+        FirebaseRepository.getUsersByIds(ids) { allUsers ->
             val followerSet = user.followerIds.toSet()
             val followingSet = user.followingIds.toSet()
             _uiState.update { state ->
