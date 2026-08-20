@@ -127,7 +127,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 _uiState.update { it.copy(updateDownloadProgress = progress) }
             }
             if (file != null) {
-                _uiState.update { it.copy(updateDownloadProgress = null, updateReadyFile = file) }
+                _uiState.update { it.copy(updateDownloadProgress = null, updateReadyFile = file, availableUpdate = null) }
                 UpdateRepository.installApk(context, file)
             } else {
                 _uiState.update { it.copy(updateDownloadProgress = null, feedbackToast = "Download aggiornamento fallito") }
