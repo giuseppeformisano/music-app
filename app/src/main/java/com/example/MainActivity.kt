@@ -260,13 +260,11 @@ fun MusicApp(viewModel: MusicViewModel) {
             )
         }
 
-        // Update Banner — sempre visibile sopra tutto
         UpdateBanner(
             update = uiState.availableUpdate,
             downloadProgress = uiState.updateDownloadProgress,
             onInstall = { viewModel.downloadAndInstallUpdate(context) },
-            onDismiss = { viewModel.dismissUpdate() },
-            modifier = Modifier.align(Alignment.TopCenter)
+            onDismiss = { viewModel.dismissUpdate() }
         )
 
         // Dialog: Track Detail Inspector
