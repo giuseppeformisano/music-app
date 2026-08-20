@@ -137,6 +137,9 @@ fun MainFeedScreen(
     onOpenProfile: (User) -> Unit,
     onSelectTrack: (Track, User) -> Unit,
     onOpenShareSheet: () -> Unit,
+    onOpenPeopleSearch: () -> Unit,
+    onOpenNotifications: () -> Unit,
+    notificationCount: Int,
     feedbackToast: String?,
     onClearToast: () -> Unit,
     modifier: Modifier = Modifier
@@ -161,8 +164,10 @@ fun MainFeedScreen(
             UniversalHeader(
                 currentPage = currentPageEnum,
                 currentUser = currentUser,
-                onSearchClick = onOpenShareSheet,
+                onSearchClick = onOpenPeopleSearch,
                 onProfileClick = { onOpenProfile(currentUser) },
+                onNotificationsClick = onOpenNotifications,
+                notificationCount = notificationCount,
                 onHeaderCenterClick = {
                     coroutineScope.launch {
                         val targetPage = if (pagerState.currentPage == 0) 1 else 0

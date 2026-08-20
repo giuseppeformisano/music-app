@@ -1,6 +1,8 @@
 package com.example.data
 
 import android.util.Log
+import com.example.model.FriendRequest
+import com.example.model.RequestStatus
 import com.example.model.Track
 import com.example.model.User
 import com.google.firebase.FirebaseApp
@@ -148,6 +150,80 @@ object FirebaseRepository {
         }
     }
 
+    private const val REQUESTS_COLLECTION = "friend_requests"
+
+    fun sendFollowRequest(from: User, to: User) {
+        val db = firestore ?: return
+        try {
+            val requestId = "${from.id}_${to.id}"
+            val data = hashMapOf<String, Any>(
+                "id" to requestId,
+                "fromUserId" to from.id,
+                "fromUserName" to from.name,
+                "fromUserUsername" to from.username,
+                "fromUserAvatarUrl" to from.avatarUrl,
+                "toUserId" to to.id,
+                "timestamp" to System.currentTimeMillis(),
+                "status" to "PENDING"
+            )
+            db.collection(REQUESTS_COLLECTION).document(requestId).set(data)
+        } catch (e: Exception) {
+            Log.e(TAG, "sendFollowRequest error: ${e.message}")
+        }
+    }
+
+    fun acceptFollowRequest(requestId: String, currentUserId: String, fromUserId: String) {
+        val db = firestore ?: return
+        try {
+            db.collection(REQUESTS_COLLECTION).document(requestId)
+                .update("status", "ACCEPTED")
+            db.collection(USERS_COLLECTION).document(currentUserId)
+                .update("followerIds", com.google.firebase.firestore.FieldValue.arrayUnion(fromUserId))
+            db.collection(USERS_COLLECTION).document(fromUserId)
+                .update("followingIds", com.google.firebase.firestore.FieldValue.arrayUnion(currentUserId))
+        } catch (e: Exception) {
+            Log.e(TAG, "acceptFollowRequest error: ${e.message}")
+        }
+    }
+
+    fun rejectFollowRequest(requestId: String) {
+        val db = firestore ?: return
+        try {
+            db.collection(REQUESTS_COLLECTION).document(requestId).delete()
+        } catch (e: Exception) {
+            Log.e(TAG, "rejectFollowRequest error: ${e.message}")
+        }
+    }
+
+    fun observeFriendRequests(currentUserId: String): Flow<List<FriendRequest>> = callbackFlow {
+        val db = firestore
+        if (db == null) { channel.close(); return@callbackFlow }
+        var reg: ListenerRegistration? = null
+        try {
+            reg = db.collection(REQUESTS_COLLECTION)
+                .whereEqualTo("toUserId", currentUserId)
+                .whereEqualTo("status", "PENDING")
+                .addSnapshotListener { snap, err ->
+                    if (err != null) return@addSnapshotListener
+                    val requests = snap?.documents?.mapNotNull { doc ->
+                        val data = doc.data ?: return@mapNotNull null
+                        FriendRequest(
+                            id = data["id"] as? String ?: doc.id,
+                            fromUserId = data["fromUserId"] as? String ?: return@mapNotNull null,
+                            fromUserName = data["fromUserName"] as? String ?: "Utente",
+                            fromUserUsername = data["fromUserUsername"] as? String ?: "",
+                            fromUserAvatarUrl = data["fromUserAvatarUrl"] as? String ?: "",
+                            timestamp = (data["timestamp"] as? Number)?.toLong() ?: 0L
+                        )
+                    } ?: emptyList()
+                    trySend(requests)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "observeFriendRequests error: ${e.message}")
+        }
+        awaitClose { reg?.remove() }
+    }
+
     private fun trackToMap(track: Track): Map<String, Any?> {
         return mapOf(
             "id" to track.id,
@@ -181,6 +257,9 @@ object FirebaseRepository {
         val topArtist = data["topArtist"] as? String ?: "Artista"
         val genres = data["genres"] as? String ?: "Alternative"
 
+        val followerIds = (data["followerIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        val followingIds = (data["followingIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
         return User(
             id = id,
             name = name,
@@ -195,7 +274,9 @@ object FirebaseRepository {
                 topArtist = topArtist,
                 totalMinutesOrGenres = genres
             ),
-            isCurrentUser = false
+            isCurrentUser = false,
+            followerIds = followerIds,
+            followingIds = followingIds
         )
     }
 

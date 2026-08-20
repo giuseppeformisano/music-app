@@ -32,7 +32,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.example.ui.components.NotificationsDialog
 import com.example.ui.components.NowPlayingSheet
+import com.example.ui.components.PeopleSearchDialog
 import com.example.ui.components.TrackDetailDialog
 import com.example.ui.components.UpdateBanner
 import com.example.ui.screens.ChatScreen
@@ -114,9 +116,13 @@ fun MusicApp(viewModel: MusicViewModel) {
         enabled = uiState.activeStoryUserIndex != null ||
                 uiState.activeProfileUser != null ||
                 uiState.activeChatUser != null ||
-                uiState.selectedTrackDetail != null
+                uiState.selectedTrackDetail != null ||
+                uiState.showPeopleSearch ||
+                uiState.showNotifications
     ) {
         when {
+            uiState.showPeopleSearch -> viewModel.closePeopleSearch()
+            uiState.showNotifications -> viewModel.closeNotifications()
             uiState.selectedTrackDetail != null -> viewModel.closeTrackInspector()
             uiState.activeStoryUserIndex != null -> viewModel.closeStory()
             uiState.activeChatUser != null -> viewModel.closeChat()
@@ -152,6 +158,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onOpenProfile = { user -> viewModel.openProfile(user) },
                     onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
                     onOpenShareSheet = { viewModel.openShareSheet() },
+                    onOpenPeopleSearch = { viewModel.openPeopleSearch() },
+                    onOpenNotifications = { viewModel.openNotifications() },
+                    notificationCount = uiState.pendingFriendRequests.size,
                     feedbackToast = uiState.feedbackToast,
                     onClearToast = { viewModel.clearToast() }
                 )
@@ -237,26 +246,40 @@ fun MusicApp(viewModel: MusicViewModel) {
             }
         }
 
-        // Bottom Sheet: Sharing & Global Search (Flusso B)
+        // Bottom Sheet: Sharing (Flusso B)
         if (uiState.isShareSheetOpen) {
             NowPlayingSheet(
                 nowPlayingTrack = uiState.nowPlayingTrack,
-                searchTab = uiState.searchTab,
-                onTabSelected = { viewModel.setSearchTab(it) },
                 searchQuery = uiState.searchQuery,
                 searchResults = uiState.searchResults,
                 isSearching = uiState.isSearching,
                 onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
-                userSearchQuery = uiState.userSearchQuery,
-                userSearchResults = uiState.userSearchResults,
-                isSearchingUsers = uiState.isSearchingUsers,
-                onUserSearchQueryChanged = { viewModel.onUserSearchQueryChanged(it) },
-                followedUserIds = uiState.feedUsers.map { it.id }.toSet(),
-                onToggleFollowUser = { viewModel.toggleFollowUser(it) },
-                onOpenUserProfile = { user -> viewModel.openProfile(user) },
                 onShareTrack = { viewModel.shareTrack(it) },
                 onDismiss = { viewModel.closeShareSheet() },
                 sheetState = shareSheetState
+            )
+        }
+
+        // Dialog: Ricerca Persone
+        if (uiState.showPeopleSearch) {
+            PeopleSearchDialog(
+                searchQuery = uiState.peopleSearchQuery,
+                searchResults = uiState.peopleSearchResults,
+                sentRequestIds = uiState.sentRequestIds,
+                onQueryChanged = { viewModel.onPeopleSearchQueryChanged(it) },
+                onSendRequest = { viewModel.sendFollowRequest(it) },
+                onOpenProfile = { user -> viewModel.openProfile(user) },
+                onDismiss = { viewModel.closePeopleSearch() }
+            )
+        }
+
+        // Dialog: Notifiche & Richieste Amicizia
+        if (uiState.showNotifications) {
+            NotificationsDialog(
+                pendingRequests = uiState.pendingFriendRequests,
+                onAccept = { viewModel.acceptFriendRequest(it) },
+                onReject = { viewModel.rejectFriendRequest(it) },
+                onDismiss = { viewModel.closeNotifications() }
             )
         }
 

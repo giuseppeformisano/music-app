@@ -23,13 +23,27 @@ data class User(
     val isLiveNow: Boolean = true,
     val currentTrack: Track? = null,
     val sharedTracks: List<Track> = emptyList(),
-    val stats: UserStats = UserStats()
+    val stats: UserStats = UserStats(),
+    val followerIds: List<String> = emptyList(),
+    val followingIds: List<String> = emptyList()
 )
 
 data class UserStats(
     val sharedCount: Int = 142,
     val topArtist: String = "Daft Punk",
     val totalMinutesOrGenres: String = "Indie • Electronic"
+)
+
+enum class RequestStatus { PENDING, ACCEPTED, REJECTED }
+
+data class FriendRequest(
+    val id: String,
+    val fromUserId: String,
+    val fromUserName: String,
+    val fromUserUsername: String,
+    val fromUserAvatarUrl: String,
+    val timestamp: Long = System.currentTimeMillis(),
+    val status: RequestStatus = RequestStatus.PENDING
 )
 
 data class ChatMessage(

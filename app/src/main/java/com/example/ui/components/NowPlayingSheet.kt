@@ -27,14 +27,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -64,7 +59,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.model.Track
-import com.example.model.User
 import com.example.ui.theme.BlackCard
 import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.BlackSurface
@@ -74,28 +68,15 @@ import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SpotifyGreen
 import com.example.ui.theme.SubtitleGray
 import com.example.ui.theme.Zinc400
-import com.example.ui.theme.Zinc700
-import com.example.ui.theme.Zinc800
 import com.example.ui.theme.Zinc900
-import com.example.viewmodel.SearchTab
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowPlayingSheet(
     nowPlayingTrack: Track?,
-    searchTab: SearchTab,
-    onTabSelected: (SearchTab) -> Unit,
     searchQuery: String,
     searchResults: List<Track>,
     isSearching: Boolean,
     onSearchQueryChanged: (String) -> Unit,
-    userSearchQuery: String,
-    userSearchResults: List<User>,
-    isSearchingUsers: Boolean,
-    onUserSearchQueryChanged: (String) -> Unit,
-    followedUserIds: Set<String>,
-    onToggleFollowUser: (User) -> Unit,
-    onOpenUserProfile: (User) -> Unit,
     onShareTrack: (Track) -> Unit,
     onDismiss: () -> Unit,
     sheetState: SheetState
@@ -133,7 +114,7 @@ fun NowPlayingSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "RICERCA & CONDIVISIONE",
+                    text = "CONDIVIDI UN BRANO",
                     color = SubtitleGray,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -155,62 +136,7 @@ fun NowPlayingSheet(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // TAB SWITCHER: Brani vs Persone
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(DarkGraphite)
-                    .border(1.dp, CharcoalBorder, RoundedCornerShape(14.dp))
-                    .padding(4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (searchTab == SearchTab.TRACKS) PureWhite else Color.Transparent)
-                        .clickable {
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                            onTabSelected(SearchTab.TRACKS)
-                        }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "🎵 Brani & Spotify",
-                        color = if (searchTab == SearchTab.TRACKS) BlackPitch else SubtitleGray,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(if (searchTab == SearchTab.USERS) PureWhite else Color.Transparent)
-                        .clickable {
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                            onTabSelected(SearchTab.USERS)
-                        }
-                        .padding(vertical = 8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "👥 Cerca Persone",
-                        color = if (searchTab == SearchTab.USERS) BlackPitch else SubtitleGray,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            if (searchTab == SearchTab.TRACKS) {
-                // TAB 1: BRANI & SPOTIFY
+            // BRANI & SPOTIFY
                 // STATO 1: Now Playing Spotlight Card (shown only if a track is playing)
                 if (nowPlayingTrack != null) {
                     Box(
@@ -424,112 +350,6 @@ fun NowPlayingSheet(
                         }
                     }
                 }
-            } else {
-                // TAB 2: CERCA PERSONE PER NICKNAME & NOME
-                Text(
-                    text = "CERCA AMICI PER NICKNAME O NOME",
-                    color = SubtitleGray,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 1.sp
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = userSearchQuery,
-                    onValueChange = onUserSearchQueryChanged,
-                    placeholder = {
-                        Text("Es. @luca, sofia, Daft Punk, Rock...", color = SubtitleGray, fontSize = 13.sp)
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = "Cerca Utente",
-                            tint = SubtitleGray
-                        )
-                    },
-                    trailingIcon = {
-                        if (userSearchQuery.isNotBlank()) {
-                            IconButton(onClick = { onUserSearchQueryChanged("") }) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Cancella",
-                                    tint = SubtitleGray
-                                )
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(
-                        onSearch = {
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                        }
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("user_search_input"),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PureWhite,
-                        unfocusedBorderColor = CharcoalBorder,
-                        focusedContainerColor = DarkGraphite,
-                        unfocusedContainerColor = DarkGraphite,
-                        focusedTextColor = PureWhite,
-                        unfocusedTextColor = PureWhite,
-                        cursorColor = SpotifyGreen
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                if (isSearchingUsers) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = PureWhite,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 24.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        if (userSearchResults.isNotEmpty()) {
-                            items(userSearchResults, key = { it.id }) { user ->
-                                val isInFeed = followedUserIds.contains(user.id)
-                                UserSearchResultItem(
-                                    user = user,
-                                    isInFeed = isInFeed,
-                                    onToggleFollow = { onToggleFollowUser(user) },
-                                    onOpenProfile = {
-                                        onDismiss()
-                                        onOpenUserProfile(user)
-                                    }
-                                )
-                            }
-                        } else {
-                            item {
-                                Text(
-                                    text = "Nessun utente trovato per \"$userSearchQuery\"",
-                                    color = SubtitleGray,
-                                    fontSize = 13.sp,
-                                    modifier = Modifier.padding(vertical = 20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }
@@ -602,121 +422,3 @@ private fun SearchResultItem(
     }
 }
 
-@Composable
-private fun UserSearchResultItem(
-    user: User,
-    isInFeed: Boolean,
-    onToggleFollow: () -> Unit,
-    onOpenProfile: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
-            .background(DarkGraphite.copy(alpha = 0.6f))
-            .border(1.dp, CharcoalBorder, RoundedCornerShape(14.dp))
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(),
-                onClick = onOpenProfile
-            )
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Avatar with Live Indicator if listening
-        Box(
-            modifier = Modifier.size(46.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            AsyncImage(
-                model = user.avatarUrl,
-                contentDescription = user.name,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .border(
-                        1.dp,
-                        if (user.isLiveNow) SpotifyGreen else CharcoalBorder,
-                        CircleShape
-                    )
-            )
-        }
-
-        Spacer(modifier = Modifier.width(12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    text = user.name,
-                    color = PureWhite,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (user.isLiveNow) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(SpotifyGreen.copy(alpha = 0.2f))
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
-                    ) {
-                        Text(
-                            text = "LIVE",
-                            color = SpotifyGreen,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Black
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = "@${user.username} • ${user.stats.topArtist}",
-                color = SubtitleGray,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Follow / Feed toggle button
-        Button(
-            onClick = onToggleFollow,
-            shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = if (isInFeed) Zinc800 else PureWhite,
-                contentColor = if (isInFeed) PureWhite else BlackPitch
-            ),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-            modifier = Modifier.height(34.dp)
-        ) {
-            if (isInFeed) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = SpotifyGreen
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "Nel Feed", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            } else {
-                Icon(
-                    imageVector = Icons.Default.PersonAdd,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp)
-                )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "Aggiungi", fontSize = 11.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}

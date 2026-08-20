@@ -14,6 +14,7 @@ import com.example.data.UpdateRepository
 import com.example.data.VersionInfo
 import java.io.File
 import com.example.model.ChatMessage
+import com.example.model.FriendRequest
 import com.example.model.Track
 import com.example.model.User
 import com.example.model.UserStats
@@ -65,7 +66,13 @@ data class MusicUiState(
     val spotifyError: String? = null,
     val availableUpdate: VersionInfo? = null,
     val updateDownloadProgress: Int? = null,
-    val updateReadyFile: File? = null
+    val updateReadyFile: File? = null,
+    val pendingFriendRequests: List<FriendRequest> = emptyList(),
+    val showPeopleSearch: Boolean = false,
+    val showNotifications: Boolean = false,
+    val peopleSearchQuery: String = "",
+    val peopleSearchResults: List<User> = emptyList(),
+    val sentRequestIds: Set<String> = emptySet()
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -264,6 +271,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
         }
+        startFriendRequestListener()
     }
 
     // ===================== SERVICES =====================
@@ -364,6 +372,81 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeShareSheet() {
         _uiState.update { it.copy(isShareSheetOpen = false) }
+    }
+
+    // ===================== SOCIAL — PEOPLE SEARCH =====================
+
+    fun openPeopleSearch() {
+        val pool = _uiState.value.feedUsers
+        _uiState.update { it.copy(showPeopleSearch = true, peopleSearchQuery = "", peopleSearchResults = pool) }
+    }
+
+    fun closePeopleSearch() {
+        _uiState.update { it.copy(showPeopleSearch = false) }
+    }
+
+    fun onPeopleSearchQueryChanged(query: String) {
+        _uiState.update { it.copy(peopleSearchQuery = query) }
+        val pool = _uiState.value.feedUsers
+        val results = if (query.isBlank()) pool else {
+            val clean = query.trim().removePrefix("@").lowercase()
+            pool.filter {
+                it.username.lowercase().contains(clean) || it.name.lowercase().contains(clean)
+            }
+        }
+        _uiState.update { it.copy(peopleSearchResults = results) }
+    }
+
+    fun sendFollowRequest(targetUser: User) {
+        val already = _uiState.value.sentRequestIds.contains(targetUser.id)
+        if (already) return
+        _uiState.update {
+            it.copy(
+                sentRequestIds = it.sentRequestIds + targetUser.id,
+                feedbackToast = "Richiesta inviata a @${targetUser.username}"
+            )
+        }
+        FirebaseRepository.sendFollowRequest(from = _uiState.value.currentUser, to = targetUser)
+    }
+
+    // ===================== SOCIAL — NOTIFICATIONS =====================
+
+    fun openNotifications() {
+        _uiState.update { it.copy(showNotifications = true) }
+    }
+
+    fun closeNotifications() {
+        _uiState.update { it.copy(showNotifications = false) }
+    }
+
+    fun acceptFriendRequest(request: FriendRequest) {
+        val updated = _uiState.value.pendingFriendRequests.filter { it.id != request.id }
+        val currentId = _uiState.value.currentUser.id
+        _uiState.update {
+            it.copy(
+                pendingFriendRequests = updated,
+                feedbackToast = "Ora segui @${request.fromUserUsername}"
+            )
+        }
+        FirebaseRepository.acceptFollowRequest(request.id, currentId, request.fromUserId)
+    }
+
+    fun rejectFriendRequest(request: FriendRequest) {
+        val updated = _uiState.value.pendingFriendRequests.filter { it.id != request.id }
+        _uiState.update { it.copy(pendingFriendRequests = updated) }
+        FirebaseRepository.rejectFollowRequest(request.id)
+    }
+
+    private fun startFriendRequestListener() {
+        val userId = _uiState.value.currentUser.id
+        if (userId.isBlank()) return
+        viewModelScope.launch {
+            FirebaseRepository.observeFriendRequests(userId)
+                .catch { }
+                .collect { requests ->
+                    _uiState.update { it.copy(pendingFriendRequests = requests) }
+                }
+        }
     }
 
     fun shareTrack(track: Track) {

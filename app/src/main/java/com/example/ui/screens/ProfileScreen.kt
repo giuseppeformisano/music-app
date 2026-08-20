@@ -230,7 +230,9 @@ fun ProfileScreen(
                     topArtistsCount = remember(user.sharedTracks) {
                         user.sharedTracks.map { it.artist }.distinct().size.coerceAtLeast(6)
                     },
-                    listeningHours = 65
+                    listeningHours = 65,
+                    followerCount = user.followerIds.size,
+                    followingCount = user.followingIds.size
                 )
 
                 // 5. Blocco Live Footer (Completamente privo di box solidi e fuso direttamente col background #000000)
@@ -644,6 +646,8 @@ private fun UserStatsSection(
     totalShared: Int,
     topArtistsCount: Int,
     listeningHours: Int,
+    followerCount: Int = 0,
+    followingCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -652,7 +656,20 @@ private fun UserStatsSection(
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Label "YOUR STATS" centrata orizzontalmente con font stilizzato
+        // Social counts: Follower / Following
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(32.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatItem(label = "Follower", value = followerCount.toString())
+            Box(modifier = Modifier.width(1.dp).height(22.dp).background(PureWhite.copy(alpha = 0.12f)))
+            StatItem(label = "Following", value = followingCount.toString())
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Label "YOUR STATS"
         Text(
             text = "YOUR STATS",
             color = PureWhite.copy(alpha = 0.85f),
@@ -666,7 +683,7 @@ private fun UserStatsSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Statistiche in totale trasparenza
+        // Music stats
         Row(
             modifier = Modifier
                 .fillMaxWidth()
