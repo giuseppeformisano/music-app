@@ -196,6 +196,54 @@ object FirebaseRepository {
         }
     }
 
+    fun getUsersByIds(ids: List<String>, onResult: (List<User>) -> Unit) {
+        val db = firestore ?: run { onResult(emptyList()); return }
+        if (ids.isEmpty()) { onResult(emptyList()); return }
+        val chunks = ids.chunked(10)
+        val allUsers = mutableListOf<User>()
+        var pending = chunks.size
+        for (chunk in chunks) {
+            db.collection(USERS_COLLECTION)
+                .whereIn("id", chunk)
+                .get()
+                .addOnSuccessListener { snap ->
+                    snap.documents.mapNotNull { doc ->
+                        mapDocToUser(doc.data, doc.getString("id") ?: doc.id)
+                    }.also { allUsers.addAll(it) }
+                    pending--
+                    if (pending == 0) onResult(allUsers)
+                }
+                .addOnFailureListener {
+                    pending--
+                    if (pending == 0) onResult(allUsers)
+                }
+        }
+    }
+
+    fun removeFollowing(currentUserId: String, targetUserId: String) {
+        val db = firestore ?: return
+        try {
+            db.collection(USERS_COLLECTION).document(currentUserId)
+                .update("followingIds", FieldValue.arrayRemove(targetUserId))
+            db.collection(USERS_COLLECTION).document(targetUserId)
+                .update("followerIds", FieldValue.arrayRemove(currentUserId))
+        } catch (e: Exception) {
+            Log.e(TAG, "removeFollowing error: ${e.message}")
+        }
+    }
+
+    fun removeFollower(currentUserId: String, followerId: String) {
+        val db = firestore ?: return
+        try {
+            db.collection(USERS_COLLECTION).document(currentUserId)
+                .update("followerIds", FieldValue.arrayRemove(followerId))
+            db.collection(USERS_COLLECTION).document(followerId)
+                .update("followingIds", FieldValue.arrayRemove(currentUserId))
+        } catch (e: Exception) {
+            Log.e(TAG, "removeFollower error: ${e.message}")
+        }
+    }
+
     fun observeCurrentUserSocial(userId: String): Flow<Pair<List<String>, List<String>>> = callbackFlow {
         val db = firestore
         if (db == null) { channel.close(); return@callbackFlow }

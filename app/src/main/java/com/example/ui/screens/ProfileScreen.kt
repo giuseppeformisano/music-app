@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -144,11 +145,20 @@ fun ProfileScreen(
     onSelectTrack: (Track, User) -> Unit,
     onOpenLiveDetail: (User) -> Unit = {},
     onLogout: () -> Unit,
+    followers: List<User> = emptyList(),
+    following: List<User> = emptyList(),
+    onUnfollow: (User) -> Unit = {},
+    onRemoveFollower: (User) -> Unit = {},
+    onSendFollowRequest: () -> Unit = {},
+    isSentRequest: Boolean = false,
+    onOpenUserProfile: (User) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var showEditProfileSheet by remember { mutableStateOf(false) }
     var showConnectAccountsSheet by remember { mutableStateOf(false) }
+    var showFollowersDialog by remember { mutableStateOf(false) }
+    var showFollowingDialog by remember { mutableStateOf(false) }
 
     // Copertina di sfondo atmosferico: custom cover > track in riproduzione > prima condivisione > default
     val atmosphericCoverUrl = user.coverUrl
@@ -160,6 +170,10 @@ fun ProfileScreen(
         modifier = modifier
             .fillMaxSize()
             .background(BlackPitch)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { /* consume touches — prevent click-through to feed */ }
             .testTag("profile_screen_${user.id}")
     ) {
         // ================= 1. SFONDO E ATMOSFERA FULLSCREEN (MENO BLURRED) =================
@@ -221,8 +235,13 @@ fun ProfileScreen(
                 UserIdentityBlock(
                     user = user,
                     isCurrentUser = isCurrentUser,
+                    isFollowing = isFollowing,
+                    isSentRequest = isSentRequest,
                     onEditClick = { showEditProfileSheet = true },
-                    onConnectAccountClick = { showConnectAccountsSheet = true }
+                    onConnectAccountClick = { showConnectAccountsSheet = true },
+                    onFollowersTap = { showFollowersDialog = true },
+                    onFollowingTap = { showFollowingDialog = true },
+                    onSendFollowRequest = onSendFollowRequest
                 )
 
                 val canSeeContent = isCurrentUser || isFollowing
@@ -282,6 +301,36 @@ fun ProfileScreen(
                 onDismiss = { showConnectAccountsSheet = false }
             )
         }
+
+        // ================= DIALOG: FOLLOWER =================
+        if (showFollowersDialog) {
+            FollowersFollowingDialog(
+                title = "Follower",
+                users = followers,
+                currentUserId = user.id,
+                onOpenProfile = { u ->
+                    showFollowersDialog = false
+                    onOpenUserProfile(u)
+                },
+                onRemove = { u -> onRemoveFollower(u) },
+                onDismiss = { showFollowersDialog = false }
+            )
+        }
+
+        // ================= DIALOG: FOLLOWING =================
+        if (showFollowingDialog) {
+            FollowersFollowingDialog(
+                title = "Following",
+                users = following,
+                currentUserId = user.id,
+                onOpenProfile = { u ->
+                    showFollowingDialog = false
+                    onOpenUserProfile(u)
+                },
+                onRemove = { u -> onUnfollow(u) },
+                onDismiss = { showFollowingDialog = false }
+            )
+        }
     }
 }
 
@@ -294,13 +343,11 @@ private fun ProfileTopHeader(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp)
-            .testTag("profile_top_header"),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .testTag("profile_top_header")
     ) {
         // Sinistra: torna al feed
         IconButton(
@@ -308,6 +355,7 @@ private fun ProfileTopHeader(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
+                .align(Alignment.CenterStart)
                 .testTag("profile_back_button")
         ) {
             Icon(
@@ -318,12 +366,13 @@ private fun ProfileTopHeader(
             )
         }
 
-        // Centro: logo "m"
+        // Centro: logo "m" — sempre centrato indipendentemente dalle icone a destra
         Box(
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(PureWhite),
+                .background(PureWhite)
+                .align(Alignment.Center),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -338,7 +387,10 @@ private fun ProfileTopHeader(
         }
 
         // Destra: notifiche + logout (solo utente corrente)
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.align(Alignment.CenterEnd),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             // Box senza clip per permettere al badge di fuoriuscire senza essere tagliato
             Box(
                 modifier = Modifier
@@ -404,8 +456,13 @@ private fun ProfileTopHeader(
 private fun UserIdentityBlock(
     user: User,
     isCurrentUser: Boolean,
+    isFollowing: Boolean = false,
+    isSentRequest: Boolean = false,
     onEditClick: () -> Unit,
     onConnectAccountClick: () -> Unit,
+    onFollowersTap: () -> Unit = {},
+    onFollowingTap: () -> Unit = {},
+    onSendFollowRequest: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -456,11 +513,25 @@ private fun UserIdentityBlock(
             )
             Spacer(modifier = Modifier.width(20.dp))
 
-            // Destra: Follower / Following
+            // Destra: Follower / Following (cliccabili)
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                StatItem(label = "Follower", value = user.followerIds.size.toString())
+                StatItem(
+                    label = "Follower",
+                    value = user.followerIds.size.toString(),
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onFollowersTap() }
+                )
                 Spacer(modifier = Modifier.height(14.dp))
-                StatItem(label = "Following", value = user.followingIds.size.toString())
+                StatItem(
+                    label = "Following",
+                    value = user.followingIds.size.toString(),
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onFollowingTap() }
+                )
             }
         }
 
@@ -471,6 +542,59 @@ private fun UserIdentityBlock(
                 onEditClick = onEditClick,
                 onConnectAccountClick = onConnectAccountClick
             )
+        } else {
+            Spacer(modifier = Modifier.height(16.dp))
+            when {
+                isFollowing -> {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(PureWhite.copy(alpha = 0.06f))
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Segui già",
+                            color = SubtitleGray,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                isSentRequest -> {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(PureWhite.copy(alpha = 0.06f))
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Richiesta inviata",
+                            color = SubtitleGray,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                else -> {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .border(1.dp, PureWhite, RoundedCornerShape(20.dp))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null
+                            ) { onSendFollowRequest() }
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                    ) {
+                        Text(
+                            text = "Segui",
+                            color = PureWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -927,6 +1051,201 @@ private fun FloatingLiveBar(
                     .size(8.dp)
                     .background(Color(0xFF1DB954), shape = CircleShape)
             )
+        }
+    }
+}
+
+@Composable
+private fun FollowersFollowingDialog(
+    title: String,
+    users: List<User>,
+    currentUserId: String,
+    onOpenProfile: (User) -> Unit,
+    onRemove: (User) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filtered = remember(users, searchQuery) {
+        if (searchQuery.isBlank()) users
+        else users.filter {
+            it.name.lowercase().contains(searchQuery.lowercase()) ||
+            it.username.lowercase().contains(searchQuery.lowercase())
+        }
+    }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.80f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onDismiss() },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.75f)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF0A0A0A))
+                    .border(1.dp, PureWhite.copy(alpha = 0.09f), RoundedCornerShape(24.dp))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { }
+            ) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        color = PureWhite,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp
+                    )
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Chiudi",
+                            tint = Zinc400,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
+
+                // Campo di ricerca
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .padding(bottom = 12.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(PureWhite.copy(alpha = 0.06f))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    BasicTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        modifier = Modifier.weight(1f),
+                        textStyle = TextStyle(
+                            color = PureWhite,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        cursorBrush = SolidColor(PureWhite),
+                        singleLine = true,
+                        decorationBox = { innerTextField ->
+                            if (searchQuery.isEmpty()) {
+                                Text(text = "Cerca...", color = SubtitleGray, fontSize = 14.sp)
+                            }
+                            innerTextField()
+                        }
+                    )
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(PureWhite.copy(alpha = 0.06f))
+                )
+
+                // Lista utenti o empty state
+                if (filtered.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "nessun utente ancora",
+                            color = SubtitleGray,
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                    ) {
+                        items(filtered) { u ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { onOpenProfile(u) },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = u.avatarUrl,
+                                    contentDescription = "Avatar ${u.name}",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = u.name,
+                                        color = PureWhite,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = "@${u.username.removePrefix("@")}",
+                                        color = SubtitleGray,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(PureWhite.copy(alpha = 0.08f))
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null
+                                        ) { onRemove(u) }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Rimuovi",
+                                        color = SubtitleGray,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

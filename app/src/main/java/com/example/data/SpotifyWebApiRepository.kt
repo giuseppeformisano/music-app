@@ -24,8 +24,15 @@ object SpotifyWebApiRepository {
                     .build()
             ).execute()
 
-            // 204 = niente in riproduzione
-            if (response.code == 204 || !response.isSuccessful) return@withContext null
+            if (response.code == 204) {
+                Log.d(TAG, "getCurrentlyPlaying: 204 niente in riproduzione")
+                return@withContext null
+            }
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: ""
+                Log.e(TAG, "getCurrentlyPlaying: HTTP ${response.code} — $errorBody")
+                return@withContext null
+            }
             val body = response.body?.string() ?: return@withContext null
             parseTrack(body)
         } catch (e: Exception) {

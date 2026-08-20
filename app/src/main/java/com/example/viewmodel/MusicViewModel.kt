@@ -77,7 +77,9 @@ data class MusicUiState(
     val showNotifications: Boolean = false,
     val peopleSearchQuery: String = "",
     val peopleSearchResults: List<User> = emptyList(),
-    val sentRequestIds: Set<String> = emptySet()
+    val sentRequestIds: Set<String> = emptySet(),
+    val followerDetails: List<User> = emptyList(),
+    val followingDetails: List<User> = emptyList()
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -604,7 +606,54 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun closeStory() { _uiState.update { it.copy(activeStoryUserIndex = null) } }
 
-    fun openProfile(user: User) { _uiState.update { it.copy(activeProfileUser = user) } }
+    fun openProfile(user: User) {
+        _uiState.update { it.copy(activeProfileUser = user) }
+        if (user.isCurrentUser) loadSocialDetails(user)
+    }
+
+    fun loadSocialDetails(user: User) {
+        if (user.followerIds.isEmpty() && user.followingIds.isEmpty()) return
+        FirebaseRepository.getUsersByIds(user.followerIds + user.followingIds) { allUsers ->
+            val followerSet = user.followerIds.toSet()
+            val followingSet = user.followingIds.toSet()
+            _uiState.update { state ->
+                state.copy(
+                    followerDetails = allUsers.filter { it.id in followerSet },
+                    followingDetails = allUsers.filter { it.id in followingSet }
+                )
+            }
+        }
+    }
+
+    fun unfollow(target: User) {
+        val currentId = _uiState.value.currentUser.id
+        FirebaseRepository.removeFollowing(currentId, target.id)
+        val updatedUser = _uiState.value.currentUser.copy(
+            followingIds = _uiState.value.currentUser.followingIds.filter { it != target.id }
+        )
+        _uiState.update {
+            it.copy(
+                currentUser = updatedUser,
+                followingDetails = it.followingDetails.filter { u -> u.id != target.id }
+            )
+        }
+        FirebaseRepository.syncCurrentUser(updatedUser)
+    }
+
+    fun removeFollower(follower: User) {
+        val currentId = _uiState.value.currentUser.id
+        FirebaseRepository.removeFollower(currentId, follower.id)
+        val updatedUser = _uiState.value.currentUser.copy(
+            followerIds = _uiState.value.currentUser.followerIds.filter { it != follower.id }
+        )
+        _uiState.update {
+            it.copy(
+                currentUser = updatedUser,
+                followerDetails = it.followerDetails.filter { u -> u.id != follower.id }
+            )
+        }
+        FirebaseRepository.syncCurrentUser(updatedUser)
+    }
 
     fun closeProfile() { _uiState.update { it.copy(activeProfileUser = null) } }
 

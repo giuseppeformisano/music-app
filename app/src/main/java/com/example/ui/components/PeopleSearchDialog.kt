@@ -61,6 +61,7 @@ fun PeopleSearchDialog(
     searchQuery: String,
     searchResults: List<User>,
     sentRequestIds: Set<String>,
+    followingIds: Set<String> = emptySet(),
     onQueryChanged: (String) -> Unit,
     onSendRequest: (User) -> Unit,
     onOpenProfile: (User) -> Unit,
@@ -176,9 +177,11 @@ fun PeopleSearchDialog(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(searchResults, key = { it.id }) { user ->
+                            val alreadyFollowing = followingIds.contains(user.id)
                             val requested = sentRequestIds.contains(user.id)
                             PeopleResultRow(
                                 user = user,
+                                alreadyFollowing = alreadyFollowing,
                                 requested = requested,
                                 onSendRequest = { onSendRequest(user) },
                                 onOpenProfile = { onDismiss(); onOpenProfile(user) }
@@ -194,6 +197,7 @@ fun PeopleSearchDialog(
 @Composable
 private fun PeopleResultRow(
     user: User,
+    alreadyFollowing: Boolean,
     requested: Boolean,
     onSendRequest: () -> Unit,
     onOpenProfile: () -> Unit
@@ -259,28 +263,34 @@ private fun PeopleResultRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
+        val isDisabled = alreadyFollowing || requested
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
-                .background(if (requested) Color(0xFF1A1A1A) else PureWhite)
-                .border(1.dp, if (requested) PureWhite.copy(alpha = 0.15f) else Color.Transparent, RoundedCornerShape(10.dp))
+                .background(if (isDisabled) Color(0xFF1A1A1A) else PureWhite)
+                .border(1.dp, if (isDisabled) PureWhite.copy(alpha = 0.15f) else Color.Transparent, RoundedCornerShape(10.dp))
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    onClick = { if (!requested) onSendRequest() }
+                    onClick = { if (!isDisabled) onSendRequest() }
                 )
                 .padding(horizontal = 12.dp, vertical = 7.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (requested) {
-                Text(
+            when {
+                alreadyFollowing -> Text(
+                    text = "Segui già",
+                    color = SubtitleGray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                requested -> Text(
                     text = "Inviata",
                     color = SubtitleGray,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
-            } else {
-                Row(
+                else -> Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {

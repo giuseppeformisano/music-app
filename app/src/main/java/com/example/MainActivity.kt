@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -223,6 +224,9 @@ fun MusicApp(viewModel: MusicViewModel) {
         ) {
             uiState.activeProfileUser?.let { activeUser ->
                 val displayUser = if (activeUser.isCurrentUser) uiState.currentUser else activeUser
+                if (displayUser.isCurrentUser) {
+                    LaunchedEffect(displayUser.id) { viewModel.loadSocialDetails(displayUser) }
+                }
                 ProfileScreen(
                     user = displayUser,
                     isCurrentUser = displayUser.isCurrentUser,
@@ -242,7 +246,14 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onOpenChat = { targetUser -> viewModel.openChat(targetUser) },
                     onSelectTrack = { track, owner -> viewModel.inspectTrack(track, owner) },
                     onOpenLiveDetail = { targetUser -> viewModel.openStory(targetUser) },
-                    onLogout = { viewModel.logout() }
+                    onLogout = { viewModel.logout() },
+                    followers = uiState.followerDetails,
+                    following = uiState.followingDetails,
+                    onUnfollow = { user -> viewModel.unfollow(user) },
+                    onRemoveFollower = { user -> viewModel.removeFollower(user) },
+                    onSendFollowRequest = { viewModel.sendFollowRequest(displayUser) },
+                    isSentRequest = uiState.sentRequestIds.contains(displayUser.id),
+                    onOpenUserProfile = { u -> viewModel.openProfile(u) }
                 )
             }
         }
@@ -317,6 +328,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                 searchQuery = uiState.peopleSearchQuery,
                 searchResults = uiState.peopleSearchResults,
                 sentRequestIds = uiState.sentRequestIds,
+                followingIds = uiState.currentUser.followingIds.toSet(),
                 onQueryChanged = { viewModel.onPeopleSearchQueryChanged(it) },
                 onSendRequest = { viewModel.sendFollowRequest(it) },
                 onOpenProfile = { user -> viewModel.openProfile(user) },
