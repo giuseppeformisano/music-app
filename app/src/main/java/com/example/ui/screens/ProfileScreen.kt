@@ -50,12 +50,9 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -81,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.model.Track
@@ -120,7 +118,6 @@ private val COVER_PRESETS = listOf(
  * 6. Sezione Statistiche: Top Artists, Total Shared, Listening Time.
  * 7. Player Live a Scomparsa: Barra inferiore fluttuante con copertina, titolo/artista e pallino rosso pulsante.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     user: User,
@@ -245,9 +242,9 @@ fun ProfileScreen(
             }
         }
 
-        // ================= BOTTOM SHEET: MODIFICA PROFILO =================
+        // ================= DIALOG: MODIFICA PROFILO =================
         if (showEditProfileSheet) {
-            EditProfileBottomSheet(
+            EditProfileDialog(
                 user = user,
                 currentCoverUrl = atmosphericCoverUrl,
                 onDismiss = { showEditProfileSheet = false },
@@ -814,283 +811,162 @@ private fun FloatingLiveBar(
     }
 }
 
-/**
- * Bottom Sheet per la Modifica del Profilo:
- * - Modifica Nome
- * - Modifica Nickname (@username)
- * - Modifica Immagine Profilo (Avatar con preview e preset fotografici)
- * - Modifica Immagine Copertina Sfondo (Cover atmosferica con preview e preset estetici)
- */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun EditProfileBottomSheet(
+private fun EditProfileDialog(
     user: User,
     currentCoverUrl: String,
     onDismiss: () -> Unit,
     onSave: (newName: String, newUsername: String, newAvatar: String, newCover: String) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
     var nameInput by remember { mutableStateOf(user.name) }
     var usernameInput by remember { mutableStateOf(user.username.removePrefix("@")) }
     var avatarUrlInput by remember { mutableStateOf(user.avatarUrl) }
     var coverUrlInput by remember { mutableStateOf(user.coverUrl ?: currentCoverUrl) }
 
-    ModalBottomSheet(
+    Dialog(
         onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Color(0xFF0F0F12),
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(top = 10.dp, bottom = 12.dp)
-                    .size(width = 36.dp, height = 4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(PureWhite.copy(alpha = 0.3f))
-            )
-        }
+        properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 12.dp)
-                .navigationBarsPadding()
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.78f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onDismiss() },
+            contentAlignment = Alignment.Center
         ) {
-            // Header del Sheet
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Modifica Profilo",
-                    color = PureWhite,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.3).sp
-                )
-
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Chiudi",
-                        tint = Zinc400,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 1. CAMPO NOME
-            Text(
-                text = "NOME",
-                color = SubtitleGray,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            MinimalTextInputField(
-                value = nameInput,
-                onValueChange = { nameInput = it },
-                placeholder = "Il tuo nome",
-                testTag = "input_edit_name"
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // 2. CAMPO NICKNAME (@username)
-            Text(
-                text = "NICKNAME",
-                color = SubtitleGray,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            MinimalTextInputField(
-                value = usernameInput,
-                onValueChange = { usernameInput = it.removePrefix("@").trim() },
-                placeholder = "username (es. marco_rossi)",
-                prefix = "@",
-                testTag = "input_edit_username"
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 3. CAMPO IMMAGINE PROFILO (Avatar)
-            Text(
-                text = "IMMAGINE PROFILO (AVATAR)",
-                color = SubtitleGray,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Anteprima Avatar + Selezione Rapida Preset
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Anteprima dell'avatar selezionato
-                AsyncImage(
-                    model = avatarUrlInput,
-                    contentDescription = "Anteprima Avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(54.dp)
-                        .clip(CircleShape)
-                        .border(1.5.dp, PureWhite.copy(alpha = 0.6f), CircleShape)
-                )
-
-                // Lista preset avatar
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(AVATAR_PRESETS) { preset ->
-                        val isSelected = avatarUrlInput == preset
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .border(
-                                    width = if (isSelected) 2.dp else 0.dp,
-                                    color = if (isSelected) PureWhite else Color.Transparent,
-                                    shape = CircleShape
-                                )
-                                .clickable { avatarUrlInput = preset },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(
-                                model = preset,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            MinimalTextInputField(
-                value = avatarUrlInput,
-                onValueChange = { avatarUrlInput = it },
-                placeholder = "Oppure incolla URL immagine...",
-                testTag = "input_edit_avatar_url"
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // 4. CAMPO IMMAGINE COPERTINA (Sfondo Atmosferico)
-            Text(
-                text = "IMMAGINE COPERTINA (SFONDO ATMOSFERICO)",
-                color = SubtitleGray,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Anteprima Cover + Selezione Rapida Preset
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Anteprima cover
-                AsyncImage(
-                    model = coverUrlInput,
-                    contentDescription = "Anteprima Cover",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(width = 72.dp, height = 48.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .border(1.5.dp, PureWhite.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
-                )
-
-                // Lista preset copertine
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    items(COVER_PRESETS) { preset ->
-                        val isSelected = coverUrlInput == preset
-                        Box(
-                            modifier = Modifier
-                                .size(width = 56.dp, height = 44.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .border(
-                                    width = if (isSelected) 2.dp else 0.dp,
-                                    color = if (isSelected) PureWhite else Color.Transparent,
-                                    shape = RoundedCornerShape(8.dp)
-                                )
-                                .clickable { coverUrlInput = preset },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(
-                                model = preset,
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-            MinimalTextInputField(
-                value = coverUrlInput,
-                onValueChange = { coverUrlInput = it },
-                placeholder = "Oppure incolla URL copertina...",
-                testTag = "input_edit_cover_url"
-            )
-
-            Spacer(modifier = Modifier.height(28.dp))
-
-            // PULSANTE SALVA
-            Button(
-                onClick = {
-                    onSave(
-                        nameInput.trim().ifBlank { user.name },
-                        usernameInput.trim().ifBlank { user.username },
-                        avatarUrlInput.trim().ifBlank { user.avatarUrl },
-                        coverUrlInput.trim()
-                    )
-                },
+            Column(
                 modifier = Modifier
+                    .padding(horizontal = 16.dp)
                     .fillMaxWidth()
-                    .height(48.dp)
-                    .testTag("btn_save_profile"),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PureWhite,
-                    contentColor = BlackPitch
-                )
+                    .fillMaxHeight(0.88f)
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF0A0A0A))
+                    .border(1.dp, PureWhite.copy(alpha = 0.09f), RoundedCornerShape(24.dp))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { }
             ) {
-                Icon(
-                    imageVector = Icons.Default.Check,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Salva modifiche",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
-            }
+                // Header fisso
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Modifica Profilo",
+                        color = PureWhite,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.3).sp
+                    )
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Chiudi", tint = Zinc400, modifier = Modifier.size(20.dp))
+                    }
+                }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(PureWhite.copy(alpha = 0.06f)))
+
+                // Contenuto scrollabile
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 24.dp)
+                        .padding(top = 20.dp, bottom = 8.dp)
+                ) {
+                    Text("NOME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    MinimalTextInputField(value = nameInput, onValueChange = { nameInput = it }, placeholder = "Il tuo nome", testTag = "input_edit_name")
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("NICKNAME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    MinimalTextInputField(value = usernameInput, onValueChange = { usernameInput = it.removePrefix("@").trim() }, placeholder = "username (es. marco_rossi)", prefix = "@", testTag = "input_edit_username")
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text("IMMAGINE PROFILO (AVATAR)", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
+                        AsyncImage(model = avatarUrlInput, contentDescription = "Anteprima Avatar", contentScale = ContentScale.Crop, modifier = Modifier.size(54.dp).clip(CircleShape).border(1.5.dp, PureWhite.copy(alpha = 0.6f), CircleShape))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                            items(AVATAR_PRESETS) { preset ->
+                                val isSelected = avatarUrlInput == preset
+                                Box(
+                                    modifier = Modifier.size(44.dp).clip(CircleShape)
+                                        .border(if (isSelected) 2.dp else 0.dp, if (isSelected) PureWhite else Color.Transparent, CircleShape)
+                                        .clickable { avatarUrlInput = preset },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(model = preset, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    MinimalTextInputField(value = avatarUrlInput, onValueChange = { avatarUrlInput = it }, placeholder = "Oppure incolla URL immagine...", testTag = "input_edit_avatar_url")
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Text("IMMAGINE COPERTINA (SFONDO ATMOSFERICO)", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
+                        AsyncImage(model = coverUrlInput, contentDescription = "Anteprima Cover", contentScale = ContentScale.Crop, modifier = Modifier.size(width = 72.dp, height = 48.dp).clip(RoundedCornerShape(8.dp)).border(1.5.dp, PureWhite.copy(alpha = 0.6f), RoundedCornerShape(8.dp)))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
+                            items(COVER_PRESETS) { preset ->
+                                val isSelected = coverUrlInput == preset
+                                Box(
+                                                    modifier = Modifier
+                                        .size(width = 56.dp, height = 44.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .border(if (isSelected) 2.dp else 0.dp, if (isSelected) PureWhite else Color.Transparent, RoundedCornerShape(8.dp))
+                                        .clickable { coverUrlInput = preset },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    AsyncImage(model = preset, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    MinimalTextInputField(value = coverUrlInput, onValueChange = { coverUrlInput = it }, placeholder = "Oppure incolla URL copertina...", testTag = "input_edit_cover_url")
+
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                // Pulsante Salva fisso in fondo
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color(0xFF0A0A0A))
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            onSave(
+                                nameInput.trim().ifBlank { user.name },
+                                usernameInput.trim().ifBlank { user.username },
+                                avatarUrlInput.trim().ifBlank { user.avatarUrl },
+                                coverUrlInput.trim()
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth().height(48.dp).testTag("btn_save_profile"),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = PureWhite, contentColor = BlackPitch)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Salva modifiche", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+                }
+            }
         }
     }
 }
@@ -1150,10 +1026,6 @@ private fun MinimalTextInputField(
     }
 }
 
-/**
- * Bottom Sheet per la configurazione dei servizi di streaming musicale:
- * Spotify, Apple Music, Amazon Music, YouTube Music.
- */
 @Composable
 private fun ConnectAccountsDialog(
     connectedServices: Map<String, Boolean>,
@@ -1164,76 +1036,88 @@ private fun ConnectAccountsDialog(
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    Dialog(onDismissRequest = onDismiss) {
-        Column(
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF0A0A0A))
-                .border(1.dp, PureWhite.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
-                .padding(24.dp)
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.78f))
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() }
+                ) { onDismiss() },
+            contentAlignment = Alignment.Center
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = 24.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(Color(0xFF0A0A0A))
+                    .border(1.dp, PureWhite.copy(alpha = 0.09f), RoundedCornerShape(24.dp))
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { }
+                    .padding(24.dp)
             ) {
-                Column {
-                    Text(
-                        text = "Collega Account",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
-                    )
-                    Text(
-                        text = "Scegli i tuoi servizi di streaming",
-                        color = SubtitleGray,
-                        fontSize = 13.sp,
-                        letterSpacing = 0.2.sp
-                    )
-                }
-
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(36.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Chiudi",
-                        tint = SubtitleGray
-                    )
+                    Column {
+                        Text(
+                            text = "Collega Account",
+                            color = PureWhite,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.4).sp
+                        )
+                        Text(
+                            text = "Scegli i tuoi servizi di streaming",
+                            color = SubtitleGray,
+                            fontSize = 13.sp,
+                            letterSpacing = 0.2.sp
+                        )
+                    }
+
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Chiudi", tint = SubtitleGray)
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                StreamingAccountItem(
+                    serviceName = "Spotify",
+                    serviceDesc = "Ascolti live in tempo reale & top tracks",
+                    isConnected = connectedServices["spotify"] == true,
+                    brandColor = Color(0xFF1DB954),
+                    iconComposable = { SpotifyBrandLogo() },
+                    onToggle = {
+                        if (connectedServices["spotify"] == true) onDisconnectSpotify()
+                        else onConnectSpotify(context)
+                    },
+                    testTag = "service_spotify"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                StreamingAccountItem(
+                    serviceName = "Amazon Music",
+                    serviceDesc = "Sincronizzazione Unlimited & HD",
+                    isConnected = connectedServices["amazon_music"] == true,
+                    brandColor = Color(0xFF00A8E1),
+                    iconComposable = { AmazonMusicBrandLogo() },
+                    onToggle = { onToggleService("amazon_music") },
+                    testTag = "service_amazon_music"
+                )
+
+                Spacer(modifier = Modifier.height(4.dp))
             }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            StreamingAccountItem(
-                serviceName = "Spotify",
-                serviceDesc = "Ascolti live in tempo reale & top tracks",
-                isConnected = connectedServices["spotify"] == true,
-                brandColor = Color(0xFF1DB954),
-                iconComposable = { SpotifyBrandLogo() },
-                onToggle = {
-                    if (connectedServices["spotify"] == true) onDisconnectSpotify()
-                    else onConnectSpotify(context)
-                },
-                testTag = "service_spotify"
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            StreamingAccountItem(
-                serviceName = "Amazon Music",
-                serviceDesc = "Sincronizzazione Unlimited & HD",
-                isConnected = connectedServices["amazon_music"] == true,
-                brandColor = Color(0xFF00A8E1),
-                iconComposable = { AmazonMusicBrandLogo() },
-                onToggle = { onToggleService("amazon_music") },
-                testTag = "service_amazon_music"
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
