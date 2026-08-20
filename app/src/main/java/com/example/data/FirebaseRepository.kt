@@ -65,6 +65,7 @@ object FirebaseRepository {
                 "topArtist" to user.stats.topArtist,
                 "genres" to user.stats.totalMinutesOrGenres,
                 "updatedAt" to System.currentTimeMillis()
+                // followerIds/followingIds sono gestiti solo da acceptFollowRequest con arrayUnion — non sovrascrivere qui
             )
 
             db.collection(USERS_COLLECTION)
@@ -193,6 +194,44 @@ object FirebaseRepository {
         } catch (e: Exception) {
             Log.e(TAG, "rejectFollowRequest error: ${e.message}")
         }
+    }
+
+    fun observeCurrentUserSocial(userId: String): Flow<Pair<List<String>, List<String>>> = callbackFlow {
+        val db = firestore
+        if (db == null) { channel.close(); return@callbackFlow }
+        var reg: ListenerRegistration? = null
+        try {
+            reg = db.collection(USERS_COLLECTION).document(userId)
+                .addSnapshotListener { snap, err ->
+                    if (err != null) return@addSnapshotListener
+                    val data = snap?.data ?: return@addSnapshotListener
+                    val followerIds = (data["followerIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    val followingIds = (data["followingIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+                    trySend(Pair(followerIds, followingIds))
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "observeCurrentUserSocial error: ${e.message}")
+        }
+        awaitClose { reg?.remove() }
+    }
+
+    fun observePendingSentRequests(fromUserId: String): Flow<Set<String>> = callbackFlow {
+        val db = firestore
+        if (db == null) { channel.close(); return@callbackFlow }
+        var reg: ListenerRegistration? = null
+        try {
+            reg = db.collection(REQUESTS_COLLECTION)
+                .whereEqualTo("fromUserId", fromUserId)
+                .whereEqualTo("status", "PENDING")
+                .addSnapshotListener { snap, err ->
+                    if (err != null) return@addSnapshotListener
+                    val ids = snap?.documents?.mapNotNull { it.data?.get("toUserId") as? String }?.toSet() ?: emptySet()
+                    trySend(ids)
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "observePendingSentRequests error: ${e.message}")
+        }
+        awaitClose { reg?.remove() }
     }
 
     fun observeFriendRequests(currentUserId: String): Flow<List<FriendRequest>> = callbackFlow {

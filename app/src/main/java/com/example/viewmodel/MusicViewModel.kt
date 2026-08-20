@@ -267,9 +267,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     // ===================== FIREBASE =====================
 
     private fun startFirebaseListener() {
+        val userId = _uiState.value.currentUser.id
         firebaseObserverJob?.cancel()
         firebaseObserverJob = viewModelScope.launch {
-            FirebaseRepository.observeOtherUsers(_uiState.value.currentUser.id)
+            FirebaseRepository.observeOtherUsers(userId)
                 .catch { }
                 .collect { remoteUsers ->
                     _uiState.update { current ->
@@ -279,6 +280,27 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                             userSearchResults = if (current.userSearchQuery.isBlank()) merged else current.userSearchResults
                         )
                     }
+                }
+        }
+        viewModelScope.launch {
+            FirebaseRepository.observeCurrentUserSocial(userId)
+                .catch { }
+                .collect { (followerIds, followingIds) ->
+                    _uiState.update { current ->
+                        current.copy(
+                            currentUser = current.currentUser.copy(
+                                followerIds = followerIds,
+                                followingIds = followingIds
+                            )
+                        )
+                    }
+                }
+        }
+        viewModelScope.launch {
+            FirebaseRepository.observePendingSentRequests(userId)
+                .catch { }
+                .collect { sentIds ->
+                    _uiState.update { it.copy(sentRequestIds = sentIds) }
                 }
         }
         startFriendRequestListener()
