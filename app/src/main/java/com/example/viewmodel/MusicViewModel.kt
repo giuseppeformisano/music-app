@@ -33,9 +33,7 @@ data class MusicUiState(
     val isSpotifyConnected: Boolean = false,
     val connectedServices: Map<String, Boolean> = mapOf(
         "spotify" to false,
-        "apple_music" to false,
-        "amazon_music" to false,
-        "youtube_music" to false
+        "amazon_music" to false
     ),
     val currentUser: User = User(
         id = "",
@@ -240,23 +238,14 @@ class MusicViewModel : ViewModel() {
         val newState = !(currentServices[serviceKey] ?: false)
         currentServices[serviceKey] = newState
         val serviceName = when (serviceKey) {
-            "spotify" -> "Spotify"
-            "apple_music" -> "Apple Music"
             "amazon_music" -> "Amazon Music"
-            "youtube_music" -> "YouTube Music"
-            else -> serviceKey
+            else -> serviceKey.replaceFirstChar { it.uppercase() }
         }
-        if (serviceKey == "spotify") {
-            // connectSpotify(context) e disconnectSpotify() vengono chiamati
-            // direttamente da ProfileScreen tramite onConnectSpotify/onDisconnectSpotify
-            _uiState.update { it.copy(connectedServices = currentServices) }
-        } else {
-            _uiState.update {
-                it.copy(
-                    connectedServices = currentServices,
-                    feedbackToast = if (newState) "$serviceName collegato" else "$serviceName disconnesso"
-                )
-            }
+        _uiState.update {
+            it.copy(
+                connectedServices = currentServices,
+                feedbackToast = if (newState) "$serviceName collegato" else "$serviceName disconnesso"
+            )
         }
     }
 

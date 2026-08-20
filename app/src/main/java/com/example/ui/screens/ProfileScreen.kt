@@ -80,6 +80,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.model.Track
@@ -127,9 +128,7 @@ fun ProfileScreen(
     isSpotifyConnected: Boolean = true,
     connectedServices: Map<String, Boolean> = mapOf(
         "spotify" to isSpotifyConnected,
-        "apple_music" to false,
-        "amazon_music" to false,
-        "youtube_music" to false
+        "amazon_music" to false
     ),
     onToggleService: (String) -> Unit = {},
     onConnectSpotify: (android.content.Context) -> Unit = {},
@@ -259,20 +258,13 @@ fun ProfileScreen(
             )
         }
 
-        // ================= BOTTOM SHEET: COLLEGA ACCOUNT STREAMING =================
+        // ================= DIALOG: COLLEGA ACCOUNT STREAMING =================
         if (showConnectAccountsSheet) {
-            ConnectAccountsBottomSheet(
+            ConnectAccountsDialog(
                 connectedServices = connectedServices,
-                onToggleService = { serviceKey ->
-                    onToggleService(serviceKey)
-                    if (serviceKey == "spotify") {
-                        if (connectedServices["spotify"] == true) {
-                            onDisconnectSpotify()
-                        } else {
-                            onConnectSpotify(context)
-                        }
-                    }
-                },
+                onConnectSpotify = onConnectSpotify,
+                onDisconnectSpotify = onDisconnectSpotify,
+                onToggleService = onToggleService,
                 onDismiss = { showConnectAccountsSheet = false }
             )
         }
@@ -1162,33 +1154,24 @@ private fun MinimalTextInputField(
  * Bottom Sheet per la configurazione dei servizi di streaming musicale:
  * Spotify, Apple Music, Amazon Music, YouTube Music.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ConnectAccountsBottomSheet(
+private fun ConnectAccountsDialog(
     connectedServices: Map<String, Boolean>,
+    onConnectSpotify: (android.content.Context) -> Unit,
+    onDisconnectSpotify: () -> Unit,
     onToggleService: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = androidx.compose.ui.platform.LocalContext.current
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = Zinc900,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .size(width = 38.dp, height = 4.dp)
-                    .background(PureWhite.copy(alpha = 0.25f), CircleShape)
-            )
-        }
-    ) {
+    Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp)
-                .padding(bottom = 36.dp)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF0A0A0A))
+                .border(1.dp, PureWhite.copy(alpha = 0.08f), RoundedCornerShape(24.dp))
+                .padding(24.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1225,33 +1208,21 @@ private fun ConnectAccountsBottomSheet(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 1. SPOTIFY
             StreamingAccountItem(
                 serviceName = "Spotify",
                 serviceDesc = "Ascolti live in tempo reale & top tracks",
                 isConnected = connectedServices["spotify"] == true,
                 brandColor = Color(0xFF1DB954),
                 iconComposable = { SpotifyBrandLogo() },
-                onToggle = { onToggleService("spotify") },
+                onToggle = {
+                    if (connectedServices["spotify"] == true) onDisconnectSpotify()
+                    else onConnectSpotify(context)
+                },
                 testTag = "service_spotify"
             )
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // 2. APPLE MUSIC
-            StreamingAccountItem(
-                serviceName = "Apple Music",
-                serviceDesc = "Libreria Apple Music e cronologia",
-                isConnected = connectedServices["apple_music"] == true,
-                brandColor = Color(0xFFFA243C),
-                iconComposable = { AppleMusicBrandLogo() },
-                onToggle = { onToggleService("apple_music") },
-                testTag = "service_apple_music"
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 3. AMAZON MUSIC
             StreamingAccountItem(
                 serviceName = "Amazon Music",
                 serviceDesc = "Sincronizzazione Unlimited & HD",
@@ -1262,20 +1233,7 @@ private fun ConnectAccountsBottomSheet(
                 testTag = "service_amazon_music"
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // 4. YOUTUBE MUSIC
-            StreamingAccountItem(
-                serviceName = "YouTube Music",
-                serviceDesc = "Mix e video musicali in background",
-                isConnected = connectedServices["youtube_music"] == true,
-                brandColor = Color(0xFFFF0000),
-                iconComposable = { YouTubeMusicBrandLogo() },
-                onToggle = { onToggleService("youtube_music") },
-                testTag = "service_youtube_music"
-            )
-
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
@@ -1441,43 +1399,6 @@ private fun SpotifyBrandLogo() {
 }
 
 /**
- * Icona Vettoriale Apple Music
- */
-@Composable
-private fun AppleMusicBrandLogo() {
-    androidx.compose.foundation.Canvas(modifier = Modifier.size(40.dp)) {
-        val corner = 10.dp.toPx()
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(Color(0xFFFA243C), Color(0xFFFF5A79))
-            ),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner, corner)
-        )
-
-        // Doppia nota musicale bianca stilizzata
-        val w = size.width
-        val h = size.height
-        val noteStroke = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = w * 0.08f,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round
-        )
-
-        // Teste delle note (cerchi)
-        drawCircle(color = Color.White, radius = w * 0.11f, center = androidx.compose.ui.geometry.Offset(w * 0.36f, h * 0.68f))
-        drawCircle(color = Color.White, radius = w * 0.11f, center = androidx.compose.ui.geometry.Offset(w * 0.66f, h * 0.58f))
-
-        // Aste e traversa
-        val stemPath = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.45f, h * 0.68f)
-            lineTo(w * 0.45f, h * 0.32f)
-            lineTo(w * 0.75f, h * 0.24f)
-            lineTo(w * 0.75f, h * 0.58f)
-        }
-        drawPath(stemPath, color = Color.White, style = noteStroke)
-    }
-}
-
-/**
  * Icona Vettoriale Amazon Music
  */
 @Composable
@@ -1517,31 +1438,4 @@ private fun AmazonMusicBrandLogo() {
     }
 }
 
-/**
- * Icona Vettoriale YouTube Music
- */
-@Composable
-private fun YouTubeMusicBrandLogo() {
-    androidx.compose.foundation.Canvas(modifier = Modifier.size(40.dp)) {
-        val radius = size.minDimension / 2f
-        drawCircle(color = Color(0xFFFF0000), radius = radius)
 
-        // Cerchio concentrico interno
-        drawCircle(
-            color = Color.White,
-            radius = radius * 0.62f,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(width = radius * 0.16f)
-        )
-
-        // Triangolo Play al centro
-        val w = size.width
-        val h = size.height
-        val triangle = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.44f, h * 0.38f)
-            lineTo(w * 0.62f, h * 0.50f)
-            lineTo(w * 0.44f, h * 0.62f)
-            close()
-        }
-        drawPath(triangle, color = Color.White)
-    }
-}
