@@ -244,9 +244,8 @@ private fun FeedPageContent(
     onSelectTrack: (Track, User) -> Unit,
     onOpenProfile: (User) -> Unit
 ) {
-    val allShares = remember(feedUsers, currentUser) {
+    val allShares = remember(feedUsers) {
         val list = mutableListOf<Pair<User, Track>>()
-        currentUser.sharedTracks.forEach { trk -> list.add(Pair(currentUser, trk)) }
         feedUsers.forEach { user ->
             user.sharedTracks.forEach { trk -> list.add(Pair(user, trk)) }
         }
