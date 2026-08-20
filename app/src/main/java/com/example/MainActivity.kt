@@ -1,6 +1,9 @@
 package com.example
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -71,6 +74,11 @@ class MainActivity : ComponentActivity() {
             .build()
         Coil.setImageLoader(imageLoader)
 
+        createNotificationChannel()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1001)
+        }
+
         handleSpotifyCallback(intent)
 
         setContent {
@@ -93,6 +101,17 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         viewModel.stopSpotifyPolling()
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                MusicViewModel.FRIEND_REQUEST_CHANNEL_ID,
+                "Richieste di Follow",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply { description = "Nuove richieste di follow ricevute" }
+            getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
+        }
     }
 
     private fun handleSpotifyCallback(intent: Intent?) {

@@ -212,34 +212,30 @@ fun ProfileScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                // 1. Identità Utente (Avatar pulito senza riquadri + Nome + @Username)
-                UserIdentitySection(user = user)
-
-                // 2. Pulsanti d'Azione Minimali (Modifica profilo + Collega account)
-                ProfileActionButtons(
+                // 1. Blocco unificato: Identità + Contatori sociali + Pulsanti azione
+                UserIdentityBlock(
+                    user = user,
                     isCurrentUser = isCurrentUser,
                     onEditClick = { showEditProfileSheet = true },
                     onConnectAccountClick = { showConnectAccountsSheet = true }
                 )
 
-                // 3. Carosello Brani Condivisi (Distanziati con ampio respiro, prospettiva 3D valorizzata, zero paginazione)
+                // 2. Carosello Brani Condivisi (Distanziati con ampio respiro, prospettiva 3D valorizzata, zero paginazione)
                 SharedTracks3DCarousel(
                     tracks = user.sharedTracks,
                     onTrackClick = { track -> onSelectTrack(track, user) }
                 )
 
-                // 4. Sezione Statistiche ("YOUR STATS" centrato con font stilizzato)
+                // 3. Sezione Statistiche ("YOUR STATS" centrato con font stilizzato)
                 UserStatsSection(
                     totalShared = user.sharedTracks.size,
                     topArtistsCount = remember(user.sharedTracks) {
                         user.sharedTracks.map { it.artist }.distinct().size.coerceAtLeast(6)
                     },
-                    listeningHours = 65,
-                    followerCount = user.followerIds.size,
-                    followingCount = user.followingIds.size
+                    listeningHours = 65
                 )
 
-                // 5. Blocco Live Footer (Completamente privo di box solidi e fuso direttamente col background #000000)
+                // 4. Blocco Live Footer (Completamente privo di box solidi e fuso direttamente col background #000000)
                 if (user.currentTrack != null) {
                     FloatingLiveBar(
                         track = user.currentTrack,
@@ -369,49 +365,81 @@ private fun ProfileTopHeader(
 }
 
 /**
- * Sezione Identità Utente:
- * - Avatar circolare pulito che poggia direttamente sullo sfondo nero (zero riquadri o sfondi).
- * - Nome in grassetto bianco puro e @username in grigio tenue.
+ * Blocco unificato: Avatar + Nome + @Username a sinistra, Follower/Following a destra.
+ * Il tutto centrato orizzontalmente. Pulsanti azione direttamente sotto.
  */
 @Composable
-private fun UserIdentitySection(
+private fun UserIdentityBlock(
     user: User,
+    isCurrentUser: Boolean,
+    onEditClick: () -> Unit,
+    onConnectAccountClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AsyncImage(
-            model = user.avatarUrl,
-            contentDescription = "Avatar ${user.name}",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .size(86.dp)
-                .clip(CircleShape)
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            // Sinistra: Avatar + Nome + @username
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                AsyncImage(
+                    model = user.avatarUrl,
+                    contentDescription = "Avatar ${user.name}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(86.dp)
+                        .clip(CircleShape)
+                )
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = user.name,
+                    color = PureWhite,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3).sp,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = "@${user.username.removePrefix("@")}",
+                    color = PureWhite.copy(alpha = 0.65f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 0.1.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
 
-        Spacer(modifier = Modifier.height(10.dp))
+            // Separatore verticale
+            Spacer(modifier = Modifier.width(20.dp))
+            Box(
+                modifier = Modifier
+                    .width(1.dp)
+                    .height(56.dp)
+                    .background(PureWhite.copy(alpha = 0.12f))
+            )
+            Spacer(modifier = Modifier.width(20.dp))
 
-        Text(
-            text = user.name,
-            color = PureWhite,
-            fontSize = 21.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.3).sp,
-            textAlign = TextAlign.Center
-        )
+            // Destra: Follower / Following
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                StatItem(label = "Follower", value = user.followerIds.size.toString())
+                Spacer(modifier = Modifier.height(14.dp))
+                StatItem(label = "Following", value = user.followingIds.size.toString())
+            }
+        }
 
-        Spacer(modifier = Modifier.height(3.dp))
-
-        Text(
-            text = "@${user.username.removePrefix("@")}",
-            color = PureWhite.copy(alpha = 0.65f),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Normal,
-            letterSpacing = 0.1.sp,
-            textAlign = TextAlign.Center
-        )
+        if (isCurrentUser) {
+            Spacer(modifier = Modifier.height(16.dp))
+            ProfileActionButtons(
+                isCurrentUser = true,
+                onEditClick = onEditClick,
+                onConnectAccountClick = onConnectAccountClick
+            )
+        }
     }
 }
 
@@ -671,8 +699,6 @@ private fun UserStatsSection(
     totalShared: Int,
     topArtistsCount: Int,
     listeningHours: Int,
-    followerCount: Int = 0,
-    followingCount: Int = 0,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -681,19 +707,6 @@ private fun UserStatsSection(
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Social counts: Follower / Following
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(32.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StatItem(label = "Follower", value = followerCount.toString())
-            Box(modifier = Modifier.width(1.dp).height(22.dp).background(PureWhite.copy(alpha = 0.12f)))
-            StatItem(label = "Following", value = followingCount.toString())
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
         // Label "YOUR STATS"
         Text(
             text = "YOUR STATS",

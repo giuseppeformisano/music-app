@@ -469,6 +469,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         FirebaseRepository.rejectFollowRequest(request.id)
     }
 
+    private var knownFriendRequestIds = emptySet<String>()
+
     private fun startFriendRequestListener() {
         val userId = _uiState.value.currentUser.id
         if (userId.isBlank()) return
@@ -476,9 +478,35 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             FirebaseRepository.observeFriendRequests(userId)
                 .catch { }
                 .collect { requests ->
+                    val newIds = requests.map { it.id }.toSet()
+                    if (knownFriendRequestIds.isNotEmpty()) {
+                        requests.filter { it.id !in knownFriendRequestIds }
+                            .forEach { showFriendRequestNotification(it) }
+                    }
+                    knownFriendRequestIds = newIds
                     _uiState.update { it.copy(pendingFriendRequests = requests) }
                 }
         }
+    }
+
+    private fun showFriendRequestNotification(request: FriendRequest) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (appContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        }
+        val notif = androidx.core.app.NotificationCompat.Builder(appContext, FRIEND_REQUEST_CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_menu_my_calendar)
+            .setContentTitle("Nuova richiesta di follow")
+            .setContentText("@${request.fromUserUsername} vuole seguirti")
+            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .build()
+        androidx.core.app.NotificationManagerCompat.from(appContext)
+            .notify(request.id.hashCode(), notif)
+    }
+
+    companion object {
+        const val FRIEND_REQUEST_CHANNEL_ID = "friend_requests_channel"
     }
 
     fun shareTrack(track: Track) {
