@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "232939142049",
+    "project_id": "music-social-92940",
+    "storage_bucket": "music-social-92940.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:232939142049:android:5ac492e695d6b2a646a9e0",
+        "android_client_info": {
+          "package_name": "com.aistudio.music.livefeed"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2-QlDvzXfRcwm--dHCpZf3veJ8UeC3w0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

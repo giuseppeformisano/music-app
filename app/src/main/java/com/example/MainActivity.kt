@@ -1,0 +1,261 @@
+package com.example
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
+import coil.Coil
+import coil.ImageLoader
+import coil.disk.DiskCache
+import coil.memory.MemoryCache
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import com.example.ui.components.DesignSpecDialog
+import com.example.ui.components.NowPlayingSheet
+import com.example.ui.components.TrackDetailDialog
+import com.example.ui.screens.ChatScreen
+import com.example.ui.screens.LiveDetailScreen
+import com.example.ui.screens.LoginScreen
+import com.example.ui.screens.MainFeedScreen
+import com.example.ui.screens.ProfileScreen
+import com.example.ui.theme.BlackPitch
+import com.example.ui.theme.MyApplicationTheme
+import com.example.viewmodel.MusicViewModel
+
+class MainActivity : ComponentActivity() {
+
+    private val viewModel: MusicViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        val imageLoader = ImageLoader.Builder(this)
+            .crossfade(true)
+            .allowHardware(false)
+            .memoryCache {
+                MemoryCache.Builder(this)
+                    .maxSizePercent(0.25)
+                    .build()
+            }
+            .diskCache {
+                DiskCache.Builder()
+                    .directory(cacheDir.resolve("image_cache"))
+                    .maxSizePercent(0.02)
+                    .build()
+            }
+            .build()
+        Coil.setImageLoader(imageLoader)
+
+        setContent {
+            MyApplicationTheme {
+                MusicApp(viewModel = viewModel)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MusicApp(viewModel: MusicViewModel) {
+    val uiState by viewModel.uiState.collectAsState()
+    val shareSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    // Back handling for overlays/navigation
+    BackHandler(
+        enabled = uiState.activeStoryUserIndex != null ||
+                uiState.activeProfileUser != null ||
+                uiState.activeChatUser != null ||
+                uiState.selectedTrackDetail != null ||
+                uiState.showDesignSpec
+    ) {
+        when {
+            uiState.showDesignSpec -> viewModel.toggleDesignSpec(false)
+            uiState.selectedTrackDetail != null -> viewModel.closeTrackInspector()
+            uiState.activeStoryUserIndex != null -> viewModel.closeStory()
+            uiState.activeChatUser != null -> viewModel.closeChat()
+            uiState.activeProfileUser != null -> viewModel.closeProfile()
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BlackPitch)
+    ) {
+        // Main Screen Switcher (Login vs Feed)
+        AnimatedContent(
+            targetState = uiState.isLoggedIn,
+            transitionSpec = {
+                fadeIn() togetherWith fadeOut()
+            },
+            label = "auth_state"
+        ) { loggedIn ->
+            if (!loggedIn) {
+                LoginScreen(
+                    onLoginClick = { viewModel.loginWithGoogle() },
+                    onLoginWithAccount = { name, email, username ->
+                        viewModel.loginWithAccount(name = name, email = email, username = username)
+                    },
+                    isLoggingIn = uiState.isLoggingIn,
+                    onOpenDesignSpec = { viewModel.toggleDesignSpec(true) }
+                )
+            } else {
+                MainFeedScreen(
+                    currentUser = uiState.currentUser,
+                    feedUsers = uiState.feedUsers,
+                    stories = viewModel.getStoriesList(),
+                    onOpenLiveDetail = { user -> viewModel.openStory(user) },
+                    onOpenProfile = { user -> viewModel.openProfile(user) },
+                    onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
+                    onOpenShareSheet = { viewModel.openShareSheet() },
+                    onOpenDesignSpec = { viewModel.toggleDesignSpec(true) },
+                    onSimulateLiveChange = { viewModel.simulateLiveTrackChange() },
+                    feedbackToast = uiState.feedbackToast,
+                    onClearToast = { viewModel.clearToast() }
+                )
+            }
+        }
+
+        // Overlay: Profile Screen (Flusso D)
+        AnimatedVisibility(
+            visible = uiState.activeProfileUser != null,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+        ) {
+            uiState.activeProfileUser?.let { activeUser ->
+                val displayUser = if (activeUser.isCurrentUser) uiState.currentUser else activeUser
+                ProfileScreen(
+                    user = displayUser,
+                    isCurrentUser = displayUser.isCurrentUser,
+                    isSpotifyConnected = uiState.isSpotifyConnected,
+                    connectedServices = uiState.connectedServices,
+                    onToggleService = { viewModel.toggleConnectedService(it) },
+                    onConnectSpotify = { viewModel.connectSpotify() },
+                    onDisconnectSpotify = { viewModel.disconnectSpotify() },
+                    onUpdateProfile = { name, username, avatarUrl, coverUrl ->
+                        viewModel.updateProfile(name, username, avatarUrl, coverUrl)
+                    },
+                    onBack = { viewModel.closeProfile() },
+                    onOpenChat = { targetUser -> viewModel.openChat(targetUser) },
+                    onSelectTrack = { track, owner -> viewModel.inspectTrack(track, owner) },
+                    onOpenLiveDetail = { targetUser -> viewModel.openStory(targetUser) },
+                    onLogout = { viewModel.logout() }
+                )
+            }
+        }
+
+        // Overlay: Chat Screen (Flusso E)
+        AnimatedVisibility(
+            visible = uiState.activeChatUser != null,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+        ) {
+            uiState.activeChatUser?.let { recipient ->
+                val messages = uiState.chatMessages[recipient.id] ?: emptyList()
+                ChatScreen(
+                    recipient = recipient,
+                    messages = messages,
+                    onSendMessage = { text -> viewModel.sendMessage(recipient.id, text) },
+                    onBack = { viewModel.closeChat() },
+                    onOpenProfile = { user -> viewModel.openProfile(user) }
+                )
+            }
+        }
+
+        // Overlay: Live Detail Screen Fullscreen (Transizione fluida dal basso senza rimbalzi)
+        AnimatedVisibility(
+            visible = uiState.activeStoryUserIndex != null,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(200)),
+            exit = slideOutVertically(
+                targetOffsetY = { it },
+                animationSpec = tween(220, easing = androidx.compose.animation.core.FastOutLinearInEasing)
+            ) + fadeOut(animationSpec = tween(180))
+        ) {
+            val allStories = viewModel.getStoriesList()
+            val activeIndex = uiState.activeStoryUserIndex
+            val liveUser = if (activeIndex != null && activeIndex in allStories.indices) allStories[activeIndex] else null
+
+            if (liveUser != null) {
+                LiveDetailScreen(
+                    user = liveUser,
+                    onClose = { viewModel.closeStory() },
+                    onSendLiveReply = { user, messageText, track ->
+                        viewModel.sendMessage(user.id, messageText, track)
+                        viewModel.openChat(user)
+                    },
+                    onOpenUserProfile = { user ->
+                        viewModel.closeStory()
+                        viewModel.openProfile(user)
+                    }
+                )
+            }
+        }
+
+        // Bottom Sheet: Sharing & Global Search (Flusso B)
+        if (uiState.isShareSheetOpen) {
+            NowPlayingSheet(
+                nowPlayingTrack = uiState.nowPlayingTrack,
+                searchTab = uiState.searchTab,
+                onTabSelected = { viewModel.setSearchTab(it) },
+                searchQuery = uiState.searchQuery,
+                searchResults = uiState.searchResults,
+                isSearching = uiState.isSearching,
+                onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
+                userSearchQuery = uiState.userSearchQuery,
+                userSearchResults = uiState.userSearchResults,
+                isSearchingUsers = uiState.isSearchingUsers,
+                onUserSearchQueryChanged = { viewModel.onUserSearchQueryChanged(it) },
+                followedUserIds = uiState.feedUsers.map { it.id }.toSet(),
+                onToggleFollowUser = { viewModel.toggleFollowUser(it) },
+                onOpenUserProfile = { user -> viewModel.openProfile(user) },
+                onShareTrack = { viewModel.shareTrack(it) },
+                onSimulateNextSpotifyTrack = { viewModel.simulateChangeNowPlaying() },
+                onDismiss = { viewModel.closeShareSheet() },
+                sheetState = shareSheetState
+            )
+        }
+
+        // Dialog: Track Detail Inspector
+        uiState.selectedTrackDetail?.let { (track, owner) ->
+            TrackDetailDialog(
+                track = track,
+                user = owner,
+                onDismiss = { viewModel.closeTrackInspector() },
+                onSendMessage = { user, trk -> viewModel.openChat(user, trk) },
+                onShareToMyFeed = { trk -> viewModel.shareTrack(trk) }
+            )
+        }
+
+        // Dialog: Design Spec & AI Image Prompts
+        if (uiState.showDesignSpec) {
+            DesignSpecDialog(
+                onDismiss = { viewModel.toggleDesignSpec(false) }
+            )
+        }
+    }
+}

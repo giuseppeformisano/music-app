@@ -1,0 +1,6 @@
+{
+  "name": "MUSIC",
+  "description": "Minimalist real-time social music discovery and sharing app with 2D snappable feeds, live stories, Spotify now playing, stats, and text chats.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
