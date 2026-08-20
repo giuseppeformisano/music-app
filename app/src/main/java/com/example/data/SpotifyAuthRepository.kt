@@ -25,6 +25,7 @@ object SpotifyAuthRepository {
     private const val KEY_ACCESS_TOKEN = "access_token"
     private const val KEY_REFRESH_TOKEN = "refresh_token"
     private const val KEY_EXPIRES_AT = "expires_at"
+    private const val KEY_CODE_VERIFIER = "code_verifier"
 
     private val client = OkHttpClient()
     private var codeVerifier: String? = null
@@ -40,11 +41,16 @@ object SpotifyAuthRepository {
         _accessToken = prefs.getString(KEY_ACCESS_TOKEN, null)
         _refreshToken = prefs.getString(KEY_REFRESH_TOKEN, null)
         _expiresAt = prefs.getLong(KEY_EXPIRES_AT, 0L)
+        codeVerifier = prefs.getString(KEY_CODE_VERIFIER, null)
     }
 
     fun launchAuthFlow(context: Context) {
         val verifier = generateCodeVerifier().also { codeVerifier = it }
         val challenge = generateCodeChallenge(verifier)
+        // Persiste il verifier in SharedPreferences: sopravvive alla morte del processo
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putString(KEY_CODE_VERIFIER, verifier)
+            .apply()
         val url = "https://accounts.spotify.com/authorize" +
             "?client_id=$CLIENT_ID" +
             "&response_type=code" +
@@ -59,7 +65,8 @@ object SpotifyAuthRepository {
     }
 
     suspend fun handleCallback(context: Context, code: String): Boolean = withContext(Dispatchers.IO) {
-        val verifier = codeVerifier ?: return@withContext false
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val verifier = codeVerifier ?: prefs.getString(KEY_CODE_VERIFIER, null) ?: return@withContext false
         try {
             val body = FormBody.Builder()
                 .add("grant_type", "authorization_code")
@@ -77,7 +84,10 @@ object SpotifyAuthRepository {
             val refreshToken = json.optString("refresh_token").takeIf { it.isNotEmpty() } ?: return@withContext false
             val expiresIn = json.optLong("expires_in", 3600L)
             saveTokens(context, accessToken, refreshToken, System.currentTimeMillis() + expiresIn * 1000)
-            Log.d(TAG, "Token ottenuto con successo")
+            // Verifier monouso: rimosso dopo lo scambio
+            codeVerifier = null
+            prefs.edit().remove(KEY_CODE_VERIFIER).apply()
+            Log.d(TAG, "Token Spotify ottenuto con successo")
             true
         } catch (e: Exception) {
             Log.e(TAG, "handleCallback error: ${e.message}")

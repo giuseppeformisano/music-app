@@ -220,12 +220,15 @@ object FirebaseRepository {
         if (db == null) { channel.close(); return@callbackFlow }
         var reg: ListenerRegistration? = null
         try {
+            // Query su singolo campo per evitare l'indice composito Firestore
             reg = db.collection(REQUESTS_COLLECTION)
                 .whereEqualTo("fromUserId", fromUserId)
-                .whereEqualTo("status", "PENDING")
                 .addSnapshotListener { snap, err ->
-                    if (err != null) return@addSnapshotListener
-                    val ids = snap?.documents?.mapNotNull { it.data?.get("toUserId") as? String }?.toSet() ?: emptySet()
+                    if (err != null) { Log.e(TAG, "observePendingSentRequests error: ${err.message}"); return@addSnapshotListener }
+                    val ids = snap?.documents
+                        ?.filter { (it.data?.get("status") as? String) == "PENDING" }
+                        ?.mapNotNull { it.data?.get("toUserId") as? String }
+                        ?.toSet() ?: emptySet()
                     trySend(ids)
                 }
         } catch (e: Exception) {
@@ -239,13 +242,14 @@ object FirebaseRepository {
         if (db == null) { channel.close(); return@callbackFlow }
         var reg: ListenerRegistration? = null
         try {
+            // Query su singolo campo per evitare l'indice composito Firestore
             reg = db.collection(REQUESTS_COLLECTION)
                 .whereEqualTo("toUserId", currentUserId)
-                .whereEqualTo("status", "PENDING")
                 .addSnapshotListener { snap, err ->
-                    if (err != null) return@addSnapshotListener
+                    if (err != null) { Log.e(TAG, "observeFriendRequests error: ${err.message}"); return@addSnapshotListener }
                     val requests = snap?.documents?.mapNotNull { doc ->
                         val data = doc.data ?: return@mapNotNull null
+                        if ((data["status"] as? String) != "PENDING") return@mapNotNull null
                         FriendRequest(
                             id = data["id"] as? String ?: doc.id,
                             fromUserId = data["fromUserId"] as? String ?: return@mapNotNull null,
