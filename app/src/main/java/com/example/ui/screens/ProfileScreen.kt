@@ -339,10 +339,10 @@ private fun ProfileTopHeader(
 
         // Destra: notifiche + logout (solo utente corrente)
         Row(verticalAlignment = Alignment.CenterVertically) {
+            // Box senza clip per permettere al badge di fuoriuscire senza essere tagliato
             Box(
                 modifier = Modifier
                     .size(44.dp)
-                    .clip(CircleShape)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -360,18 +360,18 @@ private fun ProfileTopHeader(
                 if (notificationCount > 0) {
                     Box(
                         modifier = Modifier
-                            .size(16.dp)
+                            .size(14.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFFFF3B30))
+                            .background(PureWhite)
                             .align(Alignment.TopEnd),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = if (notificationCount > 9) "9+" else notificationCount.toString(),
-                            color = PureWhite,
-                            fontSize = 9.sp,
+                            color = Color(0xFF111111),
+                            fontSize = 7.sp,
                             fontWeight = FontWeight.Bold,
-                            lineHeight = 10.sp
+                            lineHeight = 8.sp
                         )
                     }
                 }

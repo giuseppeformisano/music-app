@@ -36,7 +36,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.example.data.VersionInfo
 import com.example.ui.theme.CharcoalBorder
 import com.example.ui.theme.PureWhite
-import com.example.ui.theme.SpotifyGreen
 import com.example.ui.theme.SubtitleGray
 
 @Composable
