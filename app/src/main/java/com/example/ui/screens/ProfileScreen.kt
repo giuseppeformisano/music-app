@@ -126,6 +126,7 @@ private val COVER_PRESETS = listOf(
 fun ProfileScreen(
     user: User,
     isCurrentUser: Boolean,
+    isFollowing: Boolean = false,
     isSpotifyConnected: Boolean = true,
     connectedServices: Map<String, Boolean> = mapOf(
         "spotify" to isSpotifyConnected,
@@ -224,23 +225,29 @@ fun ProfileScreen(
                     onConnectAccountClick = { showConnectAccountsSheet = true }
                 )
 
-                // 2. Carosello Brani Condivisi (Distanziati con ampio respiro, prospettiva 3D valorizzata, zero paginazione)
-                SharedTracks3DCarousel(
-                    tracks = user.sharedTracks,
-                    onTrackClick = { track -> onSelectTrack(track, user) }
-                )
+                val canSeeContent = isCurrentUser || isFollowing
 
-                // 3. Sezione Statistiche ("YOUR STATS" centrato con font stilizzato)
-                UserStatsSection(
-                    totalShared = user.sharedTracks.size,
-                    topArtistsCount = remember(user.sharedTracks) {
-                        user.sharedTracks.map { it.artist }.distinct().size.coerceAtLeast(6)
-                    },
-                    listeningHours = 65
-                )
+                // 2. Carosello Brani Condivisi — visibile solo se si segue l'utente o è il profilo proprio
+                if (canSeeContent) {
+                    SharedTracks3DCarousel(
+                        tracks = user.sharedTracks,
+                        onTrackClick = { track -> onSelectTrack(track, user) }
+                    )
+                }
 
-                // 4. Blocco Live Footer (Completamente privo di box solidi e fuso direttamente col background #000000)
-                if (user.currentTrack != null) {
+                // 3. Sezione Statistiche — visibile solo se si segue l'utente o è il profilo proprio
+                if (canSeeContent) {
+                    UserStatsSection(
+                        totalShared = user.sharedTracks.size,
+                        topArtistsCount = remember(user.sharedTracks) {
+                            user.sharedTracks.map { it.artist }.distinct().size.coerceAtLeast(6)
+                        },
+                        listeningHours = 65
+                    )
+                }
+
+                // 4. Blocco Live Footer — visibile solo se si segue l'utente o è il profilo proprio
+                if (canSeeContent && user.currentTrack != null) {
                     FloatingLiveBar(
                         track = user.currentTrack,
                         onClick = { onOpenLiveDetail(user) },

@@ -169,9 +169,11 @@ fun MusicApp(viewModel: MusicViewModel) {
                     loginError = uiState.loginError
                 )
             } else {
+                // Solo gli utenti effettivamente seguiti appaiono nel feed e nelle live
+                val followingIds = uiState.currentUser.followingIds
                 MainFeedScreen(
                     currentUser = uiState.currentUser,
-                    feedUsers = uiState.feedUsers,
+                    feedUsers = uiState.feedUsers.filter { followingIds.contains(it.id) },
                     stories = viewModel.getStoriesList(),
                     onOpenLiveDetail = { user -> viewModel.openStory(user) },
                     onOpenProfile = { user -> viewModel.openProfile(user) },
@@ -195,6 +197,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                 ProfileScreen(
                     user = displayUser,
                     isCurrentUser = displayUser.isCurrentUser,
+                    isFollowing = uiState.currentUser.followingIds.contains(displayUser.id),
                     isSpotifyConnected = uiState.isSpotifyConnected,
                     connectedServices = uiState.connectedServices,
                     spotifyError = uiState.spotifyError,

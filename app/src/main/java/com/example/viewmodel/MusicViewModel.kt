@@ -594,9 +594,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun getStoriesList(): List<User> {
         val state = _uiState.value
+        val followingIds = state.currentUser.followingIds
         val list = mutableListOf<User>()
         if (state.currentUser.currentTrack != null) list.add(state.currentUser)
-        list.addAll(state.feedUsers.filter { it.isLiveNow && it.currentTrack != null })
+        list.addAll(state.feedUsers.filter {
+            followingIds.contains(it.id) && it.isLiveNow && it.currentTrack != null
+        })
         return list
     }
 
