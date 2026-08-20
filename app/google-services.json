@@ -12,7 +12,20 @@
           "package_name": "com.aistudio.music.livefeed"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "232939142049-93luam3fs6gsaieitf5fi29u5ro6gkde.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aistudio.music.livefeed",
+            "certificate_hash": "8ddbee713a80e9bfae032548cf3dc6a083d6ae17"
+          }
+        },
+        {
+          "client_id": "232939142049-kdmk25nh1i4cdqob1doemmuu7nhj6po7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC2-QlDvzXfRcwm--dHCpZf3veJ8UeC3w0"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "232939142049-kdmk25nh1i4cdqob1doemmuu7nhj6po7.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

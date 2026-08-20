@@ -12,8 +12,6 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,10 +28,12 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.example.ui.components.DesignSpecDialog
+import androidx.compose.ui.platform.LocalContext
 import com.example.ui.components.NowPlayingSheet
 import com.example.ui.components.TrackDetailDialog
+import com.example.ui.components.UpdateBanner
 import com.example.ui.screens.ChatScreen
 import com.example.ui.screens.LiveDetailScreen
 import com.example.ui.screens.LoginScreen
@@ -81,17 +81,16 @@ class MainActivity : ComponentActivity() {
 fun MusicApp(viewModel: MusicViewModel) {
     val uiState by viewModel.uiState.collectAsState()
     val shareSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val context = LocalContext.current
 
     // Back handling for overlays/navigation
     BackHandler(
         enabled = uiState.activeStoryUserIndex != null ||
                 uiState.activeProfileUser != null ||
                 uiState.activeChatUser != null ||
-                uiState.selectedTrackDetail != null ||
-                uiState.showDesignSpec
+                uiState.selectedTrackDetail != null
     ) {
         when {
-            uiState.showDesignSpec -> viewModel.toggleDesignSpec(false)
             uiState.selectedTrackDetail != null -> viewModel.closeTrackInspector()
             uiState.activeStoryUserIndex != null -> viewModel.closeStory()
             uiState.activeChatUser != null -> viewModel.closeChat()
@@ -114,12 +113,9 @@ fun MusicApp(viewModel: MusicViewModel) {
         ) { loggedIn ->
             if (!loggedIn) {
                 LoginScreen(
-                    onLoginClick = { viewModel.loginWithGoogle() },
-                    onLoginWithAccount = { name, email, username ->
-                        viewModel.loginWithAccount(name = name, email = email, username = username)
-                    },
+                    onLoginClick = { context -> viewModel.loginWithGoogle(context) },
                     isLoggingIn = uiState.isLoggingIn,
-                    onOpenDesignSpec = { viewModel.toggleDesignSpec(true) }
+                    loginError = uiState.loginError
                 )
             } else {
                 MainFeedScreen(
@@ -130,8 +126,6 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onOpenProfile = { user -> viewModel.openProfile(user) },
                     onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
                     onOpenShareSheet = { viewModel.openShareSheet() },
-                    onOpenDesignSpec = { viewModel.toggleDesignSpec(true) },
-                    onSimulateLiveChange = { viewModel.simulateLiveTrackChange() },
                     feedbackToast = uiState.feedbackToast,
                     onClearToast = { viewModel.clearToast() }
                 )
@@ -152,7 +146,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     isSpotifyConnected = uiState.isSpotifyConnected,
                     connectedServices = uiState.connectedServices,
                     onToggleService = { viewModel.toggleConnectedService(it) },
-                    onConnectSpotify = { viewModel.connectSpotify() },
+                    onConnectSpotify = { ctx -> viewModel.connectSpotify(ctx) },
                     onDisconnectSpotify = { viewModel.disconnectSpotify() },
                     onUpdateProfile = { name, username, avatarUrl, coverUrl ->
                         viewModel.updateProfile(name, username, avatarUrl, coverUrl)
@@ -184,7 +178,7 @@ fun MusicApp(viewModel: MusicViewModel) {
             }
         }
 
-        // Overlay: Live Detail Screen Fullscreen (Transizione fluida dal basso senza rimbalzi)
+        // Overlay: Live Detail Screen Fullscreen
         AnimatedVisibility(
             visible = uiState.activeStoryUserIndex != null,
             enter = slideInVertically(
@@ -234,11 +228,19 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onToggleFollowUser = { viewModel.toggleFollowUser(it) },
                 onOpenUserProfile = { user -> viewModel.openProfile(user) },
                 onShareTrack = { viewModel.shareTrack(it) },
-                onSimulateNextSpotifyTrack = { viewModel.simulateChangeNowPlaying() },
                 onDismiss = { viewModel.closeShareSheet() },
                 sheetState = shareSheetState
             )
         }
+
+        // Update Banner — sempre visibile sopra tutto
+        UpdateBanner(
+            update = uiState.availableUpdate,
+            downloadProgress = uiState.updateDownloadProgress,
+            onInstall = { viewModel.downloadAndInstallUpdate(context) },
+            onDismiss = { viewModel.dismissUpdate() },
+            modifier = Modifier.align(Alignment.TopCenter)
+        )
 
         // Dialog: Track Detail Inspector
         uiState.selectedTrackDetail?.let { (track, owner) ->
@@ -248,13 +250,6 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onDismiss = { viewModel.closeTrackInspector() },
                 onSendMessage = { user, trk -> viewModel.openChat(user, trk) },
                 onShareToMyFeed = { trk -> viewModel.shareTrack(trk) }
-            )
-        }
-
-        // Dialog: Design Spec & AI Image Prompts
-        if (uiState.showDesignSpec) {
-            DesignSpecDialog(
-                onDismiss = { viewModel.toggleDesignSpec(false) }
             )
         }
     }

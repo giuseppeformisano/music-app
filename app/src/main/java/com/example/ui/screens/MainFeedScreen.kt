@@ -52,7 +52,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ChatBubbleOutline
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.Icon
@@ -138,8 +137,6 @@ fun MainFeedScreen(
     onOpenProfile: (User) -> Unit,
     onSelectTrack: (Track, User) -> Unit,
     onOpenShareSheet: () -> Unit,
-    onOpenDesignSpec: () -> Unit,
-    onSimulateLiveChange: () -> Unit = {},
     feedbackToast: String?,
     onClearToast: () -> Unit,
     modifier: Modifier = Modifier
@@ -191,8 +188,7 @@ fun MainFeedScreen(
                         LivePageContent(
                             liveUsers = stories.filter { it.currentTrack != null },
                             onSelectLiveUser = onOpenLiveDetail,
-                            onOpenProfile = onOpenProfile,
-                            onSimulateLiveChange = onSimulateLiveChange
+                            onOpenProfile = onOpenProfile
                         )
                     } else {
                         // PAGINA 1: FEED CONDIVISIONI
@@ -442,8 +438,7 @@ private fun FeedMinimalPost(
 private fun LivePageContent(
     liveUsers: List<User>,
     onSelectLiveUser: (User) -> Unit,
-    onOpenProfile: (User) -> Unit,
-    onSimulateLiveChange: () -> Unit
+    onOpenProfile: (User) -> Unit
 ) {
     Box(
         modifier = Modifier

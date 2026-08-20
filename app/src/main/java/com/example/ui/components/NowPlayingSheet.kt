@@ -31,7 +31,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PersonAdd
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
@@ -83,7 +82,7 @@ import com.example.viewmodel.SearchTab
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowPlayingSheet(
-    nowPlayingTrack: Track,
+    nowPlayingTrack: Track?,
     searchTab: SearchTab,
     onTabSelected: (SearchTab) -> Unit,
     searchQuery: String,
@@ -98,13 +97,12 @@ fun NowPlayingSheet(
     onToggleFollowUser: (User) -> Unit,
     onOpenUserProfile: (User) -> Unit,
     onShareTrack: (Track) -> Unit,
-    onSimulateNextSpotifyTrack: () -> Unit,
     onDismiss: () -> Unit,
     sheetState: SheetState
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val dynamicAccent = Color(nowPlayingTrack.accentColorHex)
+    val dynamicAccent = if (nowPlayingTrack != null) Color(nowPlayingTrack.accentColorHex) else Color(0xFF1DB954)
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -213,143 +211,123 @@ fun NowPlayingSheet(
 
             if (searchTab == SearchTab.TRACKS) {
                 // TAB 1: BRANI & SPOTIFY
-                // STATO 1: Now Playing Spotlight Card
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                colors = listOf(
-                                    dynamicAccent.copy(alpha = 0.25f),
-                                    BlackCard
+                // STATO 1: Now Playing Spotlight Card (shown only if a track is playing)
+                if (nowPlayingTrack != null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(
+                                        dynamicAccent.copy(alpha = 0.25f),
+                                        BlackCard
+                                    )
                                 )
                             )
-                        )
-                        .border(
-                            width = 1.dp,
-                            color = dynamicAccent.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(20.dp)
-                        )
-                        .padding(16.dp)
-                ) {
-                    Column {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                            .border(
+                                width = 1.dp,
+                                color = dynamicAccent.copy(alpha = 0.4f),
+                                shape = RoundedCornerShape(20.dp)
+                            )
+                            .padding(16.dp)
+                    ) {
+                        Column {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                LiveEqualizerBadge(color = dynamicAccent, height = 12.dp)
-                                Text(
-                                    text = "NOW PLAYING SU SPOTIFY",
-                                    color = dynamicAccent,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    LiveEqualizerBadge(color = dynamicAccent, height = 12.dp)
+                                    Text(
+                                        text = "NOW PLAYING SU SPOTIFY",
+                                        color = dynamicAccent,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
+                                    )
+                                }
                             }
 
-                            // Simulate Next Spotify track switch
+                            Spacer(modifier = Modifier.height(12.dp))
+
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = nowPlayingTrack.coverUrl,
+                                    contentDescription = "Cover ${nowPlayingTrack.title}",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(60.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .shadow(8.dp, RoundedCornerShape(12.dp))
+                                )
+
+                                Spacer(modifier = Modifier.width(14.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = nowPlayingTrack.title,
+                                        color = PureWhite,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = nowPlayingTrack.artist,
+                                        color = SubtitleGray,
+                                        fontSize = 13.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            // Action Button: "Condividi nel mio Feed"
+                            Button(
+                                onClick = { onShareTrack(nowPlayingTrack) },
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .clickable(onClick = onSimulateNextSpotifyTrack)
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .fillMaxWidth()
+                                    .height(44.dp)
+                                    .testTag("share_now_playing_button"),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PureWhite,
+                                    contentColor = BlackPitch
+                                )
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Refresh,
-                                    contentDescription = "Simula altro brano da Spotify",
-                                    tint = SubtitleGray,
-                                    modifier = Modifier.size(14.dp)
+                                    imageVector = Icons.Default.Send,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = BlackPitch
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Cambia brano",
-                                    color = SubtitleGray,
-                                    fontSize = 11.sp
-                                )
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            AsyncImage(
-                                model = nowPlayingTrack.coverUrl,
-                                contentDescription = "Cover ${nowPlayingTrack.title}",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .shadow(8.dp, RoundedCornerShape(12.dp))
-                            )
-
-                            Spacer(modifier = Modifier.width(14.dp))
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = nowPlayingTrack.title,
-                                    color = PureWhite,
-                                    fontSize = 15.sp,
+                                    text = "Condividi nel mio Feed",
                                     fontWeight = FontWeight.Bold,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                Spacer(modifier = Modifier.height(2.dp))
-                                Text(
-                                    text = nowPlayingTrack.artist,
-                                    color = SubtitleGray,
-                                    fontSize = 13.sp,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
+                                    fontSize = 13.sp
                                 )
                             }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        // Action Button: "Condividi nel mio Feed"
-                        Button(
-                            onClick = { onShareTrack(nowPlayingTrack) },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(44.dp)
-                                .testTag("share_now_playing_button"),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = PureWhite,
-                                contentColor = BlackPitch
-                            )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Send,
-                                contentDescription = null,
-                                modifier = Modifier.size(16.dp),
-                                tint = BlackPitch
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Condividi nel mio Feed",
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 13.sp
-                            )
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
 
                 // STATO 2: Ricerca Globale Brani
                 Text(
-                    text = "OPPURE CERCA NEL CATALOGO GLOBALE",
+                    text = if (nowPlayingTrack != null) "OPPURE CERCA NEL CATALOGO GLOBALE" else "CERCA NEL CATALOGO GLOBALE",
                     color = SubtitleGray,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,

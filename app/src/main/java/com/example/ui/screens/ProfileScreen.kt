@@ -132,7 +132,7 @@ fun ProfileScreen(
         "youtube_music" to false
     ),
     onToggleService: (String) -> Unit = {},
-    onConnectSpotify: () -> Unit = {},
+    onConnectSpotify: (android.content.Context) -> Unit = {},
     onDisconnectSpotify: () -> Unit = {},
     onUpdateProfile: (name: String, username: String, avatarUrl: String, coverUrl: String?) -> Unit = { _, _, _, _ -> },
     onBack: () -> Unit,
@@ -142,6 +142,7 @@ fun ProfileScreen(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     var showEditProfileSheet by remember { mutableStateOf(false) }
     var showConnectAccountsSheet by remember { mutableStateOf(false) }
 
@@ -268,7 +269,7 @@ fun ProfileScreen(
                         if (connectedServices["spotify"] == true) {
                             onDisconnectSpotify()
                         } else {
-                            onConnectSpotify()
+                            onConnectSpotify(context)
                         }
                     }
                 },
