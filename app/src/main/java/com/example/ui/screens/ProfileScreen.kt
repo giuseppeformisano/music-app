@@ -47,9 +47,11 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -200,7 +202,9 @@ fun ProfileScreen(
             ProfileTopHeader(
                 onBack = onBack,
                 onNotificationsClick = onOpenNotifications,
-                notificationCount = notificationCount
+                notificationCount = notificationCount,
+                isCurrentUser = isCurrentUser,
+                onLogout = onLogout
             )
 
             // Tutti i blocchi della pagina equidistanziati verticalmente entro lo spazio disponibile (Zero Scrolling)
@@ -240,6 +244,7 @@ fun ProfileScreen(
                     FloatingLiveBar(
                         track = user.currentTrack,
                         onClick = { onOpenLiveDetail(user) },
+                        onShare = { onSelectTrack(user.currentTrack, user) },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -278,6 +283,8 @@ private fun ProfileTopHeader(
     onBack: () -> Unit,
     onNotificationsClick: () -> Unit,
     notificationCount: Int,
+    isCurrentUser: Boolean,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -323,40 +330,58 @@ private fun ProfileTopHeader(
             )
         }
 
-        // Destra: campana notifiche con badge
-        Box(
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onNotificationsClick
+        // Destra: notifiche + logout (solo utente corrente)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onNotificationsClick
+                    )
+                    .testTag("profile_notifications_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Notifications,
+                    contentDescription = "Notifiche",
+                    tint = PureWhite,
+                    modifier = Modifier.size(22.dp)
                 )
-                .testTag("profile_notifications_button"),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = "Notifiche",
-                tint = PureWhite,
-                modifier = Modifier.size(22.dp)
-            )
-            if (notificationCount > 0) {
-                Box(
+                if (notificationCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF3B30))
+                            .align(Alignment.TopEnd),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (notificationCount > 9) "9+" else notificationCount.toString(),
+                            color = PureWhite,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            lineHeight = 10.sp
+                        )
+                    }
+                }
+            }
+
+            if (isCurrentUser) {
+                IconButton(
+                    onClick = onLogout,
                     modifier = Modifier
-                        .size(16.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFFF3B30))
-                        .align(Alignment.TopEnd),
-                    contentAlignment = Alignment.Center
+                        .size(44.dp)
+                        .testTag("profile_logout_button")
                 ) {
-                    Text(
-                        text = if (notificationCount > 9) "9+" else notificationCount.toString(),
-                        color = PureWhite,
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        lineHeight = 10.sp
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = "Logout",
+                        tint = PureWhite.copy(alpha = 0.55f),
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -538,18 +563,11 @@ private fun SharedTracks3DCarousel(
     onTrackClick: (Track) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    if (tracks.isEmpty()) return
-
-    val pagerState = rememberPagerState(
-        initialPage = (tracks.size / 2).coerceAtLeast(0),
-        pageCount = { tracks.size }
-    )
-
     Column(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Label "SHARED TRACKS" centrata orizzontalmente con font stilizzato
+        // Label "SHARED TRACKS"
         Text(
             text = "SHARED TRACKS",
             color = PureWhite.copy(alpha = 0.85f),
@@ -562,6 +580,29 @@ private fun SharedTracks3DCarousel(
         )
 
         Spacer(modifier = Modifier.height(10.dp))
+
+        if (tracks.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(172.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "nessun brano condiviso ancora",
+                    color = PureWhite.copy(alpha = 0.25f),
+                    fontSize = 13.sp,
+                    letterSpacing = 0.3.sp,
+                    textAlign = TextAlign.Center
+                )
+            }
+            return@Column
+        }
+
+        val pagerState = rememberPagerState(
+            initialPage = (tracks.size / 2).coerceAtLeast(0),
+            pageCount = { tracks.size }
+        )
 
         // Carosello con brani ben distanziati e prospettiva 3D evidenziata
         HorizontalPager(
@@ -776,6 +817,7 @@ private fun StatItem(
 private fun FloatingLiveBar(
     track: Track,
     onClick: () -> Unit,
+    onShare: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "live_dot_pulse")
@@ -845,6 +887,20 @@ private fun FloatingLiveBar(
             )
         }
 
+        // Pulsante condivisione
+        IconButton(
+            onClick = onShare,
+            modifier = Modifier.size(36.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Share,
+                contentDescription = "Condividi nel feed",
+                tint = PureWhite.copy(alpha = 0.70f),
+                modifier = Modifier.size(16.dp)
+            )
+        }
+
+        // Pallino live verde pulsante
         Box(
             modifier = Modifier.size(24.dp),
             contentAlignment = Alignment.Center
@@ -857,13 +913,12 @@ private fun FloatingLiveBar(
                         scaleY = dotScale
                         alpha = dotAlpha * 0.6f
                     }
-                    .background(Color(0xFFFF3B30), shape = CircleShape)
+                    .background(Color(0xFF1DB954), shape = CircleShape)
             )
-
             Box(
                 modifier = Modifier
                     .size(8.dp)
-                    .background(Color(0xFFFF3B30), shape = CircleShape)
+                    .background(Color(0xFF1DB954), shape = CircleShape)
             )
         }
     }

@@ -253,6 +253,21 @@ private fun FeedPageContent(
         list
     }
 
+    if (allShares.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "nessun brano condiviso nel feed",
+                color = SubtitleGray,
+                fontSize = 14.sp,
+                letterSpacing = 0.3.sp
+            )
+        }
+        return
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 100.dp),
