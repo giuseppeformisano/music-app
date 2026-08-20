@@ -18,6 +18,7 @@ import com.example.model.FriendRequest
 import com.example.model.Track
 import com.example.model.User
 import com.example.model.UserStats
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +28,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
 import java.util.UUID
 
 enum class SearchTab { TRACKS, USERS }
@@ -86,6 +91,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var userSearchJob: Job? = null
     private var firebaseObserverJob: Job? = null
     private var spotifyPollingJob: Job? = null
+    private val httpClient by lazy { OkHttpClient() }
 
     init {
         SpotifyAuthRepository.loadTokens(appContext)
@@ -263,6 +269,51 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun clearSpotifyError() {
         _uiState.update { it.copy(spotifyError = null) }
     }
+
+    fun updateNowPlayingFromBroadcast(trackId: String, trackName: String, artistName: String, albumName: String) {
+        if (trackName.isBlank()) return
+        val currentId = _uiState.value.nowPlayingTrack?.id
+        if (trackId.isNotBlank() && trackId == currentId) return
+        viewModelScope.launch {
+            val coverUrl = fetchItunesCover(artistName, trackName)
+            val track = Track(
+                id = trackId.ifBlank { "$artistName-$trackName".hashCode().toString() },
+                title = trackName,
+                artist = artistName,
+                album = albumName,
+                coverUrl = coverUrl
+            )
+            val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
+            _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
+            FirebaseRepository.syncCurrentUser(updatedUser)
+        }
+    }
+
+    fun clearNowPlayingFromBroadcast() {
+        if (_uiState.value.nowPlayingTrack == null) return
+        val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
+        _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
+        FirebaseRepository.syncCurrentUser(updatedUser)
+    }
+
+    private suspend fun fetchItunesCover(artist: String, track: String): String =
+        withContext(Dispatchers.IO) {
+            try {
+                val query = java.net.URLEncoder.encode("$artist $track", "UTF-8")
+                val response = httpClient.newCall(
+                    Request.Builder()
+                        .url("https://itunes.apple.com/search?term=$query&media=music&limit=1")
+                        .build()
+                ).execute()
+                val body = response.body?.string() ?: return@withContext DEFAULT_COVER
+                val results = JSONObject(body).optJSONArray("results")
+                if (results == null || results.length() == 0) return@withContext DEFAULT_COVER
+                results.getJSONObject(0).optString("artworkUrl100", DEFAULT_COVER)
+                    .replace("100x100bb", "600x600bb")
+            } catch (e: Exception) {
+                DEFAULT_COVER
+            }
+        }
 
     // ===================== FIREBASE =====================
 
@@ -605,6 +656,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     companion object {
         const val FRIEND_REQUEST_CHANNEL_ID = "friend_requests_channel"
+        private const val DEFAULT_COVER = "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&auto=format&fit=crop&q=80"
 
         private fun com.google.firebase.auth.FirebaseUser.toAppUser(): User {
             val username = email

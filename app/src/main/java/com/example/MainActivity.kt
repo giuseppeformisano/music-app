@@ -2,10 +2,14 @@ package com.example
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.core.content.ContextCompat
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -53,6 +57,25 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MusicViewModel by viewModels()
 
+    private val spotifyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                "com.spotify.music.metadatachanged" -> {
+                    val trackName = intent.getStringExtra("track") ?: return
+                    val artist = intent.getStringExtra("artist") ?: ""
+                    val album = intent.getStringExtra("album") ?: ""
+                    val trackId = intent.getStringExtra("id") ?: ""
+                    viewModel.updateNowPlayingFromBroadcast(trackId, trackName, artist, album)
+                }
+                "com.spotify.music.playbackstatechanged" -> {
+                    if (!intent.getBooleanExtra("playing", false)) {
+                        viewModel.clearNowPlayingFromBroadcast()
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -96,11 +119,17 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         viewModel.startSpotifyPolling()
+        val filter = IntentFilter().apply {
+            addAction("com.spotify.music.metadatachanged")
+            addAction("com.spotify.music.playbackstatechanged")
+        }
+        ContextCompat.registerReceiver(this, spotifyReceiver, filter, ContextCompat.RECEIVER_EXPORTED)
     }
 
     override fun onPause() {
         super.onPause()
         viewModel.stopSpotifyPolling()
+        try { unregisterReceiver(spotifyReceiver) } catch (e: Exception) { /* receiver was not registered */ }
     }
 
     private fun createNotificationChannel() {
