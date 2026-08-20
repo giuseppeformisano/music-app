@@ -17,8 +17,8 @@ android {
     applicationId = "com.aistudio.music.livefeed"
     minSdk = 24
     targetSdk = 36
-    versionCode = 2
-    versionName = "1.0.0-beta01"
+    versionCode = 3
+    versionName = "1.0.0-beta02"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -103,7 +103,7 @@ dependencies {
   // implementation(libs.firebase.ai)
   // Uncomment to use Firestore:
   implementation(libs.firebase.firestore)
-  // TODO: add spotify-app-remote-release-X.X.X.aar to app/libs/ when available
+  implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
   implementation("com.google.code.gson:gson:2.10.1")
 
   // Uncomment ALL FOUR of the following dependencies together to use Firebase Auth and Google

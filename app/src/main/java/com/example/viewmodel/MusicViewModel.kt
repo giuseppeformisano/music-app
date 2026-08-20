@@ -302,8 +302,25 @@ class MusicViewModel : ViewModel() {
     private fun subscribeToSpotifyPlayer() {
         spotifyPlayerJob?.cancel()
         spotifyPlayerJob = viewModelScope.launch {
-            // TODO: implementare quando l'SDK Spotify è integrato via AAR
-            // SpotifyRepository.observePlayerState().collect { ... }
+            SpotifyRepository.observePlayerState().collect { playerState ->
+                val spotifyTrack = playerState?.track ?: return@collect
+                val query = "${spotifyTrack.name} ${spotifyTrack.artist.name}"
+                val itunesResults = MusicRepository.searchTracks(query)
+                val best = itunesResults.firstOrNull()
+                val artwork = best?.coverUrl
+                    ?: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600"
+                val accent = best?.accentColorHex ?: 0xFF1DB954L
+
+                val track = SpotifyRepository.formatSpotifyTrack(playerState, artwork, accent)
+                    ?: return@collect
+
+                val updatedUser = _uiState.value.currentUser.copy(
+                    currentTrack = track,
+                    isLiveNow = true
+                )
+                _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
+                FirebaseRepository.syncCurrentUser(updatedUser)
+            }
         }
     }
 
