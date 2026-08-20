@@ -129,6 +129,7 @@ fun ProfileScreen(
         "amazon_music" to false
     ),
     onToggleService: (String) -> Unit = {},
+    spotifyError: String? = null,
     onConnectSpotify: (android.content.Context) -> Unit = {},
     onDisconnectSpotify: () -> Unit = {},
     onUpdateProfile: (name: String, username: String, avatarUrl: String, coverUrl: String?) -> Unit = { _, _, _, _ -> },
@@ -260,7 +261,8 @@ fun ProfileScreen(
         if (showConnectAccountsSheet) {
             ConnectAccountsDialog(
                 connectedServices = connectedServices,
-                onConnectSpotify = onConnectSpotify,
+                spotifyError = spotifyError,
+                onConnectSpotify = { onConnectSpotify(context) },
                 onDisconnectSpotify = onDisconnectSpotify,
                 onToggleService = onToggleService,
                 onDismiss = { showConnectAccountsSheet = false }
@@ -1030,13 +1032,12 @@ private fun MinimalTextInputField(
 @Composable
 private fun ConnectAccountsDialog(
     connectedServices: Map<String, Boolean>,
-    onConnectSpotify: (android.content.Context) -> Unit,
+    spotifyError: String?,
+    onConnectSpotify: () -> Unit,
     onDisconnectSpotify: () -> Unit,
     onToggleService: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -1100,10 +1101,19 @@ private fun ConnectAccountsDialog(
                     iconComposable = { SpotifyBrandLogo() },
                     onToggle = {
                         if (connectedServices["spotify"] == true) onDisconnectSpotify()
-                        else onConnectSpotify(context)
+                        else onConnectSpotify()
                     },
                     testTag = "service_spotify"
                 )
+
+                if (spotifyError != null) {
+                    Text(
+                        text = "Errore: $spotifyError",
+                        color = Color(0xFFFF6B6B),
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 

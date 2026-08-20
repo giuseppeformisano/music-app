@@ -58,6 +58,7 @@ data class MusicUiState(
     val chatMessages: Map<String, List<ChatMessage>> = emptyMap(),
     val selectedTrackDetail: Pair<Track, User?>? = null,
     val feedbackToast: String? = null,
+    val spotifyError: String? = null,
     val availableUpdate: VersionInfo? = null,
     val updateDownloadProgress: Int? = null,
     val updateReadyFile: File? = null
@@ -110,6 +111,10 @@ class MusicViewModel : ViewModel() {
 
     fun dismissUpdate() {
         _uiState.update { it.copy(availableUpdate = null) }
+    }
+
+    fun clearSpotifyError() {
+        _uiState.update { it.copy(spotifyError = null) }
     }
 
     fun loginWithGoogle(context: Context) {
@@ -260,6 +265,7 @@ class MusicViewModel : ViewModel() {
                         isSpotifyConnected = true,
                         connectedServices = updatedServices,
                         currentUser = updatedUser,
+                        spotifyError = null,
                         feedbackToast = "Spotify collegato"
                     )
                 }
@@ -267,7 +273,8 @@ class MusicViewModel : ViewModel() {
                 subscribeToSpotifyPlayer()
             },
             onFailure = { error ->
-                _uiState.update { it.copy(feedbackToast = "Spotify non disponibile: ${error.message}") }
+                val msg = error.message ?: "Errore sconosciuto"
+                _uiState.update { it.copy(spotifyError = msg) }
             }
         )
     }

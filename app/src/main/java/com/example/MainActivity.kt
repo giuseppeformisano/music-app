@@ -145,6 +145,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     isCurrentUser = displayUser.isCurrentUser,
                     isSpotifyConnected = uiState.isSpotifyConnected,
                     connectedServices = uiState.connectedServices,
+                    spotifyError = uiState.spotifyError,
                     onToggleService = { viewModel.toggleConnectedService(it) },
                     onConnectSpotify = { ctx -> viewModel.connectSpotify(ctx) },
                     onDisconnectSpotify = { viewModel.disconnectSpotify() },
