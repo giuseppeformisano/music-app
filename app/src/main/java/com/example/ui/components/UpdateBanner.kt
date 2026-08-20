@@ -90,7 +90,7 @@ fun UpdateBanner(
                         Icon(
                             imageVector = Icons.Default.SystemUpdate,
                             contentDescription = null,
-                            tint = SpotifyGreen,
+                            tint = PureWhite,
                             modifier = Modifier.size(24.dp)
                         )
                         Column {
@@ -128,7 +128,7 @@ fun UpdateBanner(
                 if (downloadProgress != null) {
                     Text(
                         text = "$downloadProgress%",
-                        color = SpotifyGreen,
+                        color = PureWhite.copy(alpha = 0.70f),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -139,7 +139,7 @@ fun UpdateBanner(
                             .fillMaxWidth()
                             .height(3.dp)
                             .clip(RoundedCornerShape(2.dp)),
-                        color = SpotifyGreen,
+                        color = PureWhite,
                         trackColor = CharcoalBorder
                     )
                 } else {
@@ -168,7 +168,7 @@ fun UpdateBanner(
                             modifier = Modifier
                                 .weight(1f)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(SpotifyGreen)
+                                .background(PureWhite)
                                 .clickable { onInstall() }
                                 .padding(vertical = 14.dp),
                             contentAlignment = Alignment.Center
