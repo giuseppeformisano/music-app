@@ -159,8 +159,6 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
                     onOpenShareSheet = { viewModel.openShareSheet() },
                     onOpenPeopleSearch = { viewModel.openPeopleSearch() },
-                    onOpenNotifications = { viewModel.openNotifications() },
-                    notificationCount = uiState.pendingFriendRequests.size,
                     feedbackToast = uiState.feedbackToast,
                     onClearToast = { viewModel.clearToast() }
                 )
@@ -188,6 +186,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                         viewModel.updateProfile(name, username, avatarUrl, coverUrl)
                     },
                     onBack = { viewModel.closeProfile() },
+                    onOpenNotifications = { viewModel.openNotifications() },
+                    notificationCount = uiState.pendingFriendRequests.size,
                     onOpenChat = { targetUser -> viewModel.openChat(targetUser) },
                     onSelectTrack = { track, owner -> viewModel.inspectTrack(track, owner) },
                     onOpenLiveDetail = { targetUser -> viewModel.openStory(targetUser) },

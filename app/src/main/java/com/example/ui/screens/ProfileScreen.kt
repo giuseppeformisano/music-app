@@ -42,13 +42,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -134,6 +135,8 @@ fun ProfileScreen(
     onDisconnectSpotify: () -> Unit = {},
     onUpdateProfile: (name: String, username: String, avatarUrl: String, coverUrl: String?) -> Unit = { _, _, _, _ -> },
     onBack: () -> Unit,
+    onOpenNotifications: () -> Unit = {},
+    notificationCount: Int = 0,
     onOpenChat: (User) -> Unit,
     onSelectTrack: (Track, User) -> Unit,
     onOpenLiveDetail: (User) -> Unit = {},
@@ -195,8 +198,9 @@ fun ProfileScreen(
         ) {
             // Header superiore fisso
             ProfileTopHeader(
-                onSearchClick = onBack,
-                onProfileIconClick = onBack
+                onBack = onBack,
+                onNotificationsClick = onOpenNotifications,
+                notificationCount = notificationCount
             )
 
             // Tutti i blocchi della pagina equidistanziati verticalmente entro lo spazio disponibile (Zero Scrolling)
@@ -273,16 +277,11 @@ fun ProfileScreen(
     }
 }
 
-/**
- * Header Superiore:
- * - A sinistra: Icona ricerca
- * - Al centro: Unicamente la "m" minuscola cerchiata
- * - A destra: Icona profilo standard
- */
 @Composable
 private fun ProfileTopHeader(
-    onSearchClick: () -> Unit,
-    onProfileIconClick: () -> Unit,
+    onBack: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    notificationCount: Int,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -293,21 +292,23 @@ private fun ProfileTopHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Sinistra: torna al feed
         IconButton(
-            onClick = onSearchClick,
+            onClick = onBack,
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .testTag("profile_search_button")
+                .testTag("profile_back_button")
         ) {
             Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Cerca",
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Torna al feed",
                 tint = PureWhite,
                 modifier = Modifier.size(22.dp)
             )
         }
 
+        // Centro: logo "m"
         Box(
             modifier = Modifier
                 .size(28.dp)
@@ -326,19 +327,43 @@ private fun ProfileTopHeader(
             )
         }
 
-        IconButton(
-            onClick = onProfileIconClick,
+        // Destra: campana notifiche con badge
+        Box(
             modifier = Modifier
                 .size(44.dp)
                 .clip(CircleShape)
-                .testTag("profile_user_button")
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onNotificationsClick
+                )
+                .testTag("profile_notifications_button"),
+            contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "Profilo",
+                imageVector = Icons.Default.Notifications,
+                contentDescription = "Notifiche",
                 tint = PureWhite,
                 modifier = Modifier.size(22.dp)
             )
+            if (notificationCount > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF3B30))
+                        .align(Alignment.TopEnd),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = if (notificationCount > 9) "9+" else notificationCount.toString(),
+                        color = PureWhite,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        lineHeight = 10.sp
+                    )
+                }
+            }
         }
     }
 }

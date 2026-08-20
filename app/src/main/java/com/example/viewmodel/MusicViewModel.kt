@@ -242,8 +242,18 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun fetchCurrentlyPlaying() {
-        val track = SpotifyWebApiRepository.getCurrentlyPlaying(appContext) ?: return
+        val track = SpotifyWebApiRepository.getCurrentlyPlaying(appContext)
         val currentTrackId = _uiState.value.nowPlayingTrack?.id
+
+        if (track == null) {
+            if (currentTrackId != null) {
+                val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
+                _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
+                FirebaseRepository.syncCurrentUser(updatedUser)
+            }
+            return
+        }
+
         if (track.id == currentTrackId) return
         val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
         _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }

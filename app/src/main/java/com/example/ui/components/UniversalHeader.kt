@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -58,8 +57,6 @@ fun UniversalHeader(
     currentUser: User,
     onSearchClick: () -> Unit,
     onProfileClick: () -> Unit,
-    onNotificationsClick: () -> Unit = {},
-    notificationCount: Int = 0,
     onHeaderCenterClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -139,78 +136,35 @@ fun UniversalHeader(
             }
         }
 
-        // Estrema Destra: Notifiche + Profilo
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        // Estrema Destra: Avatar Profilo
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onProfileClick
+                )
+                .testTag("header_profile_button"),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onNotificationsClick
-                    )
-                    .testTag("header_notifications_button"),
-                contentAlignment = Alignment.Center
-            ) {
+            if (currentUser.avatarUrl.isNotBlank()) {
+                AsyncImage(
+                    model = currentUser.avatarUrl,
+                    contentDescription = "Profilo di ${currentUser.name}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                )
+            } else {
                 Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notifiche",
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "Profilo Utente",
                     tint = PureWhite,
                     modifier = Modifier.size(22.dp)
                 )
-                if (notificationCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(Color(0xFFFF3B30))
-                            .align(Alignment.TopEnd),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (notificationCount > 9) "9+" else notificationCount.toString(),
-                            color = PureWhite,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = 10.sp
-                        )
-                    }
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onProfileClick
-                    )
-                    .testTag("header_profile_button"),
-                contentAlignment = Alignment.Center
-            ) {
-                if (currentUser.avatarUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = currentUser.avatarUrl,
-                        contentDescription = "Profilo di ${currentUser.name}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Profilo Utente",
-                        tint = PureWhite,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
             }
         }
     }
