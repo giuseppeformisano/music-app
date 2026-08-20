@@ -505,10 +505,6 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             .notify(request.id.hashCode(), notif)
     }
 
-    companion object {
-        const val FRIEND_REQUEST_CHANNEL_ID = "friend_requests_channel"
-    }
-
     fun shareTrack(track: Track) {
         val updatedUser = _uiState.value.currentUser.copy(
             currentTrack = track,
@@ -605,6 +601,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     companion object {
+        const val FRIEND_REQUEST_CHANNEL_ID = "friend_requests_channel"
+
         private fun com.google.firebase.auth.FirebaseUser.toAppUser(): User {
             val username = email
                 ?.substringBefore("@")
