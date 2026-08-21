@@ -7,6 +7,7 @@ data class Track(
     val album: String = "",
     val coverUrl: String,
     val durationText: String = "3:45",
+    val durationMs: Long = 0L, // Durata reale in millisecondi (0 = sconosciuta)
     val accentColorHex: Long = 0xFF1DB954, // Hex color extracted from album art
     val genre: String = "Alternative / Electronic",
     val releaseYear: String = "2024"
@@ -20,8 +21,11 @@ data class User(
     val coverUrl: String? = null,
     val email: String = "",
     val isCurrentUser: Boolean = false,
-    val isLiveNow: Boolean = true,
+    val isOnline: Boolean = false,       // sta usando l'app (connesso), non necessariamente in ascolto
+    val isLiveNow: Boolean = true,       // sta effettivamente ascoltando un brano in live
     val currentTrack: Track? = null,
+    val trackProgressMs: Long = 0L,      // posizione di ascolto catturata (ms)
+    val trackProgressAt: Long = 0L,      // wall-clock (ms) di quando è stata catturata la posizione
     val sharedTracks: List<Track> = emptyList(),
     val stats: UserStats = UserStats(),
     val followerIds: List<String> = emptyList(),

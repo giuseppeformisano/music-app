@@ -55,11 +55,26 @@ object FirebaseRepository {
      * profilo. Mantiene il documento in cima alla query ordinata per updatedAt anche
      * quando il brano non cambia, così i live non spariscono dalla lista altrui.
      */
-    fun touchLive(userId: String) {
+    fun touchLive(userId: String, progressMs: Long = 0L, progressAt: Long = System.currentTimeMillis()) {
         val db = firestore ?: return
         db.collection(USERS_COLLECTION).document(userId)
-            .update(mapOf("updatedAt" to System.currentTimeMillis(), "isLiveNow" to true))
+            .update(
+                mapOf(
+                    "updatedAt" to System.currentTimeMillis(),
+                    "isLiveNow" to true,
+                    "trackProgressMs" to progressMs,
+                    "trackProgressAt" to progressAt
+                )
+            )
             .addOnFailureListener { /* documento non ancora presente: ignora */ }
+    }
+
+    /** Aggiorna solo lo stato di presenza (app aperta/connessa). */
+    fun setOnline(userId: String, online: Boolean) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(userId)
+            .update(mapOf("isOnline" to online, "updatedAt" to System.currentTimeMillis()))
+            .addOnFailureListener { }
     }
 
     fun saveFcmToken(userId: String, token: String) {
@@ -82,8 +97,11 @@ object FirebaseRepository {
                 "username" to user.username,
                 "avatarUrl" to user.avatarUrl,
                 "coverUrl" to user.coverUrl,
+                "isOnline" to user.isOnline,
                 "isLiveNow" to user.isLiveNow,
                 "currentTrack" to user.currentTrack?.let { trackToMap(it) },
+                "trackProgressMs" to user.trackProgressMs,
+                "trackProgressAt" to user.trackProgressAt,
                 "sharedCount" to user.stats.sharedCount,
                 "topArtist" to user.stats.topArtist,
                 "genres" to user.stats.totalMinutesOrGenres,
@@ -116,6 +134,7 @@ object FirebaseRepository {
                 .document(userId)
                 .update(
                     "sharedTracks", FieldValue.arrayUnion(trackMap),
+                    "sharedCount", FieldValue.increment(1),
                     "updatedAt", System.currentTimeMillis()
                 )
                 .addOnFailureListener {
@@ -364,6 +383,7 @@ object FirebaseRepository {
             "album" to track.album,
             "coverUrl" to track.coverUrl,
             "durationText" to track.durationText,
+            "durationMs" to track.durationMs,
             "accentColorHex" to track.accentColorHex,
             "genre" to track.genre,
             "releaseYear" to track.releaseYear
@@ -377,7 +397,10 @@ object FirebaseRepository {
         val username = data["username"] as? String ?: id
         val avatarUrl = data["avatarUrl"] as? String ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
         val coverUrl = data["coverUrl"] as? String
+        val isOnline = data["isOnline"] as? Boolean ?: false
         val isLiveNow = data["isLiveNow"] as? Boolean ?: false
+        val trackProgressMs = (data["trackProgressMs"] as? Number)?.toLong() ?: 0L
+        val trackProgressAt = (data["trackProgressAt"] as? Number)?.toLong() ?: 0L
 
         val currentTrackMap = data["currentTrack"] as? Map<String, Any?>
         val currentTrack = currentTrackMap?.let { mapToTrack(it) }
@@ -398,8 +421,11 @@ object FirebaseRepository {
             username = username,
             avatarUrl = avatarUrl,
             coverUrl = coverUrl,
+            isOnline = isOnline,
             isLiveNow = isLiveNow,
             currentTrack = currentTrack,
+            trackProgressMs = trackProgressMs,
+            trackProgressAt = trackProgressAt,
             sharedTracks = sharedTracks,
             stats = com.example.model.UserStats(
                 sharedCount = sharedCount,
@@ -418,6 +444,7 @@ object FirebaseRepository {
         val album = map["album"] as? String ?: "Singolo"
         val coverUrl = map["coverUrl"] as? String ?: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600"
         val durationText = map["durationText"] as? String ?: "3:30"
+        val durationMs = (map["durationMs"] as? Number)?.toLong() ?: 0L
         val accentColorHex = (map["accentColorHex"] as? Number)?.toLong() ?: 0xFF1DB954
         val genre = map["genre"] as? String ?: "Musica"
         val releaseYear = map["releaseYear"] as? String ?: "2024"
@@ -429,6 +456,7 @@ object FirebaseRepository {
             album = album,
             coverUrl = coverUrl,
             durationText = durationText,
+            durationMs = durationMs,
             accentColorHex = accentColorHex,
             genre = genre,
             releaseYear = releaseYear

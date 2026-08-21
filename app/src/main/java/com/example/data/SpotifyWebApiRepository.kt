@@ -21,7 +21,7 @@ object SpotifyWebApiRepository {
      * - Unknown: errore/rete/token — stato ignoto, NON modificare la live
      */
     sealed class PlaybackResult {
-        data class Playing(val track: Track) : PlaybackResult()
+        data class Playing(val track: Track, val progressMs: Long) : PlaybackResult()
         object NotPlaying : PlaybackResult()
         object Unknown : PlaybackResult()
     }
@@ -50,7 +50,10 @@ object SpotifyWebApiRepository {
             val body = response.body?.string() ?: return@withContext PlaybackResult.Unknown
             val track = parseTrack(body)
             // parseTrack ritorna null se is_playing=false → NotPlaying; altrimenti Playing
-            if (track != null) PlaybackResult.Playing(track) else PlaybackResult.NotPlaying
+            if (track != null) {
+                val progressMs = JSONObject(body).optLong("progress_ms", 0L)
+                PlaybackResult.Playing(track, progressMs)
+            } else PlaybackResult.NotPlaying
         } catch (e: Exception) {
             Log.e(TAG, "getCurrentlyPlaying error: ${e.message}")
             // Rete/timeout/doze in background: stato ignoto, non azzerare la live
@@ -78,6 +81,7 @@ object SpotifyWebApiRepository {
                 album = albumName,
                 coverUrl = coverUrl,
                 durationText = formatDuration(durationMs),
+                durationMs = durationMs,
                 accentColorHex = 0xFF1DB954L,
                 genre = "",
                 releaseYear = ""

@@ -132,6 +132,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.setOnline(true)
         viewModel.checkNotificationListenerEnabled()
         viewModel.startSpotifyPolling()
         val filter = IntentFilter().apply {
@@ -143,6 +144,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        viewModel.setOnline(false)
         // NON fermiamo il polling: un utente Premium che esce dall'app ma continua ad
         // ascoltare deve restare live per gli altri (il polling gira finché il processo vive)
         try { unregisterReceiver(spotifyReceiver) } catch (e: Exception) { /* receiver was not registered */ }

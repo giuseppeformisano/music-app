@@ -57,10 +57,16 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
             val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim() ?: return
             val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim() ?: ""
-            if (title == lastTrack) return
+            val durationMs = meta.getLong(MediaMetadata.METADATA_KEY_DURATION).coerceAtLeast(0L)
+            val positionMs = spotify.playbackState?.position?.coerceAtLeast(0L) ?: 0L
+            if (title == lastTrack) {
+                // Stesso brano: aggiorna solo la posizione reale (avanzamento/seek)
+                onProgressChanged?.invoke(positionMs, durationMs)
+                return
+            }
             lastTrack = title
-            pendingTrack = title to artist
-            onTrackChanged?.invoke(title, artist)
+            pendingTrack = Pending(title, artist, durationMs, positionMs)
+            onTrackChanged?.invoke(title, artist, durationMs, positionMs)
         } catch (_: Exception) {}
     }
 
@@ -82,17 +88,22 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
         return adTitle && artist.isEmpty() && duration <= 0L
     }
 
+    data class Pending(val title: String, val artist: String, val durationMs: Long, val positionMs: Long)
+
     companion object {
         private const val SPOTIFY_PACKAGE = "com.spotify.music"
         private const val KEY_ADVERTISEMENT = "android.media.metadata.ADVERTISEMENT"
 
-        @Volatile var pendingTrack: Pair<String, String>? = null
+        @Volatile var pendingTrack: Pending? = null
 
-        var onTrackChanged: ((trackName: String, artist: String) -> Unit)? = null
+        var onTrackChanged: ((trackName: String, artist: String, durationMs: Long, positionMs: Long) -> Unit)? = null
             set(value) {
                 field = value
-                pendingTrack?.let { (t, a) -> value?.invoke(t, a) }
+                pendingTrack?.let { value?.invoke(it.title, it.artist, it.durationMs, it.positionMs) }
             }
+
+        // Aggiornamento posizione mentre lo stesso brano continua
+        var onProgressChanged: ((positionMs: Long, durationMs: Long) -> Unit)? = null
 
         var onPlaybackStopped: (() -> Unit)? = null
 

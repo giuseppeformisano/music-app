@@ -291,17 +291,24 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             is SpotifyWebApiRepository.PlaybackResult.Playing -> {
                 val track = result.track
                 emptyPollCount = 0
+                val now = System.currentTimeMillis()
                 if (track.id == currentTrackId) {
-                    // Stesso brano ancora in riproduzione: heartbeat periodico per restare "fresco"
-                    val now = System.currentTimeMillis()
+                    // Stesso brano: heartbeat + riallineo la posizione reale (assorbe seek/pausa)
                     if (now - lastLiveHeartbeat >= 25_000L) {
                         lastLiveHeartbeat = now
-                        FirebaseRepository.touchLive(_uiState.value.currentUser.id)
+                        val u = _uiState.value.currentUser.copy(
+                            trackProgressMs = result.progressMs, trackProgressAt = now
+                        )
+                        _uiState.update { it.copy(currentUser = u) }
+                        FirebaseRepository.touchLive(u.id, result.progressMs, now)
                     }
                     return
                 }
-                lastLiveHeartbeat = System.currentTimeMillis()
-                val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
+                lastLiveHeartbeat = now
+                val updatedUser = _uiState.value.currentUser.copy(
+                    currentTrack = track, isLiveNow = true,
+                    trackProgressMs = result.progressMs, trackProgressAt = now
+                )
                 _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
                 FirebaseRepository.syncCurrentUser(updatedUser)
             }
@@ -310,6 +317,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearSpotifyError() {
         _uiState.update { it.copy(spotifyError = null) }
+    }
+
+    /** Presenza: l'utente sta usando l'app (connesso) — distinta dall'essere in live. */
+    fun setOnline(online: Boolean) {
+        val id = _uiState.value.currentUser.id
+        if (id.isBlank()) return
+        _uiState.update { it.copy(currentUser = it.currentUser.copy(isOnline = online)) }
+        FirebaseRepository.setOnline(id, online)
     }
 
     fun checkNotificationListenerEnabled() {
@@ -326,10 +341,15 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun registerNotificationListenerCallbacks() {
-        com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist ->
+        com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs ->
             // Usa solo come fallback se il Web API non sta già fornendo dati
             if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
-                updateNowPlayingFromBroadcast("", trackName, artist, "")
+                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs)
+            }
+        }
+        com.example.SpotifyNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
+            if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
+                updateLiveProgress(positionMs, durationMs)
             }
         }
         com.example.SpotifyNotificationListenerService.onPlaybackStopped = {
@@ -339,7 +359,21 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun updateNowPlayingFromBroadcast(trackId: String, trackName: String, artistName: String, albumName: String) {
+    // Riallinea la posizione reale del brano corrente (Free), con heartbeat ~25s
+    private fun updateLiveProgress(positionMs: Long, durationMs: Long) {
+        if (_uiState.value.currentUser.currentTrack == null) return
+        val now = System.currentTimeMillis()
+        if (now - lastLiveHeartbeat < 25_000L) return
+        lastLiveHeartbeat = now
+        val u = _uiState.value.currentUser.copy(trackProgressMs = positionMs, trackProgressAt = now)
+        _uiState.update { it.copy(currentUser = u) }
+        FirebaseRepository.touchLive(u.id, positionMs, now)
+    }
+
+    fun updateNowPlayingFromBroadcast(
+        trackId: String, trackName: String, artistName: String, albumName: String,
+        durationMs: Long = 0L, positionMs: Long = 0L
+    ) {
         if (trackName.isBlank()) return
         val currentId = _uiState.value.nowPlayingTrack?.id
         if (trackId.isNotBlank() && trackId == currentId) return
@@ -347,17 +381,29 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val cleanAlbum = sanitizeSpotifyContext(albumName)
         viewModelScope.launch {
             val coverUrl = fetchItunesCover(cleanArtist, trackName)
+            val now = System.currentTimeMillis()
+            lastLiveHeartbeat = now
             val track = Track(
                 id = trackId.ifBlank { "$cleanArtist-$trackName".hashCode().toString() },
                 title = trackName,
                 artist = cleanArtist,
                 album = cleanAlbum,
-                coverUrl = coverUrl
+                coverUrl = coverUrl,
+                durationText = if (durationMs > 0) formatMs(durationMs) else "3:45",
+                durationMs = durationMs
             )
-            val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
+            val updatedUser = _uiState.value.currentUser.copy(
+                currentTrack = track, isLiveNow = true,
+                trackProgressMs = positionMs, trackProgressAt = now
+            )
             _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
             FirebaseRepository.syncCurrentUser(updatedUser)
         }
+    }
+
+    private fun formatMs(ms: Long): String {
+        val secs = ms / 1000
+        return "${secs / 60}:${(secs % 60).toString().padStart(2, '0')}"
     }
 
     /**
@@ -385,15 +431,20 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private suspend fun fetchItunesCover(artist: String, track: String): String =
         withContext(Dispatchers.IO) {
             try {
-                val query = java.net.URLEncoder.encode("$artist $track", "UTF-8")
+                // entity=song per matchare il brano esatto (non album/video); artista+titolo
+                // migliora la precisione. Se manca l'artista uso solo il titolo.
+                val term = listOf(artist, track).filter { it.isNotBlank() }.joinToString(" ")
+                if (term.isBlank()) return@withContext DEFAULT_COVER
+                val query = java.net.URLEncoder.encode(term, "UTF-8")
                 val response = httpClient.newCall(
                     Request.Builder()
-                        .url("https://itunes.apple.com/search?term=$query&media=music&limit=1")
+                        .url("https://itunes.apple.com/search?term=$query&media=music&entity=song&limit=1")
                         .build()
                 ).execute()
                 val body = response.body?.string() ?: return@withContext DEFAULT_COVER
                 val results = JSONObject(body).optJSONArray("results")
                 if (results == null || results.length() == 0) return@withContext DEFAULT_COVER
+                // artworkUrl100 → richiedo 600x600 per la copertina ad alta risoluzione
                 results.getJSONObject(0).optString("artworkUrl100", DEFAULT_COVER)
                     .replace("100x100bb", "600x600bb")
             } catch (e: Exception) {
@@ -683,21 +734,23 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun shareTrack(track: Track) {
+        // Condivisione nel FEED: aggiorna solo i brani condivisi + stats.
+        // NON tocca currentTrack/isLiveNow (che sono lo stato LIVE) — feed e live
+        // sono due sezioni distinte e la condivisione non deve mandarti in live.
         val updatedUser = _uiState.value.currentUser.copy(
-            currentTrack = track,
             sharedTracks = listOf(track) + _uiState.value.currentUser.sharedTracks.filterNot { it.id == track.id },
             stats = _uiState.value.currentUser.stats.copy(sharedCount = _uiState.value.currentUser.stats.sharedCount + 1)
         )
         _uiState.update {
             it.copy(
                 currentUser = updatedUser,
-                nowPlayingTrack = track,
                 isShareSheetOpen = false,
                 feedbackToast = "Condiviso: ${track.title}"
             )
         }
         FirebaseRepository.shareTrack(updatedUser.id, track)
-        FirebaseRepository.syncCurrentUser(updatedUser)
+        // shareTrack scrive già sharedTracks su Firestore; syncCurrentUser riscriverebbe
+        // l'intero profilo (incluso currentTrack live) — non serve qui.
     }
 
     fun openStory(user: User) {

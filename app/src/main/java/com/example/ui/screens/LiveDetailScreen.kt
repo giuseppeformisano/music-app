@@ -129,21 +129,26 @@ fun LiveDetailScreen(
         label = "pulse_scale"
     )
 
-    // Timer e minutaggio dinamico
-    var elapsedSeconds by remember { mutableIntStateOf(0) }
-    val totalSeconds = remember(track.durationText) {
-        val parts = track.durationText.split(":")
-        if (parts.size == 2) {
-            (parts[0].toIntOrNull() ?: 3) * 60 + (parts[1].toIntOrNull() ?: 24)
-        } else {
-            204
+    // Minutaggio REALE: durata dal brano; posizione estrapolata dalla posizione
+    // catturata (trackProgressMs) + tempo trascorso da trackProgressAt.
+    val totalSeconds = remember(track.id, track.durationMs, track.durationText) {
+        if (track.durationMs > 0L) (track.durationMs / 1000L).toInt()
+        else track.durationText.split(":").let { p ->
+            if (p.size == 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0
         }
+    }.coerceAtLeast(1)
+
+    var elapsedSeconds by remember(track.id, user.trackProgressAt) {
+        val base = (user.trackProgressMs / 1000L).toInt()
+        val drift = if (user.trackProgressAt > 0L)
+            ((System.currentTimeMillis() - user.trackProgressAt) / 1000L).toInt() else 0
+        mutableIntStateOf((base + drift).coerceIn(0, totalSeconds))
     }
 
-    LaunchedEffect(user.id, track.id) {
+    LaunchedEffect(track.id, user.trackProgressAt) {
         while (true) {
             delay(1000)
-            elapsedSeconds = (elapsedSeconds + 1) % (totalSeconds + 1)
+            if (elapsedSeconds < totalSeconds) elapsedSeconds += 1
         }
     }
 
