@@ -49,6 +49,12 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             if (!isPlaying) { stopPlayback(); return }
 
             val meta = spotify.metadata ?: return
+
+            // Filtra le pubblicità di Spotify Free: durante un ad NON aggiorniamo la live,
+            // resta visibile il brano precedente. Nessun controllo sul nome (un brano può
+            // contenere la parola "pubblicità"): usiamo il flag ufficiale del MediaMetadata.
+            if (isAdvertisement(meta)) return
+
             val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim() ?: return
             val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim() ?: ""
             if (title == lastTrack) return
@@ -56,6 +62,22 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             pendingTrack = title to artist
             onTrackChanged?.invoke(title, artist)
         } catch (_: Exception) {}
+    }
+
+    /**
+     * Rileva le pubblicità di Spotify Free. Segnale primario: METADATA_KEY_ADVERTISEMENT
+     * (Long: 1 = ad). Fallback: un ad Spotify ha durata assente/nulla, artista vuoto e
+     * titolo esattamente "Advertisement"/"Spotify" (match esatto, mai substring, così i
+     * brani che contengono la parola "pubblicità" non vengono scartati per errore).
+     */
+    private fun isAdvertisement(meta: MediaMetadata): Boolean {
+        if (meta.getLong(MediaMetadata.METADATA_KEY_ADVERTISEMENT) == 1L) return true
+        val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim().orEmpty()
+        val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim().orEmpty()
+        val duration = meta.getLong(MediaMetadata.METADATA_KEY_DURATION)
+        val adTitle = title.equals("Advertisement", ignoreCase = true) ||
+                      title.equals("Spotify", ignoreCase = true)
+        return adTitle && artist.isEmpty() && duration <= 0L
     }
 
     companion object {

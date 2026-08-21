@@ -756,7 +756,7 @@ private fun SharedTracks3DCarousel(
                         scaleX = sc; scaleY = sc
                         alpha = androidx.compose.ui.util.lerp(0.42f, 1f, 1f - absOffset)
                         // Spostamento verso il centro (le card si avvicinano ruotando)
-                        translationX = rawOffset * size.width * 0.06f
+                        translationX = rawOffset * 34f * density
                         translationY = absOffset * 18f * density
                     }
                     .shadow(
