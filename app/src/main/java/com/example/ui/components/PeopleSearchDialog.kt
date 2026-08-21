@@ -44,15 +44,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.model.User
 import com.example.ui.theme.PureWhite
-import com.example.ui.theme.SpotifyGreen
 import com.example.ui.theme.SubtitleGray
 
-private val DialogBg = Color(0xFF080808)
 private val RowBg = Color(0xFF0E0E0E)
 private val FieldBg = Color(0xFF111111)
 
@@ -70,56 +66,22 @@ fun PeopleSearchDialog(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.88f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss
-                ),
-            contentAlignment = Alignment.Center
-        ) {
+    UtilityDialog(onDismiss = onDismiss) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth(0.94f)
+                    .fillMaxWidth(0.92f)
                     .fillMaxHeight(0.78f)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(DialogBg)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    )
-                    .padding(horizontal = 18.dp, vertical = 16.dp)
+                    .padding(horizontal = 4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Cerca persone",
-                        color = PureWhite,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Chiudi",
-                            tint = SubtitleGray,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                }
+                Text(
+                    text = "Cerca persone",
+                    color = PureWhite,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 OutlinedTextField(
                     value = searchQuery,
@@ -186,7 +148,6 @@ fun PeopleSearchDialog(
             }
         }
     }
-}
 
 @Composable
 private fun PeopleResultRow(
@@ -218,15 +179,12 @@ private fun PeopleResultRow(
                     .size(42.dp)
                     .clip(CircleShape)
             )
-            if (user.isLiveNow) {
-                Box(
-                    modifier = Modifier
-                        .size(9.dp)
-                        .clip(CircleShape)
-                        .background(SpotifyGreen)
-                        .align(Alignment.BottomEnd)
-                )
-            }
+            PresenceDot(
+                isOnline = user.isOnline,
+                isLive = user.currentTrack != null,
+                size = 13.dp,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
         }
 
         Spacer(modifier = Modifier.width(11.dp))

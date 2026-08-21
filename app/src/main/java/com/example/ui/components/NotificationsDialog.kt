@@ -25,7 +25,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -38,14 +37,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.model.FriendRequest
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
 
-private val DialogBg = Color(0xFF080808)
 private val RowBg = Color(0xFF0E0E0E)
 
 @Composable
@@ -55,116 +51,81 @@ fun NotificationsDialog(
     onReject: (FriendRequest) -> Unit,
     onDismiss: () -> Unit
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
-    ) {
-        Box(
+    UtilityDialog(onDismiss = onDismiss) {
+        Column(
             modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.88f))
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss
-                ),
-            contentAlignment = Alignment.Center
+                .fillMaxWidth(0.9f)
+                .fillMaxHeight(0.62f)
+                .padding(horizontal = 4.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.94f)
-                    .fillMaxHeight(0.68f)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(DialogBg)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    )
-                    .padding(horizontal = 18.dp, vertical = 16.dp)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                Text(
+                    text = "Notifiche",
+                    color = PureWhite,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (pendingRequests.isNotEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(Color(0xFFFF3B30))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                        contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Notifiche",
+                            text = pendingRequests.size.toString(),
                             color = PureWhite,
-                            fontSize = 16.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        if (pendingRequests.isNotEmpty()) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(Color(0xFFFF3B30))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = pendingRequests.size.toString(),
-                                    color = PureWhite,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Chiudi",
-                            tint = SubtitleGray,
-                            modifier = Modifier.size(18.dp)
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }
+            }
 
-                Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-                if (pendingRequests.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = null,
-                                tint = SubtitleGray.copy(alpha = 0.25f),
-                                modifier = Modifier.size(36.dp)
-                            )
-                            Spacer(modifier = Modifier.height(10.dp))
-                            Text(
-                                text = "Nessuna notifica",
-                                color = SubtitleGray.copy(alpha = 0.5f),
-                                fontSize = 13.sp
-                            )
-                        }
+            if (pendingRequests.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = null,
+                            tint = SubtitleGray.copy(alpha = 0.25f),
+                            modifier = Modifier.size(36.dp)
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Nessuna notifica",
+                            color = SubtitleGray.copy(alpha = 0.5f),
+                            fontSize = 13.sp
+                        )
                     }
-                } else {
-                    Text(
-                        text = "Richieste di follow",
-                        color = SubtitleGray.copy(alpha = 0.6f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 0.3.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(bottom = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        items(pendingRequests, key = { it.id }) { request ->
-                            FriendRequestRow(
-                                request = request,
-                                onAccept = { onAccept(request) },
-                                onReject = { onReject(request) }
-                            )
-                        }
+                }
+            } else {
+                Text(
+                    text = "Richieste di follow",
+                    color = SubtitleGray.copy(alpha = 0.6f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.3.sp
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(bottom = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(pendingRequests, key = { it.id }) { request ->
+                        FriendRequestRow(
+                            request = request,
+                            onAccept = { onAccept(request) },
+                            onReject = { onReject(request) }
+                        )
                     }
                 }
             }
