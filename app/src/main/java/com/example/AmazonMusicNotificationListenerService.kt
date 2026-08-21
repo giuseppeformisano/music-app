@@ -96,7 +96,11 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
             val flat = Settings.Secure.getString(
                 context.contentResolver, "enabled_notification_listeners"
             ) ?: return false
-            return flat.contains(context.packageName)
+            // Controllo del COMPONENTE specifico (non solo del package)
+            val cn = ComponentName(context, AmazonMusicNotificationListenerService::class.java)
+            return flat.split(":").any {
+                it.equals(cn.flattenToString(), true) || it.equals(cn.flattenToShortString(), true)
+            }
         }
     }
 }

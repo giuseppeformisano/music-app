@@ -19,13 +19,12 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName in MUSIC_PACKAGES) checkMediaSessions()
+        if (sbn.packageName == SPOTIFY_PACKAGE) checkMediaSessions()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        // Rivaluta: se un'altra app musicale sta ancora suonando la live resta;
-        // altrimenti checkMediaSessions farà stopPlayback.
-        if (sbn.packageName in MUSIC_PACKAGES) checkMediaSessions()
+        if (sbn.packageName != SPOTIFY_PACKAGE) return
+        stopPlayback()
     }
 
     private fun stopPlayback() {
@@ -40,17 +39,17 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             val controllers = manager.getActiveSessions(
                 ComponentName(this, SpotifyNotificationListenerService::class.java)
             )
-            // Prima app musicale supportata effettivamente IN RIPRODUZIONE (Spotify o Amazon)
-            val controller = controllers.firstOrNull {
-                it.packageName in MUSIC_PACKAGES && isPlaying(it)
-            }
+            // SOLO Spotify: non deve MAI leggere la sessione di altre app (es. Amazon)
+            val controller = controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE }
             if (controller == null) { stopPlayback(); return }
+
+            // In pausa/stop la live deve sparire anche se la notifica resta visibile
+            if (!isPlaying(controller)) { stopPlayback(); return }
 
             val meta = controller.metadata ?: return
 
-            // Filtra le pubblicità di Spotify Free (solo per Spotify): durante un ad NON
-            // aggiorniamo la live, resta il brano precedente. Match esatto, mai substring.
-            if (controller.packageName == SPOTIFY_PACKAGE && isAdvertisement(meta)) return
+            // Filtra le pubblicità di Spotify Free: durante un ad NON aggiorniamo la live.
+            if (isAdvertisement(meta)) return
 
             val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim() ?: return
             val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim() ?: ""
@@ -102,9 +101,6 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val SPOTIFY_PACKAGE = "com.spotify.music"
-        private const val AMAZON_MUSIC_PACKAGE = "com.amazon.mp3"
-        // App musicali supportate dal rilevamento notifiche (MediaSession)
-        private val MUSIC_PACKAGES = setOf(SPOTIFY_PACKAGE, AMAZON_MUSIC_PACKAGE)
         private const val KEY_ADVERTISEMENT = "android.media.metadata.ADVERTISEMENT"
 
         @Volatile var pendingTrack: Pending? = null
@@ -124,7 +120,12 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             val flat = Settings.Secure.getString(
                 context.contentResolver, "enabled_notification_listeners"
             ) ?: return false
-            return flat.contains(context.packageName)
+            // Controllo del COMPONENTE specifico (non solo del package), così Spotify e
+            // Amazon si distinguono con precisione anche quando ne abiliti solo uno.
+            val cn = ComponentName(context, SpotifyNotificationListenerService::class.java)
+            return flat.split(":").any {
+                it.equals(cn.flattenToString(), true) || it.equals(cn.flattenToShortString(), true)
+            }
         }
     }
 }

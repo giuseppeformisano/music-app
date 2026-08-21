@@ -594,7 +594,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         // Al collegamento (di un servizio basato su notifiche) guida verso il permesso
-        if (newState && !isNotificationListenerEnabledNow()) {
+        // del listener SPECIFICO di quel servizio.
+        val listenerEnabled = when (serviceKey) {
+            "amazon_music" -> com.example.AmazonMusicNotificationListenerService.isEnabled(appContext)
+            else -> com.example.SpotifyNotificationListenerService.isEnabled(appContext)
+        }
+        if (newState && !listenerEnabled) {
             openNotificationListenerSettings(appContext)
             _uiState.update {
                 it.copy(
@@ -611,9 +616,6 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
-
-    private fun isNotificationListenerEnabledNow(): Boolean =
-        com.example.SpotifyNotificationListenerService.isEnabled(appContext)
 
     // ===================== SEARCH =====================
 
