@@ -62,6 +62,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -167,6 +168,27 @@ fun MainFeedScreen(
         }
     }
 
+    // Uscita: quando un amico (già visto) smette di ascoltare, esce con animazione (2s)
+    // e solo dopo sparisce. Teniamo l'ultimo stato noto per animare con i suoi dati.
+    val lastKnownLive = remember { mutableStateMapOf<String, User>() }
+    val departingUsers = remember { mutableStateMapOf<String, User>() }
+    val liveKey = liveFriends.joinToString(",") { it.id }
+    LaunchedEffect(liveKey) {
+        val currentIds = liveFriends.map { it.id }.toSet()
+        // Chi era live (e già entrato) e ora non c'è più → avvia l'uscita
+        lastKnownLive.keys.toList().forEach { id ->
+            if (id !in currentIds && id !in departingUsers && id in seenLiveIds) {
+                lastKnownLive[id]?.let { departingUsers[id] = it }
+            }
+        }
+        // Aggiorna l'ultimo stato noto con i dati freschi dei live correnti
+        liveFriends.forEach { lastKnownLive[it.id] = it }
+        // Pulizia: togli da lastKnownLive chi non è più né live né in uscita
+        lastKnownLive.keys.toList().forEach { id ->
+            if (id !in currentIds && id !in departingUsers) lastKnownLive.remove(id)
+        }
+    }
+
     val currentPageEnum = if (pagerState.currentPage == 0) NavigationPage.LIVE else NavigationPage.FEED
 
     Box(
@@ -213,7 +235,13 @@ fun MainFeedScreen(
                             liveUsers = liveFriends,
                             seenIds = seenLiveIds,
                             fastIds = fastEntranceIds,
+                            departing = departingUsers.values.toList(),
                             onUserSeen = { id -> if (id !in seenLiveIds) seenLiveIds.add(id) },
+                            onExitComplete = { id ->
+                                departingUsers.remove(id)
+                                seenLiveIds.remove(id)
+                                lastKnownLive.remove(id)
+                            },
                             onSelectLiveUser = onOpenLiveDetail,
                             onOpenProfile = onOpenProfile
                         )
@@ -498,7 +526,9 @@ private fun LivePageContent(
     liveUsers: List<User>,
     seenIds: List<String> = emptyList(),
     fastIds: List<String> = emptyList(),
+    departing: List<User> = emptyList(),
     onUserSeen: (String) -> Unit = {},
+    onExitComplete: (String) -> Unit = {},
     onSelectLiveUser: (User) -> Unit,
     onOpenProfile: (User) -> Unit
 ) {
@@ -510,7 +540,7 @@ private fun LivePageContent(
             .fillMaxSize()
             .background(BlackPitch)
     ) {
-        if (!iAmLive && liveUsers.isEmpty()) {
+        if (!iAmLive && liveUsers.isEmpty() && departing.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -547,7 +577,7 @@ private fun LivePageContent(
                     }
                 }
                 // ─── Live degli amici ──────────────────────────────────────
-                if (liveUsers.isNotEmpty()) {
+                if (liveUsers.isNotEmpty() || departing.isNotEmpty()) {
                     item(key = "friends_live_header") {
                         LiveSectionHeader(
                             text = "FRIENDS LIVE",
@@ -575,6 +605,15 @@ private fun LivePageContent(
                                 fast = user.id in fastIds
                             )
                         }
+                    }
+                    // Utenti che si stanno disconnettendo: animazione di uscita (2s)
+                    items(departing, key = { "exit_" + it.id }) { u ->
+                        val track = u.currentTrack ?: return@items
+                        ExitingLiveItem(
+                            user = u,
+                            track = track,
+                            onComplete = { onExitComplete(u.id) }
+                        )
                     }
                 }
             }
@@ -1867,6 +1906,23 @@ private fun SupernovaEntranceItem(
                 )
             }
 
+            // Scia luminosa dietro il disco che rotola verso sinistra (dal porta-CD a destra)
+            if (cdVisible && cdProgress > 0.02f && cdProgress < 0.96f) {
+                val trailLen = cdProgress * travelDistance + (cdSizePx / 2f)
+                val trailAlphaE = when {
+                    cdProgress < 0.10f -> cdProgress / 0.10f
+                    cdProgress < 0.72f -> 1f
+                    else -> (1f - (cdProgress - 0.72f) / 0.24f).coerceIn(0f, 1f)
+                }
+                OrganicBlurredCdTrail(
+                    currentHeadX = trailLen,
+                    trailAlpha = trailAlphaE,
+                    primaryColor = primaryColor,
+                    secondaryColor = secondaryColor,
+                    modifier = Modifier.align(Alignment.CenterEnd).zIndex(5f)
+                )
+            }
+
             // Disco che esce dal porta-CD (destra) e rotola verso sinistra fino a riposo
             if (cdVisible) {
                 Box(
@@ -1891,6 +1947,166 @@ private fun SupernovaEntranceItem(
                     )
                 }
             }
+        }
+    }
+}
+
+/**
+ * Uscita di un utente live (si disconnette / smette di ascoltare): come il cambio traccia
+ * ma TERMINALE. Il CD rotola verso destra ed entra nel porta-CD lasciando la scia (dietro
+ * la scia i dati scompaiono); il porta-CD si chiude sopra il CD; poi la riga va in
+ * fade-out e collassa in altezza. Al termine onComplete -> rimozione dalla lista.
+ */
+@Composable
+private fun ExitingLiveItem(
+    user: User,
+    track: Track,
+    onComplete: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val density = LocalDensity.current
+    val exit = remember(user.id) { Animatable(0f) }
+    val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex, track.genre) {
+        extractDynamicTrackGlowColors(track)
+    }
+    LaunchedEffect(user.id) {
+        exit.snapTo(0f)
+        exit.animateTo(1f, tween(2000, easing = FastOutSlowInEasing))
+        onComplete()
+    }
+    val q = exit.value
+    // Fase A (0..0.72): coreografia identica al cambio traccia (roll + case + scia)
+    val t = (q / 0.72f).coerceIn(0f, 1f)
+    // Fase B (0.72..1): la riga collassa e sfuma
+    val collapse = ((q - 0.72f) / 0.28f).coerceIn(0f, 1f)
+    val itemAlpha = 1f - collapse
+    val formattedUsername = if (user.username.startsWith("@")) user.username else "@${user.username}"
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .graphicsLayer { alpha = itemAlpha }
+            .background(BlackPitch, RoundedCornerShape(16.dp))
+            .padding(horizontal = 6.dp, vertical = 8.dp)
+            .testTag("live_item_exiting_${user.id}")
+    ) {
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(62.dp * (1f - collapse))
+                .clipToBounds(),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            val availableWidthPx = constraints.maxWidth.toFloat()
+            val cdSizePx = with(density) { 58.dp.toPx() }
+            val jewelCaseWidthPx = with(density) { 54.dp.toPx() }
+            val travelDistance = (availableWidthPx - jewelCaseWidthPx + (jewelCaseWidthPx * 0.46f) - (cdSizePx / 2f)).coerceAtLeast(0f)
+
+            // Dati traccia: scompaiono mentre il CD/scia li attraversano
+            val dataAlpha = (1f - t / 0.5f).coerceIn(0f, 1f)
+            Row(
+                modifier = Modifier.fillMaxWidth().graphicsLayer { alpha = dataAlpha },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(72.dp))
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
+                    Text(
+                        text = track.title, color = PureWhite, fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = track.artist, color = Zinc400, fontSize = 12.sp,
+                        maxLines = 1, overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        AsyncImage(
+                            model = user.avatarUrl, contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(15.dp).clip(CircleShape)
+                        )
+                        Text(
+                            text = formattedUsername.lowercase(),
+                            color = PureWhite.copy(alpha = 0.65f), fontSize = 11.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            // Scia (come cambio traccia): il CD va verso destra
+            val currentRollFraction = (t / 0.58f).coerceIn(0f, 1f)
+            val trailAlpha = when {
+                t < 0.04f -> t / 0.04f
+                t < 0.44f -> 1f
+                t < 0.58f -> (1f - (t - 0.44f) / 0.14f).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            OrganicBlurredCdTrail(
+                currentHeadX = currentRollFraction * travelDistance + (cdSizePx / 2f),
+                trailAlpha = trailAlpha,
+                primaryColor = primaryColor,
+                secondaryColor = secondaryColor,
+                modifier = Modifier.align(Alignment.CenterStart).zIndex(5f)
+            )
+
+            // Porta-CD: si apre e si richiude sopra al CD, poi svanisce
+            val caseAlpha = when {
+                t < 0.10f -> (t / 0.10f).coerceIn(0f, 1f)
+                t < 0.78f -> 1f
+                else -> (1f - (t - 0.78f) / 0.22f).coerceIn(0f, 1f)
+            }
+            val openAmount = when {
+                t < 0.04f -> 0f
+                t < 0.28f -> ((t - 0.04f) / 0.24f).coerceIn(0f, 1f)
+                t < 0.58f -> 1f
+                t < 0.78f -> (1f - (t - 0.58f) / 0.20f).coerceIn(0f, 1f)
+                else -> 0f
+            }
+            JewelCaseBackPlate(
+                alpha = caseAlpha,
+                modifier = Modifier.align(Alignment.CenterEnd).zIndex(6f)
+            )
+
+            if (t < 0.78f) {
+                val rollProgress = (t / 0.58f).coerceIn(0f, 1f)
+                val currentX = rollProgress * travelDistance
+                val rollAngle = if (t < 0.58f) t * 1600f else 0.58f * 1600f
+                val landingProgress = ((t - 0.38f) / 0.20f).coerceIn(0f, 1f)
+                val rollingScale = 1f - (landingProgress * 0.26f)
+                val cdGlowFactor = (1f - landingProgress).coerceIn(0f, 1f)
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .zIndex(8f)
+                        .graphicsLayer {
+                            translationX = currentX
+                            rotationZ = rollAngle
+                            scaleX = rollingScale
+                            scaleY = rollingScale
+                        }
+                        .size(58.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CdGlowCircularCover(
+                        track.coverUrl, track.title, track.id,
+                        primaryColor, secondaryColor, cdGlowFactor
+                    )
+                }
+            }
+
+            JewelCaseFrontLid(
+                coverUrl = track.coverUrl,
+                title = track.title,
+                openAmount = openAmount,
+                alpha = caseAlpha,
+                modifier = Modifier.align(Alignment.CenterEnd).zIndex(12f)
+            )
         }
     }
 }
