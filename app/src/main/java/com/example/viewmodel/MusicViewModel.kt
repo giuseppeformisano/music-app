@@ -215,7 +215,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val success = SpotifyAuthRepository.handleCallback(appContext, code)
             if (success) {
-                val services = _uiState.value.connectedServices.toMutableMap().apply { put("spotify", true) }
+                // Premium collegato → è la sorgente attiva: azzera la scelta Free (mutua esclusione)
+                persistServiceState("spotify_free", false)
+                val services = _uiState.value.connectedServices.toMutableMap().apply {
+                    put("spotify", true)
+                    put("spotify_free", false)
+                }
                 val updatedUser = _uiState.value.currentUser.copy(isLiveNow = true)
                 _uiState.update {
                     it.copy(
@@ -252,6 +257,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startSpotifyPolling() {
+        // La sorgente segue la SCELTA esplicita: il Web API si usa solo in modalità Premium.
+        if (_uiState.value.connectedServices["spotify"] != true) return
         if (!SpotifyAuthRepository.isAuthorized) return
         if (spotifyPollingJob?.isActive == true) return
         spotifyPollingJob = viewModelScope.launch {
@@ -361,34 +368,39 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
+    // La sorgente segue la SCELTA: le notifiche Spotify alimentano la live SOLO in
+    // modalità Free (anche se sono presenti token Premium, non vengono usati).
+    private fun isSpotifyFreeMode() = _uiState.value.connectedServices["spotify_free"] == true
+
     private fun registerSpotifyNotificationListenerCallbacks() {
         com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
-            // Usa solo come fallback se il Web API non sta già fornendo dati
-            if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
+            if (isSpotifyFreeMode()) {
                 updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl)
             }
         }
         com.example.SpotifyNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
-            if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
+            if (isSpotifyFreeMode()) {
                 updateLiveProgress(positionMs, durationMs)
             }
         }
         com.example.SpotifyNotificationListenerService.onPlaybackStopped = {
-            if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
+            if (isSpotifyFreeMode()) {
                 clearNowPlayingFromBroadcast()
             }
         }
     }
 
+    private fun isAmazonMode() = _uiState.value.connectedServices["amazon_music"] == true
+
     private fun registerAmazonMusicNotificationListenerCallbacks() {
         com.example.AmazonMusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
-            updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl)
+            if (isAmazonMode()) updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl)
         }
         com.example.AmazonMusicNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
-            updateLiveProgress(positionMs, durationMs)
+            if (isAmazonMode()) updateLiveProgress(positionMs, durationMs)
         }
         com.example.AmazonMusicNotificationListenerService.onPlaybackStopped = {
-            clearNowPlayingFromBroadcast()
+            if (isAmazonMode()) clearNowPlayingFromBroadcast()
         }
     }
 
@@ -568,6 +580,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val newState = !(currentServices[serviceKey] ?: false)
         currentServices[serviceKey] = newState
         persistServiceState(serviceKey, newState)
+
+        // Passando a Spotify Free la sorgente diventa le notifiche: ferma il polling
+        // del Web API (anche se esistono token Premium) così non legge da API.
+        if (serviceKey == "spotify_free" && newState) {
+            stopSpotifyPolling()
+        }
 
         val serviceName = when (serviceKey) {
             "amazon_music" -> "Amazon Music"
