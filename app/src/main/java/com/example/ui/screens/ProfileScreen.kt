@@ -725,40 +725,42 @@ private fun SharedTracks3DCarousel(
             return@Column
         }
 
+        // Scorrimento infinito ad anello
+        val loopSize = Int.MAX_VALUE
+        val startPage = loopSize / 2 - (loopSize / 2) % tracks.size
+
         val pagerState = rememberPagerState(
-            initialPage = if (tracks.size > 1) 1 else 0,
-            pageCount = { tracks.size }
+            initialPage = startPage + 1,
+            pageCount = { loopSize }
         )
 
         HorizontalPager(
             state = pagerState,
-            contentPadding = PaddingValues(horizontal = 70.dp),
-            pageSpacing = 14.dp,
+            contentPadding = PaddingValues(horizontal = 52.dp),
+            pageSpacing = 10.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(210.dp)
+                .height(215.dp)
         ) { page ->
-            val track = tracks[page]
+            val track = tracks[page % tracks.size]
             val rawOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
             val absOffset = abs(rawOffset).coerceIn(0f, 1f)
             val isCenter = absOffset < 0.5f
 
-            // tilt Z sul piano (card inclinate lateralmente, non in 3D)
-            val rotZ = (-rawOffset.coerceIn(-1f, 1f)) * 13f
-            val scale = androidx.compose.ui.util.lerp(0.80f, 1f, 1f - absOffset)
-            val itemAlpha = androidx.compose.ui.util.lerp(0.55f, 1f, 1f - absOffset)
+            val rotZ = rawOffset.coerceIn(-1f, 1f) * 14f
+            val scale = androidx.compose.ui.util.lerp(0.82f, 1f, 1f - absOffset)
+            val itemAlpha = androidx.compose.ui.util.lerp(0.50f, 1f, 1f - absOffset)
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .zIndex(1f - absOffset)
+                    .zIndex(if (isCenter) 1f else 0f)
                     .graphicsLayer {
                         rotationZ = rotZ
                         scaleX = scale
                         scaleY = scale
                         alpha = itemAlpha
-                        // card laterali leggermente abbassate per effetto "fan"
-                        translationY = absOffset * 18f * density
+                        translationY = absOffset * 16f * density
                     }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -773,14 +775,14 @@ private fun SharedTracks3DCarousel(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(130.dp)
+                            .size(128.dp)
                             .shadow(
-                                elevation = if (isCenter) 24.dp else 0.dp,
-                                shape = RoundedCornerShape(16.dp),
+                                elevation = if (isCenter) 28.dp else 0.dp,
+                                shape = RoundedCornerShape(14.dp),
                                 ambientColor = Color.Black,
                                 spotColor = Color.Black
                             )
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(14.dp))
                     ) {
                         AsyncImage(
                             model = track.coverUrl,
@@ -788,16 +790,15 @@ private fun SharedTracks3DCarousel(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
-                        // scuro sottile in basso per leggibilità testo
                         if (isCenter) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .height(48.dp)
+                                    .height(52.dp)
                                     .align(Alignment.BottomCenter)
                                     .background(
                                         Brush.verticalGradient(
-                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
+                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
                                         )
                                     )
                             )
@@ -820,7 +821,7 @@ private fun SharedTracks3DCarousel(
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = track.artist,
-                            color = SubtitleGray.copy(alpha = 0.7f),
+                            color = SubtitleGray.copy(alpha = 0.65f),
                             fontSize = 11.sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,

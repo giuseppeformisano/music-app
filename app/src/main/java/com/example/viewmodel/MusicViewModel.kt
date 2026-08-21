@@ -597,10 +597,11 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         }
         val notif = androidx.core.app.NotificationCompat.Builder(appContext, FRIEND_REQUEST_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_my_calendar)
+            .setSmallIcon(com.example.R.drawable.ic_stat_notification)
             .setContentTitle("Nuova richiesta di follow")
             .setContentText("@${request.fromUserUsername} vuole seguirti")
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+            .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
             .setAutoCancel(true)
             .build()
         androidx.core.app.NotificationManagerCompat.from(appContext)
