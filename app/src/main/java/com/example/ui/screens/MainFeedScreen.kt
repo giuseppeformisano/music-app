@@ -61,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -101,8 +102,11 @@ import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
 import com.example.ui.theme.Zinc400
 import com.example.ui.theme.Zinc900
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.pow
+import kotlin.math.sin
 
 /**
  * Transizione a Veneziana Orizzontale con BLUR dinamico tra Feed e Live
@@ -145,6 +149,33 @@ fun MainFeedScreen(
 ) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
+    
+    // Stato per la transizione Supernova: utenti in arrivo con animazione
+    val arrivingUsers = remember { mutableStateListOf<User>() }
+    val completedUsers = remember { mutableStateListOf<User>() }
+    
+    // Rileva nuovi utenti live che entrano nella lista
+    LaunchedEffect(stories.size) {
+        val currentLiveIds = stories.filter { it.currentTrack != null && !it.isCurrentUser }.map { it.id }.toSet()
+        val previousLiveIds = (completedUsers + arrivingUsers).map { it.id }.toSet()
+        
+        val newUsers = stories.filter { 
+            it.currentTrack != null && 
+            !it.isCurrentUser && 
+            it.id !in previousLiveIds 
+        }
+        
+        if (newUsers.isNotEmpty()) {
+            arrivingUsers.addAll(newUsers)
+            // Dopo l'animazione di supernova (1.8s), sposta gli utenti alla lista completa
+            delay(1800)
+            completedUsers.addAll(newUsers)
+            arrivingUsers.removeAll(newUsers)
+        }
+    }
+    
+    // Unisci utenti completati + nuovi arrivati per il rendering
+    val allLiveUsers = (completedUsers + arrivingUsers).distinctBy { it.id }
 
     val currentPageEnum = if (pagerState.currentPage == 0) NavigationPage.LIVE else NavigationPage.FEED
 
@@ -186,10 +217,11 @@ fun MainFeedScreen(
                         .venetianBlindBlurTransition(page = page, pagerState = pagerState)
                 ) {
                     if (page == 0) {
-                        // PAGINA 0: SCHERMATA LIVE CON VINYL GLOW
+                        // PAGINA 0: SCHERMATA LIVE CON VINYL GLOW E TRANSIZIONE SUPERNOVA
                         LivePageContent(
                             currentUser = currentUser,
-                            liveUsers = stories.filter { it.currentTrack != null && !it.isCurrentUser },
+                            liveUsers = allLiveUsers,
+                            arrivingUsers = arrivingUsers,
                             onSelectLiveUser = onOpenLiveDetail,
                             onOpenProfile = onOpenProfile
                         )
@@ -455,11 +487,15 @@ private fun FeedMinimalPost(
 private fun LivePageContent(
     currentUser: User,
     liveUsers: List<User>,
+    arrivingUsers: List<User> = emptyList(),
     onSelectLiveUser: (User) -> Unit,
     onOpenProfile: (User) -> Unit
 ) {
     val myTrack = currentUser.currentTrack
     val iAmLive = myTrack != null
+    
+    // Separa gli utenti in arrivo da quelli già stabilizzati
+    val stabilizedUsers = liveUsers.filter { it.id !in arrivingUsers.map { u -> u.id } }
 
     Box(
         modifier = Modifier
@@ -510,7 +546,20 @@ private fun LivePageContent(
                             topPadding = if (iAmLive) 12.dp else 0.dp
                         )
                     }
-                    items(liveUsers, key = { it.id }) { user ->
+                    // Prima mostra gli utenti in arrivo con animazione Supernova
+                    arrivingUsers.forEach { user ->
+                        val track = user.currentTrack ?: return@forEach
+                        item(key = "arriving_${user.id}") {
+                            SupernovaEntranceItem(
+                                user = user,
+                                track = track,
+                                onClick = { onSelectLiveUser(user) },
+                                onProfileClick = { onOpenProfile(user) }
+                            )
+                        }
+                    }
+                    // Poi mostra gli utenti già stabilizzati
+                    items(stabilizedUsers, key = { it.id }) { user ->
                         val track = user.currentTrack ?: return@items
                         LiveUserMinimalItem(
                             user = user,
@@ -1670,6 +1719,236 @@ private fun LiveUserMinimalItem(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .zIndex(12f)
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Animazione Supernova per l'ingresso di nuovi utenti nella lista Live:
+ * - Esplosione cromatica iniziale con flash bianco accecante
+ * - Particelle di luce che si espandono radialmente
+ * - Dissolvenza progressiva verso la normale visualizzazione del brano
+ * - Durata totale: 1.8 secondi
+ */
+@Composable
+private fun SupernovaEntranceItem(
+    user: User,
+    track: Track,
+    onClick: () -> Unit,
+    onProfileClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val entranceProgress = remember { Animatable(0f) }
+    val infiniteTransition = rememberInfiniteTransition(label = "supernova_glow")
+    
+    // Animazione di ingresso: esplosione supernova in 1.8s
+    LaunchedEffect(Unit) {
+        entranceProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = tween(
+                durationMillis = 1800,
+                easing = FastOutSlowInEasing
+            )
+        )
+    }
+    
+    // Estrai i colori dinamici dal brano
+    val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex, track.genre) {
+        extractDynamicTrackGlowColors(track)
+    }
+    
+    // Calcola l'alpha e la scala basati sul progresso dell'animazione
+    val scale by animateFloatAsState(
+        targetValue = if (entranceProgress.value < 0.3f) 0.6f + (entranceProgress.value / 0.3f) * 0.4f else 1f,
+        label = "supernova_scale"
+    )
+    
+    val alpha by animateFloatAsState(
+        targetValue = if (entranceProgress.value < 0.15f) entranceProgress.value / 0.15f else 1f,
+        label = "supernova_alpha"
+    )
+    
+    // Flash bianco iniziale (primi 0.3s)
+    val flashIntensity = remember(entranceProgress.value) {
+        if (entranceProgress.value < 0.3f) {
+            (1f - entranceProgress.value / 0.3f).coerceIn(0f, 1f)
+        } else 0f
+    }
+    
+    // Espansione particellare (0.2s - 1.0s)
+    val particleExpansion by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 600,
+                easing = LinearEasing
+            ),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "particle_expansion"
+    )
+    
+    val formattedUsername = if (user.username.startsWith("@")) user.username else "@${user.username}"
+    
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(BlackPitch)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(color = PureWhite.copy(alpha = 0.08f)),
+                onClick = onClick
+            )
+            .padding(horizontal = 6.dp, vertical = 8.dp)
+            .graphicsLayer {
+                this.scaleX = scale
+                this.scaleY = scale
+                this.alpha = alpha
+            }
+            .testTag("live_item_arriving_${user.id}")
+    ) {
+        // Effetto flash bianco accecante iniziale
+        if (flashIntensity > 0.01f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White.copy(alpha = flashIntensity * 0.95f))
+                    .zIndex(100f)
+            )
+        }
+        
+        // Alone luminoso espansivo (supernova glow)
+        Canvas(
+            modifier = Modifier
+                .fillMaxSize()
+                .zIndex(50f)
+        ) {
+            val centerX = size.width / 2f
+            val centerY = size.height / 2f
+            val maxRadius = size.width * 0.8f
+            
+            // Fase di espansione della supernova
+            if (entranceProgress.value in 0.1f..0.7f) {
+                val expansionPhase = ((entranceProgress.value - 0.1f) / 0.6f).coerceIn(0f, 1f)
+                val currentRadius = maxRadius * expansionPhase
+                
+                // Gradiente radiale esplosivo
+                val gradientCenterOffset = Offset(centerX, centerY)
+                val gradientRadius = currentRadius * (1f + particleExpansion * 0.3f)
+                
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            primaryColor.copy(alpha = 0.8f * (1f - expansionPhase)),
+                            secondaryColor.copy(alpha = 0.5f * (1f - expansionPhase)),
+                            Color.Transparent
+                        ),
+                        center = gradientCenterOffset,
+                        radius = gradientRadius
+                    ),
+                    center = gradientCenterOffset,
+                    radius = gradientRadius
+                )
+                
+                // Particelle di luce secondarie
+                for (i in 0 until 8) {
+                    val angle = (i.toFloat() / 8f) * 360f + (particleExpansion * 360f)
+                    val particleDistance = currentRadius * 0.7f
+                    val particleX = centerX + kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat() * particleDistance
+                    val particleY = centerY + kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat() * particleDistance
+                    
+                    drawCircle(
+                        color = primaryColor.copy(alpha = 0.6f * (1f - expansionPhase)),
+                        radius = 4f * (1f - expansionPhase),
+                        center = Offset(particleX, particleY)
+                    )
+                }
+            }
+        }
+        
+        // Contenuto principale (avatar + info brano)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(62.dp)
+                .padding(start = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Avatar utente con bordo colorato dinamico
+            Box(
+                modifier = Modifier
+                    .size(58.dp)
+                    .clip(CircleShape)
+                    .border(
+                        width = 2.dp,
+                        brush = Brush.linearGradient(
+                            colors = listOf(primaryColor, secondaryColor)
+                        ),
+                        shape = CircleShape
+                    )
+                    .background(Zinc900)
+            ) {
+                AsyncImage(
+                    model = user.avatarUrl,
+                    contentDescription = "Avatar ${user.name}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape)
+                        .padding(2.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(14.dp))
+            
+            // Info brano
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = track.title,
+                    color = PureWhite,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.2).sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = track.artist,
+                    color = Zinc400,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Normal,
+                    letterSpacing = 0.1.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            
+            // Badge LIVE pulsante
+            Box(
+                modifier = Modifier
+                    .padding(end = 8.dp)
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(PureWhite.copy(alpha = 0.06f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFFF3B30))
+                        .graphicsLayer {
+                            this.scaleX = 1f + sin(particleExpansion * 360f * Math.PI.toFloat() / 180f) * 0.15f
+                            this.scaleY = 1f + sin(particleExpansion * 360f * Math.PI.toFloat() / 180f) * 0.15f
+                        }
                 )
             }
         }
