@@ -14,8 +14,21 @@ object SpotifyWebApiRepository {
     private const val TAG = "SpotifyWebApi"
     private val client = OkHttpClient()
 
-    suspend fun getCurrentlyPlaying(context: Context): Track? = withContext(Dispatchers.IO) {
-        val token = SpotifyAuthRepository.getValidAccessToken(context) ?: return@withContext null
+    /**
+     * Esito distinto per non azzerare la live su errori transitori:
+     * - Playing: brano in riproduzione
+     * - NotPlaying: Spotify conferma che non suona nulla (204 / is_playing=false)
+     * - Unknown: errore/rete/token — stato ignoto, NON modificare la live
+     */
+    sealed class PlaybackResult {
+        data class Playing(val track: Track) : PlaybackResult()
+        object NotPlaying : PlaybackResult()
+        object Unknown : PlaybackResult()
+    }
+
+    suspend fun getCurrentlyPlaying(context: Context): PlaybackResult = withContext(Dispatchers.IO) {
+        val token = SpotifyAuthRepository.getValidAccessToken(context)
+            ?: return@withContext PlaybackResult.Unknown
         try {
             val response = client.newCall(
                 Request.Builder()
@@ -26,18 +39,22 @@ object SpotifyWebApiRepository {
 
             if (response.code == 204) {
                 Log.d(TAG, "getCurrentlyPlaying: 204 niente in riproduzione")
-                return@withContext null
+                return@withContext PlaybackResult.NotPlaying
             }
             if (!response.isSuccessful) {
                 val errorBody = response.body?.string() ?: ""
                 Log.e(TAG, "getCurrentlyPlaying: HTTP ${response.code} — $errorBody")
-                return@withContext null
+                // Errore server/auth: stato ignoto, non azzerare la live
+                return@withContext PlaybackResult.Unknown
             }
-            val body = response.body?.string() ?: return@withContext null
-            parseTrack(body)
+            val body = response.body?.string() ?: return@withContext PlaybackResult.Unknown
+            val track = parseTrack(body)
+            // parseTrack ritorna null se is_playing=false → NotPlaying; altrimenti Playing
+            if (track != null) PlaybackResult.Playing(track) else PlaybackResult.NotPlaying
         } catch (e: Exception) {
             Log.e(TAG, "getCurrentlyPlaying error: ${e.message}")
-            null
+            // Rete/timeout/doze in background: stato ignoto, non azzerare la live
+            PlaybackResult.Unknown
         }
     }
 

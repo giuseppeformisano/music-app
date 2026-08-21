@@ -267,37 +267,45 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun fetchCurrentlyPlaying() {
-        val track = SpotifyWebApiRepository.getCurrentlyPlaying(appContext)
+        val result = SpotifyWebApiRepository.getCurrentlyPlaying(appContext)
         val currentTrackId = _uiState.value.nowPlayingTrack?.id
 
-        if (track == null) {
-            val hasLive = currentTrackId != null || _uiState.value.currentUser.currentTrack != null
-            if (!hasLive) { emptyPollCount = 0; return }
-            // Richiede 2 poll vuoti consecutivi (~6s) prima di azzerare: assorbe i 204
-            // transitori tra un brano e l'altro e i micro-errori di rete
-            emptyPollCount++
-            if (emptyPollCount < 2) return
-            emptyPollCount = 0
-            val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
-            _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
-            FirebaseRepository.syncCurrentUser(updatedUser)
-            return
-        }
+        when (result) {
+            // Errore/rete/token: stato ignoto → non toccare la live (evita che sparisca
+            // in background per un timeout o doze)
+            is SpotifyWebApiRepository.PlaybackResult.Unknown -> return
 
-        emptyPollCount = 0
-        if (track.id == currentTrackId) {
-            // Stesso brano ancora in riproduzione: heartbeat periodico per restare "fresco"
-            val now = System.currentTimeMillis()
-            if (now - lastLiveHeartbeat >= 25_000L) {
-                lastLiveHeartbeat = now
-                FirebaseRepository.touchLive(_uiState.value.currentUser.id)
+            // Spotify conferma che non suona nulla: azzera con debounce
+            is SpotifyWebApiRepository.PlaybackResult.NotPlaying -> {
+                val hasLive = currentTrackId != null || _uiState.value.currentUser.currentTrack != null
+                if (!hasLive) { emptyPollCount = 0; return }
+                // 2 conferme consecutive (~6s) prima di azzerare: assorbe i 204 tra brani
+                emptyPollCount++
+                if (emptyPollCount < 2) return
+                emptyPollCount = 0
+                val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
+                _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
+                FirebaseRepository.syncCurrentUser(updatedUser)
             }
-            return
+
+            is SpotifyWebApiRepository.PlaybackResult.Playing -> {
+                val track = result.track
+                emptyPollCount = 0
+                if (track.id == currentTrackId) {
+                    // Stesso brano ancora in riproduzione: heartbeat periodico per restare "fresco"
+                    val now = System.currentTimeMillis()
+                    if (now - lastLiveHeartbeat >= 25_000L) {
+                        lastLiveHeartbeat = now
+                        FirebaseRepository.touchLive(_uiState.value.currentUser.id)
+                    }
+                    return
+                }
+                lastLiveHeartbeat = System.currentTimeMillis()
+                val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
+                _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
+                FirebaseRepository.syncCurrentUser(updatedUser)
+            }
         }
-        lastLiveHeartbeat = System.currentTimeMillis()
-        val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
-        _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
-        FirebaseRepository.syncCurrentUser(updatedUser)
     }
 
     fun clearSpotifyError() {
