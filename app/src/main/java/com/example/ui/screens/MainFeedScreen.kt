@@ -1467,7 +1467,7 @@ private fun LiveUserMinimalItem(
             transitionProgress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
-                    durationMillis = 2800,
+                    durationMillis = 2000,
                     easing = LinearEasing
                 )
             )
@@ -1804,7 +1804,7 @@ private fun SupernovaEntranceItem(
     }
     LaunchedEffect(user.id) {
         entrance.snapTo(0f)
-        entrance.animateTo(1f, tween(if (fast) 500 else 2000, easing = FastOutSlowInEasing))
+        entrance.animateTo(1f, tween(if (fast) 700 else 2000, easing = FastOutSlowInEasing))
         onComplete()
     }
     val e = entrance.value
