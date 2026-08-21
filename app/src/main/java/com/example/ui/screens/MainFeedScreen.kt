@@ -155,13 +155,12 @@ fun MainFeedScreen(
     // L'animazione d'ingresso è pilotata SOLO dagli ID: i dati (brano/artista/utente)
     // restano sempre aggiornati e non si "congelano".
     val seenLiveIds = remember { mutableStateListOf<String>() }
-    var liveSeeded by remember { mutableStateOf(false) }
-    LaunchedEffect(liveFriends.isNotEmpty()) {
-        // All'apertura gli utenti già live NON animano; animano solo i nuovi arrivi
-        if (!liveSeeded && liveFriends.isNotEmpty()) {
-            seenLiveIds.addAll(liveFriends.map { it.id })
-            liveSeeded = true
-        }
+    // Seed UNA sola volta all'apertura: marca "già visti" SOLO gli utenti live presenti
+    // in quel momento. Chiunque vada live DOPO (anche il primo in assoluto) anima l'ingresso.
+    LaunchedEffect(Unit) {
+        seenLiveIds.addAll(
+            stories.filter { it.currentTrack != null && !it.isCurrentUser }.map { it.id }
+        )
     }
 
     val currentPageEnum = if (pagerState.currentPage == 0) NavigationPage.LIVE else NavigationPage.FEED
@@ -1757,13 +1756,13 @@ private fun SupernovaEntranceItem(
     // (onComplete) diventa un item normale. I dati restano sempre freschi.
     LaunchedEffect(user.id) {
         entrance.snapTo(0f)
-        entrance.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+        entrance.animateTo(1f, tween(1100, easing = FastOutSlowInEasing))
         onComplete()
     }
     val p = entrance.value
-    val scale = 0.90f + 0.10f * p
-    val itemAlpha = p.coerceIn(0f, 1f)
-    val flash = (1f - p / 0.35f).coerceIn(0f, 1f)
+    val scale = 0.70f + 0.30f * p
+    val itemAlpha = (p / 0.2f).coerceIn(0f, 1f)
+    val flash = (1f - p / 0.40f).coerceIn(0f, 1f)
     val glow = (1f - kotlin.math.abs(p - 0.45f) / 0.45f).coerceIn(0f, 1f)
 
     Box(
@@ -1773,7 +1772,7 @@ private fun SupernovaEntranceItem(
                 alpha = itemAlpha
                 scaleX = scale
                 scaleY = scale
-                translationY = (1f - p) * 22f * density
+                translationY = (1f - p) * 44f * density
             }
             .testTag("live_item_arriving_${user.id}")
     ) {
@@ -1806,7 +1805,7 @@ private fun SupernovaEntranceItem(
             Box(
                 modifier = Modifier
                     .matchParentSize()
-                    .background(Color.White.copy(alpha = flash * 0.30f), RoundedCornerShape(16.dp))
+                    .background(Color.White.copy(alpha = flash * 0.45f), RoundedCornerShape(16.dp))
             )
         }
     }
