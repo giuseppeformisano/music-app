@@ -278,8 +278,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
         when (result) {
             // Errore/rete/token: stato ignoto → non toccare la live (evita che sparisca
-            // in background per un timeout o doze)
-            is SpotifyWebApiRepository.PlaybackResult.Unknown -> return
+            // in background per un timeout o doze). Se c'è un errore di auth/permessi
+            // (es. 403) lo mostro all'utente invece di fallire in silenzio.
+            is SpotifyWebApiRepository.PlaybackResult.Unknown -> {
+                result.error?.let { msg ->
+                    if (_uiState.value.spotifyError != msg) {
+                        _uiState.update { it.copy(spotifyError = msg) }
+                    }
+                }
+                return
+            }
 
             // Spotify conferma che non suona nulla: azzera con debounce
             is SpotifyWebApiRepository.PlaybackResult.NotPlaying -> {
@@ -297,6 +305,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             is SpotifyWebApiRepository.PlaybackResult.Playing -> {
                 val track = result.track
                 emptyPollCount = 0
+                if (_uiState.value.spotifyError != null) {
+                    _uiState.update { it.copy(spotifyError = null) }
+                }
                 val now = System.currentTimeMillis()
                 if (track.id == currentTrackId) {
                     // Stesso brano: heartbeat + riallineo la posizione reale (assorbe seek/pausa)

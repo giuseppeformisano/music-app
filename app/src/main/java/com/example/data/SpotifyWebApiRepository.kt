@@ -23,42 +23,59 @@ object SpotifyWebApiRepository {
     sealed class PlaybackResult {
         data class Playing(val track: Track, val progressMs: Long) : PlaybackResult()
         object NotPlaying : PlaybackResult()
-        object Unknown : PlaybackResult()
+        // error != null quando c'è un problema di auth/permessi da mostrare all'utente
+        // (es. 403 = account non abilitato nell'app). null = errore transitorio (rete).
+        data class Unknown(val error: String? = null) : PlaybackResult()
+    }
+
+    private data class HttpResult(val code: Int, val body: String?)
+
+    private fun get(url: String, token: String): HttpResult {
+        val resp = client.newCall(
+            Request.Builder().url(url).header("Authorization", "Bearer $token").build()
+        ).execute()
+        return HttpResult(resp.code, resp.body?.string())
     }
 
     suspend fun getCurrentlyPlaying(context: Context): PlaybackResult = withContext(Dispatchers.IO) {
         try {
             val token = SpotifyAuthRepository.getValidAccessToken(context)
-                ?: return@withContext PlaybackResult.Unknown
-            val response = client.newCall(
-                Request.Builder()
-                    .url("https://api.spotify.com/v1/me/player/currently-playing")
-                    .header("Authorization", "Bearer $token")
-                    .build()
-            ).execute()
+                ?: return@withContext PlaybackResult.Unknown("Sessione Spotify assente: ricollega l'account")
 
-            if (response.code == 204) {
-                Log.d(TAG, "getCurrentlyPlaying: 204 niente in riproduzione")
-                return@withContext PlaybackResult.NotPlaying
+            // Passo 1: currently-playing
+            val r1 = get("https://api.spotify.com/v1/me/player/currently-playing", token)
+            authError(r1.code)?.let { return@withContext PlaybackResult.Unknown(it) }
+            if (r1.code != 204 && r1.code in 200..299 && r1.body != null) {
+                parsePlayback(r1.body)?.let { return@withContext it }
             }
-            if (!response.isSuccessful) {
-                val errorBody = response.body?.string() ?: ""
-                Log.e(TAG, "getCurrentlyPlaying: HTTP ${response.code} — $errorBody")
-                // Errore server/auth: stato ignoto, non azzerare la live
-                return@withContext PlaybackResult.Unknown
+
+            // Passo 2 - Fallback: /v1/me/player, più affidabile, riporta anche il device attivo
+            val r2 = get("https://api.spotify.com/v1/me/player", token)
+            authError(r2.code)?.let { return@withContext PlaybackResult.Unknown(it) }
+            if (r2.code == 204) return@withContext PlaybackResult.NotPlaying
+            if (r2.code in 200..299 && r2.body != null) {
+                parsePlayback(r2.body)?.let { return@withContext it }
             }
-            val body = response.body?.string() ?: return@withContext PlaybackResult.Unknown
-            val track = parseTrack(body)
-            // parseTrack ritorna null se is_playing=false → NotPlaying; altrimenti Playing
-            if (track != null) {
-                val progressMs = JSONObject(body).optLong("progress_ms", 0L)
-                PlaybackResult.Playing(track, progressMs)
-            } else PlaybackResult.NotPlaying
+
+            // 204 su currently-playing e nessun device attivo → davvero nulla in play
+            if (r1.code == 204) PlaybackResult.NotPlaying else PlaybackResult.Unknown()
         } catch (e: Exception) {
             Log.e(TAG, "getCurrentlyPlaying error: ${e.message}")
-            // Rete/timeout/doze in background: stato ignoto, non azzerare la live
-            PlaybackResult.Unknown
+            PlaybackResult.Unknown() // transitorio: non toccare la live
         }
+    }
+
+    // Messaggio utente per errori di autorizzazione; null se non è un errore auth
+    private fun authError(code: Int): String? = when (code) {
+        401 -> "Sessione Spotify scaduta: ricollega l'account"
+        403 -> "Spotify 403: aggiungi il tuo account tra gli utenti dell'app nel Developer Dashboard (o esci dalla Development Mode)"
+        else -> null
+    }
+
+    private fun parsePlayback(body: String): PlaybackResult? {
+        val track = parseTrack(body) ?: return null
+        val progressMs = JSONObject(body).optLong("progress_ms", 0L)
+        return PlaybackResult.Playing(track, progressMs)
     }
 
     private fun parseTrack(json: String): Track? {
