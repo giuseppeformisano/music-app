@@ -1390,9 +1390,11 @@ private fun ConnectAccountsDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
+                // Scelta unica in base al tipo di account: ognuna avvia il proprio flusso,
+                // ma entrambe alimentano la stessa sorgente "currentTrack" unificata.
                 StreamingAccountItem(
-                    serviceName = "Spotify",
-                    serviceDesc = "Ascolti live in tempo reale & top tracks",
+                    serviceName = "Spotify Premium",
+                    serviceDesc = "Collega l'account: dati in tempo reale via API",
                     isConnected = connectedServices["spotify"] == true,
                     brandColor = Color(0xFF1DB954),
                     iconComposable = { SpotifyBrandLogo() },
@@ -1400,7 +1402,7 @@ private fun ConnectAccountsDialog(
                         if (connectedServices["spotify"] == true) onDisconnectSpotify()
                         else onConnectSpotify()
                     },
-                    testTag = "service_spotify"
+                    testTag = "service_spotify_premium"
                 )
 
                 if (spotifyError != null) {
@@ -1415,6 +1417,18 @@ private fun ConnectAccountsDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 StreamingAccountItem(
+                    serviceName = "Spotify Free",
+                    serviceDesc = "Rileva l'ascolto dalle notifiche",
+                    isConnected = isNotificationListenerEnabled,
+                    brandColor = Color(0xFF1DB954),
+                    iconComposable = { SpotifyBrandLogo() },
+                    onToggle = { onEnableNotificationListener() },
+                    testTag = "service_spotify_free"
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                StreamingAccountItem(
                     serviceName = "Amazon Music",
                     serviceDesc = "Sincronizzazione Unlimited & HD",
                     isConnected = connectedServices["amazon_music"] == true,
@@ -1423,72 +1437,6 @@ private fun ConnectAccountsDialog(
                     onToggle = { onToggleService("amazon_music") },
                     testTag = "service_amazon_music"
                 )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Sezione: Rilevamento notifiche per account Free
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(PureWhite.copy(alpha = 0.06f))
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = "Rilevamento notifiche",
-                            color = PureWhite,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                        Text(
-                            text = if (isNotificationListenerEnabled)
-                                "Attivo — funziona con Free e Premium"
-                            else
-                                "Alternativa per account Free",
-                            color = if (isNotificationListenerEnabled)
-                                Color(0xFF1DB954)
-                            else
-                                SubtitleGray.copy(alpha = 0.6f),
-                            fontSize = 12.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(12.dp))
-                    if (!isNotificationListenerEnabled) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(PureWhite.copy(alpha = 0.08f))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = onEnableNotificationListener
-                                )
-                                .padding(horizontal = 14.dp, vertical = 7.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "Abilita",
-                                color = PureWhite,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    } else {
-                        Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Check,
-                            contentDescription = null,
-                            tint = Color(0xFF1DB954),
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
 
                 Spacer(modifier = Modifier.height(4.dp))
             }
