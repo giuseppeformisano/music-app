@@ -162,36 +162,37 @@ fun MainFeedScreen(
     // app) usa l'entrata piena (2s). Legato al tempo, non al "primo che appare".
     val screenOpenAt = remember { System.currentTimeMillis() }
 
-    // Uscita: quando un amico (già visto) smette di ascoltare, esce con animazione (2s)
-    // e solo dopo sparisce. Teniamo l'ultimo stato noto per animare con i suoi dati.
+    // Ultimo stato noto di ogni amico live (per animare l'uscita con i suoi dati) e
+    // ordine di apparizione (nuovi IN FONDO). L'uscita è decisa in modo SINCRONO in
+    // displayLive (nessun frame di "buco" che farebbe scattare gli altri).
     val lastKnownLive = remember { mutableStateMapOf<String, User>() }
-    val departingUsers = remember { mutableStateMapOf<String, User>() }
-    // Ordine di apparizione: i nuovi amici vengono aggiunti IN FONDO. Chi esce resta
-    // nell'ordine (in posizione) finché finisce l'animazione di uscita.
     val liveOrder = remember { mutableStateListOf<String>() }
     val liveKey = liveFriends.joinToString(",") { it.id }
     LaunchedEffect(liveKey) {
-        val currentIds = liveFriends.map { it.id }.toSet()
-        // Chi era live (e già entrato) e ora non c'è più → avvia l'uscita
-        lastKnownLive.keys.toList().forEach { id ->
-            if (id !in currentIds && id !in departingUsers && id in seenLiveIds) {
-                lastKnownLive[id]?.let { departingUsers[id] = it }
+        // Aggiorna dati freschi + aggiungi i nuovi in fondo all'ordine
+        liveFriends.forEach { u ->
+            lastKnownLive[u.id] = u
+            if (u.id !in liveOrder) liveOrder.add(u.id)
+        }
+        // Chi sparisce ma NON era ancora "entrato" (in animazione d'ingresso) → via subito,
+        // senza animazione d'uscita. Chi era già "visto" resta e farà l'uscita.
+        liveOrder.toList().forEach { id ->
+            val stillLive = liveFriends.any { it.id == id }
+            if (!stillLive && id !in seenLiveIds) {
+                liveOrder.remove(id); lastKnownLive.remove(id)
             }
         }
-        // Aggiorna l'ultimo stato noto con i dati freschi dei live correnti
-        liveFriends.forEach { lastKnownLive[it.id] = it }
-        lastKnownLive.keys.toList().forEach { id ->
-            if (id !in currentIds && id !in departingUsers) lastKnownLive.remove(id)
-        }
-        // Ordine: aggiungi i nuovi in fondo; togli chi non è né live né in uscita
-        liveFriends.forEach { if (it.id !in liveOrder) liveOrder.add(it.id) }
-        liveOrder.removeAll { it !in currentIds && it !in departingUsers }
     }
 
-    // Lista da mostrare, in ordine di apparizione: (utente, inUscita?)
+    // Lista da mostrare, in ordine di apparizione: (utente, inUscita?). SINCRONO:
+    // se un id non è più tra i live ma era già "visto", diventa subito "in uscita".
     val displayLive: List<Pair<User, Boolean>> = liveOrder.mapNotNull { id ->
-        departingUsers[id]?.let { it to true }
-            ?: liveFriends.firstOrNull { it.id == id }?.let { it to false }
+        val fresh = liveFriends.firstOrNull { it.id == id }
+        when {
+            fresh != null -> fresh to false
+            id in seenLiveIds && lastKnownLive[id] != null -> lastKnownLive[id]!! to true
+            else -> null
+        }
     }
 
     val currentPageEnum = if (pagerState.currentPage == 0) NavigationPage.LIVE else NavigationPage.FEED
@@ -242,9 +243,9 @@ fun MainFeedScreen(
                             screenOpenAtMs = screenOpenAt,
                             onUserSeen = { id -> if (id !in seenLiveIds) seenLiveIds.add(id) },
                             onExitComplete = { id ->
-                                departingUsers.remove(id)
-                                seenLiveIds.remove(id)
+                                liveOrder.remove(id)
                                 lastKnownLive.remove(id)
+                                seenLiveIds.remove(id)
                             },
                             onSelectLiveUser = onOpenLiveDetail,
                             onOpenProfile = onOpenProfile
