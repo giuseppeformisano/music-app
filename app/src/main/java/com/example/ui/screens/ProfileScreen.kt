@@ -730,14 +730,14 @@ private fun SharedTracks3DCarousel(
 
         HorizontalPager(
             state = pagerState,
-            contentPadding = PaddingValues(horizontal = 56.dp),
-            pageSpacing = 14.dp,
+            contentPadding = PaddingValues(horizontal = 68.dp),
+            pageSpacing = (-16).dp,   // sovrapposizione lieve per effetto depth
             modifier = Modifier
                 .fillMaxWidth()
-                .height(196.dp)
+                .height(210.dp)
         ) { page ->
             val track = tracks[page % size]
-            // Offset rispetto alla pagina corrente (-1=sinistra, 0=centro, +1=destra)
+            // rawOffset: 0=centro, +1=sinistra, -1=destra (continuo durante il drag)
             val rawOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
                 .coerceIn(-1f, 1f)
             val absOffset = abs(rawOffset)
@@ -746,23 +746,26 @@ private fun SharedTracks3DCarousel(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .zIndex(if (isCenter) 1f else 0f)
+                    .zIndex(1f - absOffset)
                     .graphicsLayer {
-                        // 3D: rotationY ruota attorno all'asse verticale (prospettiva reale)
-                        rotationY = rawOffset * 38f
-                        cameraDistance = 10f * density
-                        scaleX = androidx.compose.ui.util.lerp(0.82f, 1f, 1f - absOffset)
-                        scaleY = androidx.compose.ui.util.lerp(0.82f, 1f, 1f - absOffset)
-                        alpha = androidx.compose.ui.util.lerp(0.48f, 1f, 1f - absOffset)
-                        translationY = absOffset * 14f * density
+                        // CoverFlow 3D: rotationY + cameraDistance danno prospettiva reale
+                        rotationY = rawOffset * 52f
+                        cameraDistance = 7.5f * density
+                        // Le card laterali scalano e retrocedono (depth)
+                        val sc = androidx.compose.ui.util.lerp(0.78f, 1f, 1f - absOffset)
+                        scaleX = sc; scaleY = sc
+                        alpha = androidx.compose.ui.util.lerp(0.42f, 1f, 1f - absOffset)
+                        // Spostamento verso il centro (le card si avvicinano ruotando)
+                        translationX = rawOffset * size.width * 0.06f
+                        translationY = absOffset * 18f * density
                     }
                     .shadow(
-                        elevation = if (isCenter) 28.dp else 0.dp,
-                        shape = RoundedCornerShape(14.dp),
+                        elevation = if (isCenter) 32.dp else 0.dp,
+                        shape = RoundedCornerShape(16.dp),
                         ambientColor = Color.Black,
                         spotColor = Color.Black
                     )
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -775,15 +778,16 @@ private fun SharedTracks3DCarousel(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
+                // Gradient scuro solo sulla card centrale
                 if (isCenter) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp)
+                            .height(60.dp)
                             .align(Alignment.BottomCenter)
                             .background(
                                 Brush.verticalGradient(
-                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
+                                    listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
                                 )
                             )
                     )

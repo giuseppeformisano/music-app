@@ -130,7 +130,7 @@ fun LiveDetailScreen(
     )
 
     // Timer e minutaggio dinamico
-    var elapsedSeconds by remember { mutableIntStateOf(112) }
+    var elapsedSeconds by remember { mutableIntStateOf(0) }
     val totalSeconds = remember(track.durationText) {
         val parts = track.durationText.split(":")
         if (parts.size == 2) {

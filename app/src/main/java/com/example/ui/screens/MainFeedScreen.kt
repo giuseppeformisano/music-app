@@ -187,7 +187,8 @@ fun MainFeedScreen(
                     if (page == 0) {
                         // PAGINA 0: SCHERMATA LIVE CON VINYL GLOW
                         LivePageContent(
-                            liveUsers = stories.filter { it.currentTrack != null },
+                            currentUser = currentUser,
+                            liveUsers = stories.filter { it.currentTrack != null && !it.isCurrentUser },
                             onSelectLiveUser = onOpenLiveDetail,
                             onOpenProfile = onOpenProfile
                         )
@@ -451,16 +452,20 @@ private fun FeedMinimalPost(
  */
 @Composable
 private fun LivePageContent(
+    currentUser: User,
     liveUsers: List<User>,
     onSelectLiveUser: (User) -> Unit,
     onOpenProfile: (User) -> Unit
 ) {
+    val myTrack = currentUser.currentTrack
+    val iAmLive = myTrack != null
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(BlackPitch)
     ) {
-        if (liveUsers.isEmpty()) {
+        if (!iAmLive && liveUsers.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -475,7 +480,6 @@ private fun LivePageContent(
                 )
             }
         } else {
-            // ================= 1. LISTA ASCOLTI LIVE SU SFONDO NERO PURO #000000 =================
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -483,6 +487,58 @@ private fun LivePageContent(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // ─── La mia live ───────────────────────────────────────────
+                if (iAmLive && myTrack != null) {
+                    item(key = "my_live_header") {
+                        Text(
+                            text = "LA TUA LIVE",
+                            color = PureWhite.copy(alpha = 0.35f),
+                            fontSize = 10.sp,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                            letterSpacing = 2.5.sp,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                    }
+                    item(key = "my_live") {
+                        LiveUserMinimalItem(
+                            user = currentUser,
+                            track = myTrack,
+                            onClick = { onSelectLiveUser(currentUser) },
+                            onProfileClick = { onOpenProfile(currentUser) }
+                        )
+                    }
+                    // Separatore visivo tra la mia e quelle degli altri
+                    if (liveUsers.isNotEmpty()) {
+                        item(key = "separator") {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(1.dp)
+                                        .background(PureWhite.copy(alpha = 0.07f))
+                                )
+                                Text(
+                                    text = "  ALTRI LIVE  ",
+                                    color = PureWhite.copy(alpha = 0.28f),
+                                    fontSize = 9.sp,
+                                    letterSpacing = 2.sp
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(1.dp)
+                                        .background(PureWhite.copy(alpha = 0.07f))
+                                )
+                            }
+                        }
+                    }
+                }
+                // ─── Live degli altri ──────────────────────────────────────
                 items(liveUsers, key = { it.id }) { user ->
                     val track = user.currentTrack ?: return@items
                     LiveUserMinimalItem(
