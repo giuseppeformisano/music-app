@@ -166,6 +166,9 @@ fun MainFeedScreen(
     // e solo dopo sparisce. Teniamo l'ultimo stato noto per animare con i suoi dati.
     val lastKnownLive = remember { mutableStateMapOf<String, User>() }
     val departingUsers = remember { mutableStateMapOf<String, User>() }
+    // Ordine di apparizione: i nuovi amici vengono aggiunti IN FONDO. Chi esce resta
+    // nell'ordine (in posizione) finché finisce l'animazione di uscita.
+    val liveOrder = remember { mutableStateListOf<String>() }
     val liveKey = liveFriends.joinToString(",") { it.id }
     LaunchedEffect(liveKey) {
         val currentIds = liveFriends.map { it.id }.toSet()
@@ -177,10 +180,18 @@ fun MainFeedScreen(
         }
         // Aggiorna l'ultimo stato noto con i dati freschi dei live correnti
         liveFriends.forEach { lastKnownLive[it.id] = it }
-        // Pulizia: togli da lastKnownLive chi non è più né live né in uscita
         lastKnownLive.keys.toList().forEach { id ->
             if (id !in currentIds && id !in departingUsers) lastKnownLive.remove(id)
         }
+        // Ordine: aggiungi i nuovi in fondo; togli chi non è né live né in uscita
+        liveFriends.forEach { if (it.id !in liveOrder) liveOrder.add(it.id) }
+        liveOrder.removeAll { it !in currentIds && it !in departingUsers }
+    }
+
+    // Lista da mostrare, in ordine di apparizione: (utente, inUscita?)
+    val displayLive: List<Pair<User, Boolean>> = liveOrder.mapNotNull { id ->
+        departingUsers[id]?.let { it to true }
+            ?: liveFriends.firstOrNull { it.id == id }?.let { it to false }
     }
 
     val currentPageEnum = if (pagerState.currentPage == 0) NavigationPage.LIVE else NavigationPage.FEED
@@ -226,10 +237,9 @@ fun MainFeedScreen(
                         // PAGINA 0: SCHERMATA LIVE CON VINYL GLOW E TRANSIZIONE SUPERNOVA
                         LivePageContent(
                             currentUser = currentUser,
-                            liveUsers = liveFriends,
+                            displayLive = displayLive,
                             seenIds = seenLiveIds,
                             screenOpenAtMs = screenOpenAt,
-                            departing = departingUsers.values.toList(),
                             onUserSeen = { id -> if (id !in seenLiveIds) seenLiveIds.add(id) },
                             onExitComplete = { id ->
                                 departingUsers.remove(id)
@@ -517,10 +527,9 @@ private fun FeedMinimalPost(
 @Composable
 private fun LivePageContent(
     currentUser: User,
-    liveUsers: List<User>,
+    displayLive: List<Pair<User, Boolean>> = emptyList(),
     seenIds: List<String> = emptyList(),
     screenOpenAtMs: Long = 0L,
-    departing: List<User> = emptyList(),
     onUserSeen: (String) -> Unit = {},
     onExitComplete: (String) -> Unit = {},
     onSelectLiveUser: (User) -> Unit,
@@ -534,7 +543,7 @@ private fun LivePageContent(
             .fillMaxSize()
             .background(BlackPitch)
     ) {
-        if (!iAmLive && liveUsers.isEmpty() && departing.isEmpty()) {
+        if (!iAmLive && displayLive.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -571,44 +580,47 @@ private fun LivePageContent(
                     }
                 }
                 // ─── Live degli amici ──────────────────────────────────────
-                if (liveUsers.isNotEmpty() || departing.isNotEmpty()) {
+                if (displayLive.isNotEmpty()) {
                     item(key = "friends_live_header") {
                         LiveSectionHeader(
                             text = "FRIENDS LIVE",
                             topPadding = if (iAmLive) 12.dp else 0.dp
                         )
                     }
-                    // Unica lista (dati sempre freschi). I nuovi arrivi animano l'ingresso,
-                    // gli altri sono item normali; la decisione dipende SOLO dall'ID.
-                    items(liveUsers, key = { it.id }) { user ->
+                    // Unica lista ordinata per apparizione (nuovi in fondo). Ogni item ha
+                    // animateItem: quando uno esce, gli altri scorrono su in modo fluido.
+                    items(displayLive, key = { (u, _) -> u.id }) { (user, isDeparting) ->
                         val track = user.currentTrack ?: return@items
-                        if (user.id in seenIds) {
-                            LiveUserMinimalItem(
+                        val slideMod = Modifier.animateItem(
+                            fadeInSpec = null,
+                            fadeOutSpec = null,
+                            placementSpec = tween(400, easing = FastOutSlowInEasing)
+                        )
+                        when {
+                            isDeparting -> ExitingLiveItem(
+                                user = user,
+                                track = track,
+                                onComplete = { onExitComplete(user.id) },
+                                modifier = slideMod
+                            )
+                            user.id in seenIds -> LiveUserMinimalItem(
                                 user = user,
                                 track = track,
                                 onClick = { onSelectLiveUser(user) },
-                                onProfileClick = { onOpenProfile(user) }
+                                onProfileClick = { onOpenProfile(user) },
+                                modifier = slideMod
                             )
-                        } else {
-                            SupernovaEntranceItem(
+                            else -> SupernovaEntranceItem(
                                 user = user,
                                 track = track,
                                 onClick = { onSelectLiveUser(user) },
                                 onProfileClick = { onOpenProfile(user) },
                                 onComplete = { onUserSeen(user.id) },
                                 // batch iniziale (entro ~1.5s dall'apertura) = 0.7s; login in app = 2s
-                                fast = (System.currentTimeMillis() - screenOpenAtMs) < 1500L
+                                fast = (System.currentTimeMillis() - screenOpenAtMs) < 1500L,
+                                modifier = slideMod
                             )
                         }
-                    }
-                    // Utenti che si stanno disconnettendo: animazione di uscita (2s)
-                    items(departing, key = { "exit_" + it.id }) { u ->
-                        val track = u.currentTrack ?: return@items
-                        ExitingLiveItem(
-                            user = u,
-                            track = track,
-                            onComplete = { onExitComplete(u.id) }
-                        )
                     }
                 }
             }
