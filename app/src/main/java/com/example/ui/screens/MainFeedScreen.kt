@@ -150,32 +150,19 @@ fun MainFeedScreen(
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
     
-    // Stato per la transizione Supernova: utenti in arrivo con animazione
-    val arrivingUsers = remember { mutableStateListOf<User>() }
-    val completedUsers = remember { mutableStateListOf<User>() }
-    
-    // Rileva nuovi utenti live che entrano nella lista
-    LaunchedEffect(stories.size) {
-        val currentLiveIds = stories.filter { it.currentTrack != null && !it.isCurrentUser }.map { it.id }.toSet()
-        val previousLiveIds = (completedUsers + arrivingUsers).map { it.id }.toSet()
-        
-        val newUsers = stories.filter { 
-            it.currentTrack != null && 
-            !it.isCurrentUser && 
-            it.id !in previousLiveIds 
-        }
-        
-        if (newUsers.isNotEmpty()) {
-            arrivingUsers.addAll(newUsers)
-            // Dopo l'animazione di supernova (1.8s), sposta gli utenti alla lista completa
-            delay(1800)
-            completedUsers.addAll(newUsers)
-            arrivingUsers.removeAll(newUsers)
+    // Utenti live degli amici: SEMPRE con dati freschi da `stories` (niente copie statiche)
+    val liveFriends = stories.filter { it.currentTrack != null && !it.isCurrentUser }
+    // L'animazione d'ingresso è pilotata SOLO dagli ID: i dati (brano/artista/utente)
+    // restano sempre aggiornati e non si "congelano".
+    val seenLiveIds = remember { mutableStateListOf<String>() }
+    var liveSeeded by remember { mutableStateOf(false) }
+    LaunchedEffect(liveFriends.isNotEmpty()) {
+        // All'apertura gli utenti già live NON animano; animano solo i nuovi arrivi
+        if (!liveSeeded && liveFriends.isNotEmpty()) {
+            seenLiveIds.addAll(liveFriends.map { it.id })
+            liveSeeded = true
         }
     }
-    
-    // Unisci utenti completati + nuovi arrivati per il rendering
-    val allLiveUsers = (completedUsers + arrivingUsers).distinctBy { it.id }
 
     val currentPageEnum = if (pagerState.currentPage == 0) NavigationPage.LIVE else NavigationPage.FEED
 
@@ -220,8 +207,9 @@ fun MainFeedScreen(
                         // PAGINA 0: SCHERMATA LIVE CON VINYL GLOW E TRANSIZIONE SUPERNOVA
                         LivePageContent(
                             currentUser = currentUser,
-                            liveUsers = allLiveUsers,
-                            arrivingUsers = arrivingUsers,
+                            liveUsers = liveFriends,
+                            seenIds = seenLiveIds,
+                            onUserSeen = { id -> if (id !in seenLiveIds) seenLiveIds.add(id) },
                             onSelectLiveUser = onOpenLiveDetail,
                             onOpenProfile = onOpenProfile
                         )
@@ -487,15 +475,13 @@ private fun FeedMinimalPost(
 private fun LivePageContent(
     currentUser: User,
     liveUsers: List<User>,
-    arrivingUsers: List<User> = emptyList(),
+    seenIds: List<String> = emptyList(),
+    onUserSeen: (String) -> Unit = {},
     onSelectLiveUser: (User) -> Unit,
     onOpenProfile: (User) -> Unit
 ) {
     val myTrack = currentUser.currentTrack
     val iAmLive = myTrack != null
-    
-    // Separa gli utenti in arrivo da quelli già stabilizzati
-    val stabilizedUsers = liveUsers.filter { it.id !in arrivingUsers.map { u -> u.id } }
 
     Box(
         modifier = Modifier
@@ -546,27 +532,26 @@ private fun LivePageContent(
                             topPadding = if (iAmLive) 12.dp else 0.dp
                         )
                     }
-                    // Prima mostra gli utenti in arrivo con animazione Supernova
-                    arrivingUsers.forEach { user ->
-                        val track = user.currentTrack ?: return@forEach
-                        item(key = "arriving_${user.id}") {
-                            SupernovaEntranceItem(
+                    // Unica lista (dati sempre freschi). I nuovi arrivi animano l'ingresso,
+                    // gli altri sono item normali; la decisione dipende SOLO dall'ID.
+                    items(liveUsers, key = { it.id }) { user ->
+                        val track = user.currentTrack ?: return@items
+                        if (user.id in seenIds) {
+                            LiveUserMinimalItem(
                                 user = user,
                                 track = track,
                                 onClick = { onSelectLiveUser(user) },
                                 onProfileClick = { onOpenProfile(user) }
                             )
+                        } else {
+                            SupernovaEntranceItem(
+                                user = user,
+                                track = track,
+                                onClick = { onSelectLiveUser(user) },
+                                onProfileClick = { onOpenProfile(user) },
+                                onComplete = { onUserSeen(user.id) }
+                            )
                         }
-                    }
-                    // Poi mostra gli utenti già stabilizzati
-                    items(stabilizedUsers, key = { it.id }) { user ->
-                        val track = user.currentTrack ?: return@items
-                        LiveUserMinimalItem(
-                            user = user,
-                            track = track,
-                            onClick = { onSelectLiveUser(user) },
-                            onProfileClick = { onOpenProfile(user) }
-                        )
                     }
                 }
             }
@@ -1761,219 +1746,68 @@ private fun SupernovaEntranceItem(
     track: Track,
     onClick: () -> Unit,
     onProfileClick: () -> Unit,
+    onComplete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val entranceProgress = remember { Animatable(0f) }
-    val infiniteTransition = rememberInfiniteTransition(label = "supernova_glow")
-    
-    // Animazione di ingresso: esplosione supernova in 1.8s
-    LaunchedEffect(Unit) {
-        entranceProgress.animateTo(
-            targetValue = 1f,
-            animationSpec = tween(
-                durationMillis = 1800,
-                easing = FastOutSlowInEasing
-            )
-        )
-    }
-    
-    // Estrai i colori dinamici dal brano
+    val entrance = remember { Animatable(0f) }
     val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex, track.genre) {
         extractDynamicTrackGlowColors(track)
     }
-    
-    // Calcola l'alpha e la scala basati sul progresso dell'animazione
-    val scale by animateFloatAsState(
-        targetValue = if (entranceProgress.value < 0.3f) 0.6f + (entranceProgress.value / 0.3f) * 0.4f else 1f,
-        label = "supernova_scale"
-    )
-    
-    val alpha by animateFloatAsState(
-        targetValue = if (entranceProgress.value < 0.15f) entranceProgress.value / 0.15f else 1f,
-        label = "supernova_alpha"
-    )
-    
-    // Flash bianco iniziale (primi 0.3s)
-    val flashIntensity = remember(entranceProgress.value) {
-        if (entranceProgress.value < 0.3f) {
-            (1f - entranceProgress.value / 0.3f).coerceIn(0f, 1f)
-        } else 0f
+    // Ingresso pulito: l'item VERO appare con fade + scala + glow d'accento, poi
+    // (onComplete) diventa un item normale. I dati restano sempre freschi.
+    LaunchedEffect(user.id) {
+        entrance.snapTo(0f)
+        entrance.animateTo(1f, tween(900, easing = FastOutSlowInEasing))
+        onComplete()
     }
-    
-    // Espansione particellare (0.2s - 1.0s)
-    val particleExpansion by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                durationMillis = 600,
-                easing = LinearEasing
-            ),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "particle_expansion"
-    )
-    
-    val formattedUsername = if (user.username.startsWith("@")) user.username else "@${user.username}"
-    
+    val p = entrance.value
+    val scale = 0.90f + 0.10f * p
+    val itemAlpha = p.coerceIn(0f, 1f)
+    val flash = (1f - p / 0.35f).coerceIn(0f, 1f)
+    val glow = (1f - kotlin.math.abs(p - 0.45f) / 0.45f).coerceIn(0f, 1f)
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(BlackPitch)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = ripple(color = PureWhite.copy(alpha = 0.08f)),
-                onClick = onClick
-            )
-            .padding(horizontal = 6.dp, vertical = 8.dp)
             .graphicsLayer {
-                this.scaleX = scale
-                this.scaleY = scale
-                this.alpha = alpha
+                alpha = itemAlpha
+                scaleX = scale
+                scaleY = scale
+                translationY = (1f - p) * 22f * density
             }
             .testTag("live_item_arriving_${user.id}")
     ) {
-        // Effetto flash bianco accecante iniziale
-        if (flashIntensity > 0.01f) {
+        // Alone d'accento d'ingresso dietro l'item
+        if (glow > 0.01f) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.White.copy(alpha = flashIntensity * 0.95f))
-                    .zIndex(100f)
+                    .matchParentSize()
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                primaryColor.copy(alpha = 0.22f * glow),
+                                secondaryColor.copy(alpha = 0.10f * glow),
+                                Color.Transparent
+                            )
+                        ),
+                        RoundedCornerShape(16.dp)
+                    )
             )
         }
-        
-        // Alone luminoso espansivo (supernova glow)
-        Canvas(
-            modifier = Modifier
-                .fillMaxSize()
-                .zIndex(50f)
-        ) {
-            val centerX = size.width / 2f
-            val centerY = size.height / 2f
-            val maxRadius = size.width * 0.8f
-            
-            // Fase di espansione della supernova
-            if (entranceProgress.value in 0.1f..0.7f) {
-                val expansionPhase = ((entranceProgress.value - 0.1f) / 0.6f).coerceIn(0f, 1f)
-                val currentRadius = maxRadius * expansionPhase
-                
-                // Gradiente radiale esplosivo
-                val gradientCenterOffset = Offset(centerX, centerY)
-                val gradientRadius = currentRadius * (1f + particleExpansion * 0.3f)
-                
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            primaryColor.copy(alpha = 0.8f * (1f - expansionPhase)),
-                            secondaryColor.copy(alpha = 0.5f * (1f - expansionPhase)),
-                            Color.Transparent
-                        ),
-                        center = gradientCenterOffset,
-                        radius = gradientRadius
-                    ),
-                    center = gradientCenterOffset,
-                    radius = gradientRadius
-                )
-                
-                // Particelle di luce secondarie
-                for (i in 0 until 8) {
-                    val angle = (i.toFloat() / 8f) * 360f + (particleExpansion * 360f)
-                    val particleDistance = currentRadius * 0.7f
-                    val particleX = centerX + kotlin.math.cos(Math.toRadians(angle.toDouble())).toFloat() * particleDistance
-                    val particleY = centerY + kotlin.math.sin(Math.toRadians(angle.toDouble())).toFloat() * particleDistance
-                    
-                    drawCircle(
-                        color = primaryColor.copy(alpha = 0.6f * (1f - expansionPhase)),
-                        radius = 4f * (1f - expansionPhase),
-                        center = Offset(particleX, particleY)
-                    )
-                }
-            }
-        }
-        
-        // Contenuto principale (avatar + info brano)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(62.dp)
-                .padding(start = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Avatar utente con bordo colorato dinamico
+        // Il VERO item live: stesso design, dati sempre aggiornati
+        LiveUserMinimalItem(
+            user = user,
+            track = track,
+            onClick = onClick,
+            onProfileClick = onProfileClick
+        )
+        // Flash bianco rapido iniziale
+        if (flash > 0.01f) {
             Box(
                 modifier = Modifier
-                    .size(58.dp)
-                    .clip(CircleShape)
-                    .border(
-                        width = 2.dp,
-                        brush = Brush.linearGradient(
-                            colors = listOf(primaryColor, secondaryColor)
-                        ),
-                        shape = CircleShape
-                    )
-                    .background(Zinc900)
-            ) {
-                AsyncImage(
-                    model = user.avatarUrl,
-                    contentDescription = "Avatar ${user.name}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .clip(CircleShape)
-                        .padding(2.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(14.dp))
-            
-            // Info brano
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = track.title,
-                    color = PureWhite,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.2).sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = track.artist,
-                    color = Zinc400,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Normal,
-                    letterSpacing = 0.1.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            
-            // Badge LIVE pulsante
-            Box(
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(42.dp)
-                    .clip(CircleShape)
-                    .background(PureWhite.copy(alpha = 0.06f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFFFF3B30))
-                        .graphicsLayer {
-                            this.scaleX = 1f + sin(particleExpansion * 360f * Math.PI.toFloat() / 180f) * 0.15f
-                            this.scaleY = 1f + sin(particleExpansion * 360f * Math.PI.toFloat() / 180f) * 0.15f
-                        }
-                )
-            }
+                    .matchParentSize()
+                    .background(Color.White.copy(alpha = flash * 0.30f), RoundedCornerShape(16.dp))
+            )
         }
     }
 }
