@@ -334,9 +334,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun checkNotificationListenerEnabled() {
-        val enabled = com.example.SpotifyNotificationListenerService.isEnabled(appContext)
+        val spotifyEnabled = com.example.SpotifyNotificationListenerService.isEnabled(appContext)
+        val amazonEnabled = com.example.AmazonMusicNotificationListenerService.isEnabled(appContext)
+        val enabled = spotifyEnabled || amazonEnabled
         _uiState.update { it.copy(isNotificationListenerEnabled = enabled) }
-        if (enabled) registerNotificationListenerCallbacks()
+        if (spotifyEnabled) registerSpotifyNotificationListenerCallbacks()
+        if (amazonEnabled) registerAmazonMusicNotificationListenerCallbacks()
     }
 
     fun openNotificationListenerSettings(context: Context) {
@@ -346,7 +349,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    private fun registerNotificationListenerCallbacks() {
+    private fun registerSpotifyNotificationListenerCallbacks() {
         com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
             // Usa solo come fallback se il Web API non sta già fornendo dati
             if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
@@ -362,6 +365,18 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
                 clearNowPlayingFromBroadcast()
             }
+        }
+    }
+
+    private fun registerAmazonMusicNotificationListenerCallbacks() {
+        com.example.AmazonMusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
+            updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl)
+        }
+        com.example.AmazonMusicNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
+            updateLiveProgress(positionMs, durationMs)
+        }
+        com.example.AmazonMusicNotificationListenerService.onPlaybackStopped = {
+            clearNowPlayingFromBroadcast()
         }
     }
 
@@ -528,16 +543,31 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun toggleConnectedService(serviceKey: String) {
         val currentServices = _uiState.value.connectedServices.toMutableMap()
         val newState = !(currentServices[serviceKey] ?: false)
-        currentServices[serviceKey] = newState
-        val serviceName = when (serviceKey) {
-            "amazon_music" -> "Amazon Music"
-            else -> serviceKey.replaceFirstChar { it.uppercase() }
-        }
-        _uiState.update {
-            it.copy(
-                connectedServices = currentServices,
-                feedbackToast = if (newState) "$serviceName collegato" else "$serviceName disconnesso"
-            )
+        
+        if (serviceKey == "amazon_music" && newState) {
+            // Per Amazon Music, apri le impostazioni del Notification Listener
+            openNotificationListenerSettings(appContext)
+            // Il servizio verrà attivato quando l'utente abiliterà il permesso
+            // e tornerà nell'app (onResume -> checkNotificationListenerEnabled)
+            currentServices[serviceKey] = true
+            _uiState.update {
+                it.copy(
+                    connectedServices = currentServices,
+                    feedbackToast = "Abilita l'accesso alle notifiche per Amazon Music"
+                )
+            }
+        } else {
+            currentServices[serviceKey] = newState
+            val serviceName = when (serviceKey) {
+                "amazon_music" -> "Amazon Music"
+                else -> serviceKey.replaceFirstChar { it.uppercase() }
+            }
+            _uiState.update {
+                it.copy(
+                    connectedServices = currentServices,
+                    feedbackToast = if (newState) "$serviceName collegato" else "$serviceName disconnesso"
+                )
+            }
         }
     }
 

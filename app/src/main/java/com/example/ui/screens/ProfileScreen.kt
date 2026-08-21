@@ -1428,13 +1428,22 @@ private fun ConnectAccountsDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                val amazonMusicEnabled = isNotificationListenerEnabled && connectedServices["amazon_music"] == true
                 StreamingAccountItem(
                     serviceName = "Amazon Music",
-                    serviceDesc = "Sincronizzazione Unlimited & HD",
-                    isConnected = connectedServices["amazon_music"] == true,
+                    serviceDesc = "Rileva l'ascolto dalle notifiche",
+                    isConnected = amazonMusicEnabled,
                     brandColor = Color(0xFF00A8E1),
                     iconComposable = { AmazonMusicBrandLogo() },
-                    onToggle = { onToggleService("amazon_music") },
+                    onToggle = { 
+                        if (amazonMusicEnabled) {
+                            // Disconnetti: apri le impostazioni per disabilitare
+                            onEnableNotificationListener()
+                        } else {
+                            // Connetti: chiama toggleService che apre le impostazioni
+                            onToggleService("amazon_music")
+                        }
+                    },
                     testTag = "service_amazon_music"
                 )
 
