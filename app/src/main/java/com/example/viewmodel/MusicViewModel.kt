@@ -357,6 +357,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                     _uiState.update { it.copy(sentRequestIds = sentIds) }
                 }
         }
+        // Ripristina sharedTracks, stats e info profilo al riavvio — toAppUser() li perde
+        viewModelScope.launch {
+            FirebaseRepository.observeCurrentUserDocument(userId)
+                .catch { }
+                .collect { freshUser ->
+                    _uiState.update { current ->
+                        current.copy(
+                            currentUser = current.currentUser.copy(
+                                name = freshUser.name.ifBlank { current.currentUser.name },
+                                username = freshUser.username.ifBlank { current.currentUser.username },
+                                avatarUrl = freshUser.avatarUrl.ifBlank { current.currentUser.avatarUrl },
+                                coverUrl = freshUser.coverUrl ?: current.currentUser.coverUrl,
+                                sharedTracks = freshUser.sharedTracks,
+                                stats = freshUser.stats
+                                // isLiveNow e currentTrack restano gestiti localmente da Spotify
+                            )
+                        )
+                    }
+                }
+        }
         startFriendRequestListener()
     }
 

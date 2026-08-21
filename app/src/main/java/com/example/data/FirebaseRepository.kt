@@ -239,6 +239,27 @@ object FirebaseRepository {
         }
     }
 
+    /**
+     * Ascolta il documento completo dell'utente corrente — necessario per ripristinare
+     * sharedTracks, stats e info profilo al riavvio dell'app senza perdere dati.
+     */
+    fun observeCurrentUserDocument(userId: String): Flow<User> = callbackFlow {
+        val db = firestore
+        if (db == null) { channel.close(); return@callbackFlow }
+        var reg: ListenerRegistration? = null
+        try {
+            reg = db.collection(USERS_COLLECTION).document(userId)
+                .addSnapshotListener { snap, err ->
+                    if (err != null) { Log.w(TAG, "observeCurrentUserDocument error: ${err.message}"); return@addSnapshotListener }
+                    val data = snap?.data ?: return@addSnapshotListener
+                    mapDocToUser(data, userId)?.let { trySend(it) }
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "observeCurrentUserDocument exception: ${e.message}")
+        }
+        awaitClose { reg?.remove() }
+    }
+
     fun observeCurrentUserSocial(userId: String): Flow<Pair<List<String>, List<String>>> = callbackFlow {
         val db = firestore
         if (db == null) { channel.close(); return@callbackFlow }
