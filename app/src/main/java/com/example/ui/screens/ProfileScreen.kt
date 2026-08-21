@@ -81,8 +81,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.model.Track
@@ -1037,61 +1035,25 @@ private fun FollowersFollowingDialog(
         }
     }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.88f))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { onDismiss() },
-            contentAlignment = Alignment.Center
-        ) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 14.dp)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.75f)
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF080808))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { }
+                    .fillMaxWidth(0.92f)
+                    .fillMaxHeight(0.78f)
             ) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = title,
-                        color = PureWhite,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.3).sp
-                    )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Chiudi",
-                            tint = Zinc400,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
+                // Header — solo titolo, niente X
+                Text(
+                    text = title,
+                    color = PureWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3).sp,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)
+                )
 
                 // Campo di ricerca
                 Row(
                     modifier = Modifier
-                        .padding(horizontal = 24.dp)
                         .padding(bottom = 12.dp)
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(12.dp))
@@ -1211,7 +1173,6 @@ private fun FollowersFollowingDialog(
             }
         }
     }
-}
 
 @Composable
 private fun EditProfileDialog(
@@ -1225,54 +1186,21 @@ private fun EditProfileDialog(
     var avatarUrlInput by remember { mutableStateOf(user.avatarUrl) }
     var coverUrlInput by remember { mutableStateOf(user.coverUrl ?: currentCoverUrl) }
 
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.78f))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { onDismiss() },
-            contentAlignment = Alignment.Center
-        ) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp)
-                    .fillMaxWidth()
-                    .fillMaxHeight(0.88f)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF0A0A0A))
-                    .border(1.dp, PureWhite.copy(alpha = 0.09f), RoundedCornerShape(24.dp))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { }
+                    .fillMaxWidth(0.9f)
+                    .fillMaxHeight(0.85f)
             ) {
-                // Header fisso
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Modifica Profilo",
-                        color = PureWhite,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.3).sp
-                    )
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Chiudi", tint = Zinc400, modifier = Modifier.size(20.dp))
-                    }
-                }
-
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(PureWhite.copy(alpha = 0.06f)))
+                // Header — solo titolo, niente X
+                Text(
+                    text = "Modifica Profilo",
+                    color = PureWhite,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.3).sp,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
+                )
 
                 // Contenuto scrollabile
                 Column(
@@ -1371,7 +1299,6 @@ private fun EditProfileDialog(
             }
         }
     }
-}
 
 /**
  * Campo di testo minimale con bordo soft semitrasparente
@@ -1439,56 +1366,26 @@ private fun ConnectAccountsDialog(
     onEnableNotificationListener: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false)
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.88f))
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() }
-                ) { onDismiss() },
-            contentAlignment = Alignment.Center
-        ) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 18.dp)
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(20.dp))
-                    .background(Color(0xFF080808))
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { }
-                    .padding(20.dp)
+                    .fillMaxWidth(0.9f)
+                    .padding(horizontal = 4.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Collega Account",
-                            color = PureWhite,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.4).sp
-                        )
-                        Text(
-                            text = "Scegli i tuoi servizi di streaming",
-                            color = SubtitleGray,
-                            fontSize = 13.sp,
-                            letterSpacing = 0.2.sp
-                        )
-                    }
-
-                    IconButton(onClick = onDismiss, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Close, contentDescription = "Chiudi", tint = SubtitleGray)
-                    }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Collega Account",
+                        color = PureWhite,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp
+                    )
+                    Text(
+                        text = "Scegli i tuoi servizi di streaming",
+                        color = SubtitleGray,
+                        fontSize = 13.sp,
+                        letterSpacing = 0.2.sp
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -1597,7 +1494,6 @@ private fun ConnectAccountsDialog(
             }
         }
     }
-}
 
 /**
  * Singola riga di servizio streaming musicale
@@ -1616,12 +1512,7 @@ private fun StreamingAccountItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(PureWhite.copy(alpha = 0.05f))
-            .border(
-                width = if (isConnected) 1.dp else 0.5.dp,
-                color = if (isConnected) brandColor.copy(alpha = 0.5f) else PureWhite.copy(alpha = 0.08f),
-                shape = RoundedCornerShape(16.dp)
-            )
+            .background(if (isConnected) brandColor.copy(alpha = 0.12f) else PureWhite.copy(alpha = 0.05f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

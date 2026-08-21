@@ -31,8 +31,6 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -174,11 +172,9 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MusicApp(viewModel: MusicViewModel) {
     val uiState by viewModel.uiState.collectAsState()
-    val shareSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val context = LocalContext.current
 
     // Back handling for overlays/navigation
@@ -331,7 +327,7 @@ fun MusicApp(viewModel: MusicViewModel) {
             }
         }
 
-        // Bottom Sheet: Sharing (Flusso B)
+        // Dialog: Condivisione / ricerca brano (unificata)
         if (uiState.isShareSheetOpen) {
             NowPlayingSheet(
                 nowPlayingTrack = uiState.nowPlayingTrack,
@@ -340,8 +336,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                 isSearching = uiState.isSearching,
                 onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
                 onShareTrack = { viewModel.shareTrack(it) },
-                onDismiss = { viewModel.closeShareSheet() },
-                sheetState = shareSheetState
+                onDismiss = { viewModel.closeShareSheet() }
             )
         }
 

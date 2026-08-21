@@ -33,13 +33,10 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -63,7 +60,6 @@ import coil.compose.AsyncImage
 import com.example.model.Track
 import com.example.ui.theme.BlackCard
 import com.example.ui.theme.BlackPitch
-import com.example.ui.theme.BlackSurface
 import com.example.ui.theme.CharcoalBorder
 import com.example.ui.theme.DarkGraphite
 import com.example.ui.theme.PureWhite
@@ -71,7 +67,6 @@ import com.example.ui.theme.SpotifyGreen
 import com.example.ui.theme.SubtitleGray
 import com.example.ui.theme.Zinc400
 import com.example.ui.theme.Zinc900
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NowPlayingSheet(
     nowPlayingTrack: Track?,
@@ -80,63 +75,29 @@ fun NowPlayingSheet(
     isSearching: Boolean,
     onSearchQueryChanged: (String) -> Unit,
     onShareTrack: (Track) -> Unit,
-    onDismiss: () -> Unit,
-    sheetState: SheetState
+    onDismiss: () -> Unit
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val dynamicAccent = if (nowPlayingTrack != null) Color(nowPlayingTrack.accentColorHex) else Color(0xFF1DB954)
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheetState,
-        containerColor = BlackSurface,
-        dragHandle = {
-            Box(
-                modifier = Modifier
-                    .padding(vertical = 12.dp)
-                    .width(42.dp)
-                    .height(4.5.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(CharcoalBorder)
-            )
-        },
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
-    ) {
+    TrackDialog(coverUrl = nowPlayingTrack?.coverUrl ?: "", onDismiss = onDismiss) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.90f)
-                .padding(horizontal = 20.dp)
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.86f)
         ) {
-            // Header with title and close
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "CONDIVIDI UN BRANO",
-                    color = SubtitleGray,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.5.sp
-                )
+            // Header — solo titolo, niente X
+            Text(
+                text = "CONDIVIDI UN BRANO",
+                color = SubtitleGray,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.fillMaxWidth()
+            )
 
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Chiudi pannello",
-                        tint = SubtitleGray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // BRANI & SPOTIFY
                 // STATO 1: Now Playing Spotlight Card (shown only if a track is playing)
