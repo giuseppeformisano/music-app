@@ -255,7 +255,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (spotifyPollingJob?.isActive == true) return
         spotifyPollingJob = viewModelScope.launch {
             while (isActive) {
-                fetchCurrentlyPlaying()
+                // Ogni fetch è isolato: un errore transitorio NON deve uccidere il loop
+                // (altrimenti la live si "congela" e non si aggiorna più al cambio brano)
+                try {
+                    fetchCurrentlyPlaying()
+                } catch (_: Exception) {
+                    // errore transitorio ignorato: si riprova al prossimo giro
+                }
                 delay(3_000) // 3s: più reattivo, rileva Spotify già in play rapidamente
             }
         }

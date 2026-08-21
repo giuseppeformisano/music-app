@@ -27,9 +27,9 @@ object SpotifyWebApiRepository {
     }
 
     suspend fun getCurrentlyPlaying(context: Context): PlaybackResult = withContext(Dispatchers.IO) {
-        val token = SpotifyAuthRepository.getValidAccessToken(context)
-            ?: return@withContext PlaybackResult.Unknown
         try {
+            val token = SpotifyAuthRepository.getValidAccessToken(context)
+                ?: return@withContext PlaybackResult.Unknown
             val response = client.newCall(
                 Request.Builder()
                     .url("https://api.spotify.com/v1/me/player/currently-playing")
