@@ -97,6 +97,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     // Debounce: evita che un singolo poll vuoto (204 tra brani / errore rete transitorio)
     // faccia sparire e riapparire la live agli altri
     private var emptyPollCount = 0
+    // Heartbeat: rinfresca updatedAt ogni ~25s mentre si ascolta lo stesso brano, così
+    // il proprio documento resta in cima alla query e la live non sparisce agli altri
+    private var lastLiveHeartbeat = 0L
     private val httpClient by lazy { OkHttpClient() }
 
     init {
@@ -282,7 +285,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         emptyPollCount = 0
-        if (track.id == currentTrackId) return
+        if (track.id == currentTrackId) {
+            // Stesso brano ancora in riproduzione: heartbeat periodico per restare "fresco"
+            val now = System.currentTimeMillis()
+            if (now - lastLiveHeartbeat >= 25_000L) {
+                lastLiveHeartbeat = now
+                FirebaseRepository.touchLive(_uiState.value.currentUser.id)
+            }
+            return
+        }
+        lastLiveHeartbeat = System.currentTimeMillis()
         val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
         _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
         FirebaseRepository.syncCurrentUser(updatedUser)

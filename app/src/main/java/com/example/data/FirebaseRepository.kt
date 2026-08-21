@@ -50,6 +50,18 @@ object FirebaseRepository {
     /**
      * Sincronizza il profilo dell'utente loggato e lo stato di ascolto Live (1 sola scrittura per aggiornamento).
      */
+    /**
+     * Heartbeat live: rinfresca solo updatedAt (e isLiveNow) senza riscrivere l'intero
+     * profilo. Mantiene il documento in cima alla query ordinata per updatedAt anche
+     * quando il brano non cambia, così i live non spariscono dalla lista altrui.
+     */
+    fun touchLive(userId: String) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(userId)
+            .update(mapOf("updatedAt" to System.currentTimeMillis(), "isLiveNow" to true))
+            .addOnFailureListener { /* documento non ancora presente: ignora */ }
+    }
+
     fun saveFcmToken(userId: String, token: String) {
         val db = firestore ?: return
         db.collection(USERS_COLLECTION).document(userId)
@@ -124,7 +136,9 @@ object FirebaseRepository {
     }
 
     /**
-     * Ascolta in tempo reale gli altri utenti con limit(15) e cache attiva.
+     * Ascolta in tempo reale gli altri utenti con limit(40) e cache attiva.
+     * limit alto per non far cadere dalla lista i live che smettono di aggiornare
+     * updatedAt (es. Premium in background sullo stesso brano).
      */
     fun observeOtherUsers(currentUserId: String): Flow<List<User>> = callbackFlow {
         val db = firestore
@@ -137,7 +151,7 @@ object FirebaseRepository {
         try {
             registration = db.collection(USERS_COLLECTION)
                 .orderBy("updatedAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
-                .limit(15)
+                .limit(40)
                 .addSnapshotListener { snapshot, error ->
                     if (error != null) {
                         Log.w(TAG, "Listen failed: ${error.message}")

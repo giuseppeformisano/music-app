@@ -143,7 +143,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        viewModel.stopSpotifyPolling()
+        // NON fermiamo il polling: un utente Premium che esce dall'app ma continua ad
+        // ascoltare deve restare live per gli altri (il polling gira finché il processo vive)
         try { unregisterReceiver(spotifyReceiver) } catch (e: Exception) { /* receiver was not registered */ }
     }
 
