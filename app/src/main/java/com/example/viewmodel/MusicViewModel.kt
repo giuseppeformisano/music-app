@@ -310,34 +310,41 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 FirebaseRepository.syncCurrentUser(updatedUser)
             }
 
-            is SpotifyWebApiRepository.PlaybackResult.Playing -> {
-                val track = result.track
-                emptyPollCount = 0
-                if (_uiState.value.spotifyError != null) {
-                    _uiState.update { it.copy(spotifyError = null) }
-                }
-                val now = System.currentTimeMillis()
-                if (track.id == currentTrackId) {
-                    // Stesso brano: heartbeat + riallineo la posizione reale (assorbe seek/pausa)
-                    if (now - lastLiveHeartbeat >= 25_000L) {
-                        lastLiveHeartbeat = now
-                        val u = _uiState.value.currentUser.copy(
-                            trackProgressMs = result.progressMs, trackProgressAt = now
-                        )
-                        _uiState.update { it.copy(currentUser = u) }
-                        FirebaseRepository.touchLive(u.id, result.progressMs, now)
-                    }
-                    return
-                }
-                lastLiveHeartbeat = now
-                val updatedUser = _uiState.value.currentUser.copy(
-                    currentTrack = track, isLiveNow = true,
-                    trackProgressMs = result.progressMs, trackProgressAt = now
-                )
-                _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
-                FirebaseRepository.syncCurrentUser(updatedUser)
-            }
+            is SpotifyWebApiRepository.PlaybackResult.Playing ->
+                applyLiveTrack(result.track, result.progressMs)
+
+            // In PAUSA: resta live e mostra il brano in pausa. Esce solo con NotPlaying (204).
+            is SpotifyWebApiRepository.PlaybackResult.Paused ->
+                applyLiveTrack(result.track, result.progressMs)
         }
+    }
+
+    private fun applyLiveTrack(track: Track, progressMs: Long) {
+        val currentTrackId = _uiState.value.nowPlayingTrack?.id
+        emptyPollCount = 0
+        if (_uiState.value.spotifyError != null) {
+            _uiState.update { it.copy(spotifyError = null) }
+        }
+        val now = System.currentTimeMillis()
+        if (track.id == currentTrackId) {
+            // Stesso brano: heartbeat + riallineo la posizione reale (assorbe seek/pausa)
+            if (now - lastLiveHeartbeat >= 25_000L) {
+                lastLiveHeartbeat = now
+                val u = _uiState.value.currentUser.copy(
+                    trackProgressMs = progressMs, trackProgressAt = now
+                )
+                _uiState.update { it.copy(currentUser = u) }
+                FirebaseRepository.touchLive(u.id, progressMs, now)
+            }
+            return
+        }
+        lastLiveHeartbeat = now
+        val updatedUser = _uiState.value.currentUser.copy(
+            currentTrack = track, isLiveNow = true,
+            trackProgressMs = progressMs, trackProgressAt = now
+        )
+        _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
+        FirebaseRepository.syncCurrentUser(updatedUser)
     }
 
     fun clearSpotifyError() {

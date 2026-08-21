@@ -22,6 +22,8 @@ object SpotifyWebApiRepository {
      */
     sealed class PlaybackResult {
         data class Playing(val track: Track, val progressMs: Long) : PlaybackResult()
+        // In pausa ma con un brano caricato e device attivo: resta in live
+        data class Paused(val track: Track, val progressMs: Long) : PlaybackResult()
         object NotPlaying : PlaybackResult()
         // error != null quando c'è un problema di auth/permessi da mostrare all'utente
         // (es. 403 = account non abilitato nell'app). null = errore transitorio (rete).
@@ -74,14 +76,17 @@ object SpotifyWebApiRepository {
 
     private fun parsePlayback(body: String): PlaybackResult? {
         val track = parseTrack(body) ?: return null
-        val progressMs = JSONObject(body).optLong("progress_ms", 0L)
-        return PlaybackResult.Playing(track, progressMs)
+        val obj = JSONObject(body)
+        val progressMs = obj.optLong("progress_ms", 0L)
+        // In pausa resta in live: Paused mantiene l'utente live, esce solo con 204
+        return if (obj.optBoolean("is_playing", false)) PlaybackResult.Playing(track, progressMs)
+               else PlaybackResult.Paused(track, progressMs)
     }
 
     private fun parseTrack(json: String): Track? {
         return try {
             val obj = JSONObject(json)
-            if (!obj.optBoolean("is_playing", false)) return null
+            // NB: niente check su is_playing qui — lo gestisce parsePlayback (Playing/Paused)
             val item = obj.optJSONObject("item") ?: return null
             val title = item.optString("name").takeIf { it.isNotEmpty() } ?: return null
             val rawArtist = item.optJSONArray("artists")?.optJSONObject(0)?.optString("name") ?: return null

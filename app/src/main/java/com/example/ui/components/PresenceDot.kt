@@ -21,10 +21,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * Pallino di stato utente. Due stati distinti:
- * - LIVE (isLive): sta ascoltando qualcosa in questo momento → verde pulsante con alone.
- * - ONLINE (isOnline && !isLive): connesso e sta usando l'app ma non in ascolto → grigio statico.
- * - Offline: nulla.
+ * Pallino di stato utente. Tre stati:
+ * - LIVE (isLive): sta ascoltando ora → pulsante verde↔rosso con alone (tipo "on air").
+ * - ONLINE (isOnline && !isLive): app aperta ma non in ascolto → verde statico.
+ * - OFFLINE (né online né live): grigio statico.
  * Il bordo scuro stacca il pallino dallo sfondo/avatar.
  */
 @Composable
@@ -35,55 +35,44 @@ fun PresenceDot(
     size: Dp = 16.dp,
     borderColor: Color = Color(0xFF080808)
 ) {
-    if (!isOnline && !isLive) return
-
-    val liveColor = Color(0xFF1ED760)   // verde Spotify — in ascolto
-    val onlineColor = Color(0xFF8A94A6) // grigio-azzurro — connesso ma non in ascolto
+    val green = Color(0xFF1ED760)
+    val red = Color(0xFFFF3B30)
+    val grey = Color(0xFF8A94A6)
 
     Box(modifier = modifier.size(size), contentAlignment = Alignment.Center) {
         if (isLive) {
             val transition = rememberInfiniteTransition(label = "presence_live")
-            val haloScale by transition.animateFloat(
-                initialValue = 0.7f,
-                targetValue = 1f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1000),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "halo"
+            val pulse by transition.animateFloat(
+                initialValue = 0f, targetValue = 1f,
+                animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
+                label = "pulse"
             )
-            val haloAlpha by transition.animateFloat(
-                initialValue = 0.45f,
-                targetValue = 0.05f,
-                animationSpec = infiniteRepeatable(
-                    animation = tween(1000),
-                    repeatMode = RepeatMode.Reverse
-                ),
-                label = "halo_alpha"
-            )
+            val core = androidx.compose.ui.graphics.lerp(green, red, pulse) // verde ↔ rosso
+            val haloScale = 0.72f + pulse * 0.28f
+            val haloAlpha = 0.40f * (1f - pulse) + 0.05f
             // Alone pulsante
             Box(
                 modifier = Modifier
                     .size(size)
                     .scale(haloScale)
                     .clip(CircleShape)
-                    .background(liveColor.copy(alpha = haloAlpha))
+                    .background(core.copy(alpha = haloAlpha))
             )
-            // Nucleo pieno
+            // Nucleo pieno che pulsa tra verde e rosso
             Box(
                 modifier = Modifier
                     .size(size * 0.62f)
                     .clip(CircleShape)
-                    .background(liveColor)
+                    .background(core)
                     .border(size * 0.12f, borderColor, CircleShape)
             )
         } else {
-            // Connesso, non in ascolto: pallino statico più piccolo
+            // Online (verde) oppure Offline (grigio), statico
             Box(
                 modifier = Modifier
                     .size(size * 0.58f)
                     .clip(CircleShape)
-                    .background(onlineColor)
+                    .background(if (isOnline) green else grey)
                     .border(size * 0.12f, borderColor, CircleShape)
             )
         }
