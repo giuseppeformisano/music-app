@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
@@ -191,19 +192,24 @@ fun TrackDialog(
     ImmersiveScaffold(
         onDismiss = onDismiss,
         backdrop = { frac ->
+            // Base nera piena: la copertina È lo sfondo del dialog a tutto schermo
+            // (anche sopra la status bar); niente app che traspare dietro.
+            Box(modifier = Modifier.fillMaxSize().background(Color.Black))
             AsyncImage(
                 model = coverUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxSize()
-                    .blur((42.dp) * (1f - frac))
-                    .background(Color.Black.copy(alpha = 0.15f * (1f - frac)))
+                    // leggero ingrandimento: il blur altrimenti lascia bordi trasparenti
+                    .graphicsLayer { scaleX = 1.12f; scaleY = 1.12f }
+                    .blur((30.dp) * (1f - frac))
             )
+            // Velo leggero per la leggibilità del testo; si dissolve con la discesa
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.62f * (1f - frac)))
+                    .background(Color.Black.copy(alpha = 0.38f * (1f - frac)))
             )
         },
         content = content

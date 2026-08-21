@@ -19,12 +19,13 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName == SPOTIFY_PACKAGE) checkMediaSessions()
+        if (sbn.packageName in MUSIC_PACKAGES) checkMediaSessions()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
-        if (sbn.packageName != SPOTIFY_PACKAGE) return
-        stopPlayback()
+        // Rivaluta: se un'altra app musicale sta ancora suonando la live resta;
+        // altrimenti checkMediaSessions farà stopPlayback.
+        if (sbn.packageName in MUSIC_PACKAGES) checkMediaSessions()
     }
 
     private fun stopPlayback() {
@@ -39,26 +40,22 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             val controllers = manager.getActiveSessions(
                 ComponentName(this, SpotifyNotificationListenerService::class.java)
             )
-            val spotify = controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE }
-            if (spotify == null) { stopPlayback(); return }
+            // Prima app musicale supportata effettivamente IN RIPRODUZIONE (Spotify o Amazon)
+            val controller = controllers.firstOrNull {
+                it.packageName in MUSIC_PACKAGES && isPlaying(it)
+            }
+            if (controller == null) { stopPlayback(); return }
 
-            // In pausa/stop la live deve sparire anche se la notifica resta visibile
-            val state = spotify.playbackState?.state
-            val isPlaying = state == PlaybackState.STATE_PLAYING ||
-                            state == PlaybackState.STATE_BUFFERING
-            if (!isPlaying) { stopPlayback(); return }
+            val meta = controller.metadata ?: return
 
-            val meta = spotify.metadata ?: return
-
-            // Filtra le pubblicità di Spotify Free: durante un ad NON aggiorniamo la live,
-            // resta visibile il brano precedente. Nessun controllo sul nome (un brano può
-            // contenere la parola "pubblicità"): usiamo il flag ufficiale del MediaMetadata.
-            if (isAdvertisement(meta)) return
+            // Filtra le pubblicità di Spotify Free (solo per Spotify): durante un ad NON
+            // aggiorniamo la live, resta il brano precedente. Match esatto, mai substring.
+            if (controller.packageName == SPOTIFY_PACKAGE && isAdvertisement(meta)) return
 
             val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim() ?: return
             val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim() ?: ""
             val durationMs = meta.getLong(MediaMetadata.METADATA_KEY_DURATION).coerceAtLeast(0L)
-            val positionMs = spotify.playbackState?.position?.coerceAtLeast(0L) ?: 0L
+            val positionMs = controller.playbackState?.position?.coerceAtLeast(0L) ?: 0L
             // Artwork esatto dalla MediaSession (se Spotify espone un URL http/https)
             val artUrl = listOf(
                 MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
@@ -76,6 +73,11 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             pendingTrack = Pending(title, artist, durationMs, positionMs, artUrl)
             onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl)
         } catch (_: Exception) {}
+    }
+
+    private fun isPlaying(controller: android.media.session.MediaController): Boolean {
+        val state = controller.playbackState?.state
+        return state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
     }
 
     /**
@@ -100,6 +102,9 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val SPOTIFY_PACKAGE = "com.spotify.music"
+        private const val AMAZON_MUSIC_PACKAGE = "com.amazon.mp3"
+        // App musicali supportate dal rilevamento notifiche (MediaSession)
+        private val MUSIC_PACKAGES = setOf(SPOTIFY_PACKAGE, AMAZON_MUSIC_PACKAGE)
         private const val KEY_ADVERTISEMENT = "android.media.metadata.ADVERTISEMENT"
 
         @Volatile var pendingTrack: Pending? = null
