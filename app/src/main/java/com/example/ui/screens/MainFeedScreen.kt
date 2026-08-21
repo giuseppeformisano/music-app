@@ -384,11 +384,28 @@ private fun FeedMinimalPost(
                 .clip(RoundedCornerShape(20.dp))
                 .background(Zinc900)
         ) {
+            // Animazione zoom in/out continuo per la copertina
+            val infiniteTransition = rememberInfiniteTransition(label = "coverZoom")
+            val zoomScale by infiniteTransition.animateFloat(
+                initialValue = 1f,
+                targetValue = 1.12f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(durationMillis = 3200, easing = CubicBezierEasing(0.4f, 0f, 0.6f, 1f)),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "zoomScale"
+            )
+            
             AsyncImage(
                 model = track.coverUrl,
                 contentDescription = "Copertina ${track.title}",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = zoomScale
+                        scaleY = zoomScale
+                    }
             )
 
             Box(
