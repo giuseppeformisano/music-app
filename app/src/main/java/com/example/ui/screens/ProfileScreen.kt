@@ -479,14 +479,22 @@ private fun UserIdentityBlock(
         ) {
             // Sinistra: Avatar + Nome + @username
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                AsyncImage(
-                    model = user.avatarUrl,
-                    contentDescription = "Avatar ${user.name}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(86.dp)
-                        .clip(CircleShape)
-                )
+                Box {
+                    AsyncImage(
+                        model = user.avatarUrl,
+                        contentDescription = "Avatar ${user.name}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(86.dp)
+                            .clip(CircleShape)
+                    )
+                    com.example.ui.components.PresenceDot(
+                        isOnline = user.isOnline,
+                        isLive = user.currentTrack != null,
+                        size = 20.dp,
+                        modifier = Modifier.align(Alignment.BottomEnd)
+                    )
+                }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(
                     text = user.name,
