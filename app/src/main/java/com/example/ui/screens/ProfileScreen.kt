@@ -35,8 +35,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -706,13 +709,11 @@ private fun SharedTracks3DCarousel(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(20.dp))
 
         if (tracks.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(180.dp),
+                modifier = Modifier.fillMaxWidth().height(180.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -725,112 +726,141 @@ private fun SharedTracks3DCarousel(
             return@Column
         }
 
-        // Scorrimento infinito ad anello
-        val loopSize = Int.MAX_VALUE
-        val startPage = loopSize / 2 - (loopSize / 2) % tracks.size
+        val size = tracks.size
+        var centerIdx by remember { mutableIntStateOf(0) }
+        var dragAcc by remember { mutableStateOf(0f) }
 
-        val pagerState = rememberPagerState(
-            initialPage = startPage + 1,
-            pageCount = { loopSize }
-        )
+        val leftTrack  = tracks[(centerIdx - 1 + size) % size]
+        val centerTrack = tracks[centerIdx]
+        val rightTrack = tracks[(centerIdx + 1) % size]
 
-        HorizontalPager(
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 52.dp),
-            pageSpacing = 10.dp,
+        // Layout fisso a 3 card: sinistra inclinata | centro dritto | destra inclinata al contrario
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(215.dp)
-        ) { page ->
-            val track = tracks[page % tracks.size]
-            val rawOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
-            val absOffset = abs(rawOffset).coerceIn(0f, 1f)
-            val isCenter = absOffset < 0.5f
+                .height(195.dp)
+                .pointerInput(centerIdx) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            if (dragAcc < -60f) centerIdx = (centerIdx + 1) % size
+                            else if (dragAcc > 60f) centerIdx = (centerIdx - 1 + size) % size
+                            dragAcc = 0f
+                        },
+                        onHorizontalDrag = { _, delta -> dragAcc += delta }
+                    )
+                },
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.Bottom
+        ) {
+            // Card sinistra — inclinata a sinistra (-14°)
+            JukeboxCard(
+                track = leftTrack,
+                rotZ = -14f,
+                cardSize = 100,
+                alpha = 0.52f,
+                isCenter = false,
+                onClick = { centerIdx = (centerIdx - 1 + size) % size }
+            )
 
-            val rotZ = rawOffset.coerceIn(-1f, 1f) * 14f
-            val scale = androidx.compose.ui.util.lerp(0.82f, 1f, 1f - absOffset)
-            val itemAlpha = androidx.compose.ui.util.lerp(0.50f, 1f, 1f - absOffset)
+            Spacer(modifier = Modifier.width(10.dp))
 
+            // Card centrale — diritta
+            JukeboxCard(
+                track = centerTrack,
+                rotZ = 0f,
+                cardSize = 132,
+                alpha = 1f,
+                isCenter = true,
+                onClick = { onTrackClick(centerTrack) }
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            // Card destra — inclinata a destra (+14°)
+            JukeboxCard(
+                track = rightTrack,
+                rotZ = 14f,
+                cardSize = 100,
+                alpha = 0.52f,
+                isCenter = false,
+                onClick = { centerIdx = (centerIdx + 1) % size }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = centerTrack.title,
+            color = PureWhite,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+        Spacer(modifier = Modifier.height(3.dp))
+        Text(
+            text = centerTrack.artist,
+            color = SubtitleGray.copy(alpha = 0.65f),
+            fontSize = 12.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 32.dp)
+        )
+    }
+}
+
+@Composable
+private fun JukeboxCard(
+    track: Track,
+    rotZ: Float,
+    cardSize: Int,
+    alpha: Float,
+    isCenter: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(cardSize.dp)
+            .zIndex(if (isCenter) 1f else 0f)
+            .graphicsLayer {
+                rotationZ = rotZ
+                this.alpha = alpha
+                translationY = if (isCenter) 0f else 12f * density
+            }
+            .shadow(
+                elevation = if (isCenter) 24.dp else 0.dp,
+                shape = RoundedCornerShape(14.dp),
+                ambientColor = Color.Black,
+                spotColor = Color.Black
+            )
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+    ) {
+        AsyncImage(
+            model = track.coverUrl,
+            contentDescription = track.title,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        if (isCenter) {
             Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .zIndex(if (isCenter) 1f else 0f)
-                    .graphicsLayer {
-                        rotationZ = rotZ
-                        scaleX = scale
-                        scaleY = scale
-                        alpha = itemAlpha
-                        translationY = absOffset * 16f * density
-                    }
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { onTrackClick(track) }
-                    ),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(128.dp)
-                            .shadow(
-                                elevation = if (isCenter) 28.dp else 0.dp,
-                                shape = RoundedCornerShape(14.dp),
-                                ambientColor = Color.Black,
-                                spotColor = Color.Black
-                            )
-                            .clip(RoundedCornerShape(14.dp))
-                    ) {
-                        AsyncImage(
-                            model = track.coverUrl,
-                            contentDescription = track.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
+                    .fillMaxWidth()
+                    .height(50.dp)
+                    .align(Alignment.BottomCenter)
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
                         )
-                        if (isCenter) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(52.dp)
-                                    .align(Alignment.BottomCenter)
-                                    .background(
-                                        Brush.verticalGradient(
-                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.6f))
-                                        )
-                                    )
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    if (isCenter) {
-                        Text(
-                            text = track.title,
-                            color = PureWhite,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = track.artist,
-                            color = SubtitleGray.copy(alpha = 0.65f),
-                            fontSize = 11.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(horizontal = 4.dp)
-                        )
-                    }
-                }
-            }
+                    )
+            )
         }
     }
 }
