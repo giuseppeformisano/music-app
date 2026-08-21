@@ -687,11 +687,6 @@ private fun ProfileActionButtons(
 }
 
 /**
- * Carosello in Stile Jukebox per i Brani Condivisi ("Shared Tracks")
- * - Titolo "SHARED TRACKS" centrato orizzontalmente con font stilizzato e raffinato.
- * - Brani distanziati con generoso spazio/respiro per valorizzare la prospettiva 3D.
- * - Nessun indicatore o numero di paginazione.
- */
 @Composable
 private fun SharedTracks3DCarousel(
     tracks: List<Track>,
@@ -702,32 +697,29 @@ private fun SharedTracks3DCarousel(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Label "SHARED TRACKS"
         Text(
             text = "SHARED TRACKS",
-            color = PureWhite.copy(alpha = 0.85f),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 3.5.sp,
-            fontFamily = FontFamily.SansSerif,
+            color = PureWhite.copy(alpha = 0.4f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 3.sp,
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth()
         )
 
-        Spacer(modifier = Modifier.height(10.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (tracks.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(172.dp),
+                    .height(180.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "nessun brano condiviso ancora",
-                    color = PureWhite.copy(alpha = 0.25f),
+                    text = "nessun brano condiviso",
+                    color = PureWhite.copy(alpha = 0.18f),
                     fontSize = 13.sp,
-                    letterSpacing = 0.3.sp,
                     textAlign = TextAlign.Center
                 )
             }
@@ -735,39 +727,39 @@ private fun SharedTracks3DCarousel(
         }
 
         val pagerState = rememberPagerState(
-            initialPage = (tracks.size / 2).coerceAtLeast(0),
+            initialPage = if (tracks.size > 1) 1 else 0,
             pageCount = { tracks.size }
         )
 
-        // Carosello con brani ben distanziati e prospettiva 3D evidenziata
         HorizontalPager(
             state = pagerState,
-            contentPadding = PaddingValues(horizontal = 104.dp),
-            pageSpacing = 32.dp,
+            contentPadding = PaddingValues(horizontal = 70.dp),
+            pageSpacing = 14.dp,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(172.dp)
+                .height(210.dp)
         ) { page ->
             val track = tracks[page]
-            val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction)
-            val absOffset = abs(pageOffset)
-            val isSelected = absOffset < 0.35f
+            val rawOffset = (pagerState.currentPage - page) + pagerState.currentPageOffsetFraction
+            val absOffset = abs(rawOffset).coerceIn(0f, 1f)
+            val isCenter = absOffset < 0.5f
 
-            // Inclinazione 3D morbida e fluida con elementi distanziati
-            val yRotation = (-pageOffset.coerceIn(-1.2f, 1.2f) * 24f)
-            val itemScale = (1.0f - (absOffset * 0.12f)).coerceIn(0.85f, 1.0f)
-            val itemAlpha = (1f - (absOffset * 0.25f)).coerceIn(0.65f, 1f)
+            // tilt Z sul piano (card inclinate lateralmente, non in 3D)
+            val rotZ = (-rawOffset.coerceIn(-1f, 1f)) * 13f
+            val scale = androidx.compose.ui.util.lerp(0.80f, 1f, 1f - absOffset)
+            val itemAlpha = androidx.compose.ui.util.lerp(0.55f, 1f, 1f - absOffset)
 
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .zIndex(1f - absOffset)
                     .graphicsLayer {
-                        cameraDistance = 8f * density
-                        rotationY = yRotation
-                        scaleX = itemScale
-                        scaleY = itemScale
+                        rotationZ = rotZ
+                        scaleX = scale
+                        scaleY = scale
                         alpha = itemAlpha
+                        // card laterali leggermente abbassate per effetto "fan"
+                        translationY = absOffset * 18f * density
                     }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
@@ -777,88 +769,66 @@ private fun SharedTracks3DCarousel(
                 contentAlignment = Alignment.TopCenter
             ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Cover con finitura riflettente sottile
                     Box(
                         modifier = Modifier
-                            .size(112.dp)
+                            .size(130.dp)
                             .shadow(
-                                elevation = if (isSelected) 14.dp else 4.dp,
-                                shape = RoundedCornerShape(12.dp),
-                                ambientColor = PureWhite.copy(alpha = 0.20f),
-                                spotColor = PureWhite.copy(alpha = 0.35f)
+                                elevation = if (isCenter) 24.dp else 0.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                ambientColor = Color.Black,
+                                spotColor = Color.Black
                             )
-                            .clip(RoundedCornerShape(12.dp))
-                            .border(
-                                width = if (isSelected) 1.2.dp else 0.5.dp,
-                                brush = if (isSelected) {
-                                    Brush.linearGradient(
-                                        colors = listOf(
-                                            PureWhite.copy(alpha = 0.85f),
-                                            PureWhite.copy(alpha = 0.20f),
-                                            PureWhite.copy(alpha = 0.75f)
-                                        )
-                                    )
-                                } else {
-                                    Brush.linearGradient(
-                                        colors = listOf(
-                                            PureWhite.copy(alpha = 0.30f),
-                                            PureWhite.copy(alpha = 0.08f)
-                                        )
-                                    )
-                                },
-                                shape = RoundedCornerShape(12.dp)
-                            )
+                            .clip(RoundedCornerShape(16.dp))
                     ) {
                         AsyncImage(
                             model = track.coverUrl,
-                            contentDescription = "Cover ${track.title}",
+                            contentDescription = track.title,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
-
-                        // Riflesso satinato leggero
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    brush = Brush.linearGradient(
-                                        colors = listOf(
-                                            PureWhite.copy(alpha = 0.15f),
-                                            Color.Transparent,
-                                            Color.Transparent,
-                                            PureWhite.copy(alpha = 0.05f)
+                        // scuro sottile in basso per leggibilità testo
+                        if (isCenter) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp)
+                                    .align(Alignment.BottomCenter)
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f))
                                         )
                                     )
-                                )
-                        )
+                            )
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(7.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
-                    Text(
-                        text = track.title,
-                        color = if (isSelected) PureWhite else PureWhite.copy(alpha = 0.65f),
-                        fontSize = 12.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 6.dp)
-                    )
-
-                    Text(
-                        text = track.artist,
-                        color = if (isSelected) Zinc400 else Zinc400.copy(alpha = 0.5f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Normal,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(horizontal = 6.dp)
-                    )
+                    if (isCenter) {
+                        Text(
+                            text = track.title,
+                            color = PureWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = track.artist,
+                            color = SubtitleGray.copy(alpha = 0.7f),
+                            fontSize = 11.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
                 }
             }
         }
