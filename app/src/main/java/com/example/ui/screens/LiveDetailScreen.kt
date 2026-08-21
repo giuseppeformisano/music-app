@@ -171,16 +171,6 @@ fun LiveDetailScreen(
                 )
         )
 
-        // Maniglia indicatrice per lo swipe down
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 12.dp)
-                .size(width = 38.dp, height = 4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(PureWhite.copy(alpha = 0.35f))
-        )
 
         // ================= 2. CONTENUTO VERTICALMENTE CENTRATO =================
         Column(
