@@ -19,6 +19,7 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
                 val artist = extras.getString("android.text")?.trim() ?: ""
                 if (title != lastTrack) {
                     lastTrack = title
+                    pendingTrack = title to artist   // salva anche se callback è ancora null
                     onTrackChanged?.invoke(title, artist)
                 }
             }
@@ -32,19 +33,31 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
         val artist = extras.getString("android.text")?.trim() ?: ""
         if (title == lastTrack) return
         lastTrack = title
+        pendingTrack = title to artist
         onTrackChanged?.invoke(title, artist)
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (sbn.packageName != SPOTIFY_PACKAGE) return
         lastTrack = ""
+        pendingTrack = null
         onPlaybackStopped?.invoke()
     }
 
     companion object {
         private const val SPOTIFY_PACKAGE = "com.spotify.music"
 
+        // Ultimo track noto: replayato quando il ViewModel registra il callback in ritardo
+        @Volatile var pendingTrack: Pair<String, String>? = null
+
         var onTrackChanged: ((trackName: String, artist: String) -> Unit)? = null
+            set(value) {
+                field = value
+                // Se il service aveva già ricevuto un track prima che il callback
+                // fosse registrato, lo inviamo subito
+                pendingTrack?.let { (track, artist) -> value?.invoke(track, artist) }
+            }
+
         var onPlaybackStopped: (() -> Unit)? = null
 
         fun isEnabled(context: Context): Boolean {
