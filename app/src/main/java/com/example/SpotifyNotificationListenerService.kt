@@ -15,7 +15,13 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        instance = this
         checkMediaSessions()
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        instance = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -102,6 +108,21 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
     companion object {
         private const val SPOTIFY_PACKAGE = "com.spotify.music"
         private const val KEY_ADVERTISEMENT = "android.media.metadata.ADVERTISEMENT"
+
+        @Volatile private var instance: SpotifyNotificationListenerService? = null
+
+        // Scollega il listener: smette DAVVERO di leggere le notifiche (si ri-aggancia
+        // solo con startListening/requestRebind). Non revoca il toggle in Impostazioni
+        // (Android non lo consente da codice), ma ne annulla l'effetto.
+        fun stopListening() {
+            try { instance?.requestUnbind() } catch (_: Exception) {}
+        }
+
+        fun startListening(context: Context) {
+            try {
+                requestRebind(ComponentName(context, SpotifyNotificationListenerService::class.java))
+            } catch (_: Exception) {}
+        }
 
         @Volatile var pendingTrack: Pending? = null
 

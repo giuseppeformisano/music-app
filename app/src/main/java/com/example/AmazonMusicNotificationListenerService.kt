@@ -15,7 +15,13 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
 
     override fun onListenerConnected() {
         super.onListenerConnected()
+        instance = this
         checkMediaSessions()
+    }
+
+    override fun onListenerDisconnected() {
+        super.onListenerDisconnected()
+        instance = null
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -78,6 +84,18 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val AMAZON_MUSIC_PACKAGE = "com.amazon.mp3"
+
+        @Volatile private var instance: AmazonMusicNotificationListenerService? = null
+
+        fun stopListening() {
+            try { instance?.requestUnbind() } catch (_: Exception) {}
+        }
+
+        fun startListening(context: Context) {
+            try {
+                requestRebind(ComponentName(context, AmazonMusicNotificationListenerService::class.java))
+            } catch (_: Exception) {}
+        }
 
         @Volatile var pendingTrack: Pending? = null
 

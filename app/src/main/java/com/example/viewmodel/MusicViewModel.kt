@@ -581,10 +581,24 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         currentServices[serviceKey] = newState
         persistServiceState(serviceKey, newState)
 
-        // Passando a Spotify Free la sorgente diventa le notifiche: ferma il polling
-        // del Web API (anche se esistono token Premium) così non legge da API.
-        if (serviceKey == "spotify_free" && newState) {
-            stopSpotifyPolling()
+        // Aggancio/sgancio del listener notifiche del servizio giusto.
+        when (serviceKey) {
+            "spotify_free" -> {
+                if (newState) {
+                    com.example.SpotifyNotificationListenerService.startListening(appContext)
+                    stopSpotifyPolling() // sorgente = notifiche, non API
+                } else {
+                    com.example.SpotifyNotificationListenerService.stopListening()
+                }
+            }
+            "amazon_music" -> {
+                if (newState) com.example.AmazonMusicNotificationListenerService.startListening(appContext)
+                else com.example.AmazonMusicNotificationListenerService.stopListening()
+            }
+        }
+        // Disconnessione di un servizio a notifiche → la live si spegne subito
+        if (!newState && (serviceKey == "spotify_free" || serviceKey == "amazon_music")) {
+            clearNowPlayingFromBroadcast()
         }
 
         val serviceName = when (serviceKey) {
