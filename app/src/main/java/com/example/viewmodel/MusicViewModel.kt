@@ -42,8 +42,9 @@ data class MusicUiState(
     val loginError: String? = null,
     val isSpotifyConnected: Boolean = false,
     val connectedServices: Map<String, Boolean> = mapOf(
-        "spotify" to false,
-        "amazon_music" to false
+        "spotify" to false,       // Premium via OAuth Web API
+        "spotify_free" to false,  // Free via notifiche (scelta esplicita, ricordata)
+        "amazon_music" to false   // via notifiche (scelta esplicita, ricordata)
     ),
     val currentUser: User = User(
         id = "",
@@ -110,7 +111,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             viewModelScope.launch {
                 val user = existingUser.toAppUser()
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
-                val services = mapOf("spotify" to spotifyConnected, "amazon_music" to false)
+                val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
                 _uiState.update {
                     it.copy(
                         currentUser = user,
@@ -171,7 +172,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             val result = AuthRepository.signInWithGoogle(context)
             result.onSuccess { user ->
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
-                val services = mapOf("spotify" to spotifyConnected, "amazon_music" to false)
+                val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
                 _uiState.update {
                     it.copy(
                         currentUser = user,
@@ -547,28 +548,43 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // ===================== SERVICES =====================
 
+    private val servicesPrefs
+        get() = appContext.getSharedPreferences("connected_services", Context.MODE_PRIVATE)
+
+    // Stato "collegato" esplicito e RICORDATO per i servizi basati su notifiche
+    // (Spotify Free, Amazon Music). È fittizio a livello funzionale — dipendono tutti
+    // dal listener notifiche — ma rispetta la scelta dell'utente che ci ha cliccato.
+    private fun loadPersistedServices(): Map<String, Boolean> = mapOf(
+        "spotify_free" to servicesPrefs.getBoolean("spotify_free", false),
+        "amazon_music" to servicesPrefs.getBoolean("amazon_music", false)
+    )
+
+    private fun persistServiceState(serviceKey: String, connected: Boolean) {
+        servicesPrefs.edit().putBoolean(serviceKey, connected).apply()
+    }
+
     fun toggleConnectedService(serviceKey: String) {
         val currentServices = _uiState.value.connectedServices.toMutableMap()
         val newState = !(currentServices[serviceKey] ?: false)
-        
-        if (serviceKey == "amazon_music" && newState) {
-            // Per Amazon Music, apri le impostazioni del Notification Listener
+        currentServices[serviceKey] = newState
+        persistServiceState(serviceKey, newState)
+
+        val serviceName = when (serviceKey) {
+            "amazon_music" -> "Amazon Music"
+            "spotify_free" -> "Spotify Free"
+            else -> serviceKey.replaceFirstChar { it.uppercase() }
+        }
+
+        // Al collegamento (di un servizio basato su notifiche) guida verso il permesso
+        if (newState && !isNotificationListenerEnabledNow()) {
             openNotificationListenerSettings(appContext)
-            // Il servizio verrà attivato quando l'utente abiliterà il permesso
-            // e tornerà nell'app (onResume -> checkNotificationListenerEnabled)
-            currentServices[serviceKey] = true
             _uiState.update {
                 it.copy(
                     connectedServices = currentServices,
-                    feedbackToast = "Abilita l'accesso alle notifiche per Amazon Music"
+                    feedbackToast = "Abilita l'accesso alle notifiche per $serviceName"
                 )
             }
         } else {
-            currentServices[serviceKey] = newState
-            val serviceName = when (serviceKey) {
-                "amazon_music" -> "Amazon Music"
-                else -> serviceKey.replaceFirstChar { it.uppercase() }
-            }
             _uiState.update {
                 it.copy(
                     connectedServices = currentServices,
@@ -577,6 +593,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
     }
+
+    private fun isNotificationListenerEnabledNow(): Boolean =
+        com.example.SpotifyNotificationListenerService.isEnabled(appContext)
 
     // ===================== SEARCH =====================
 

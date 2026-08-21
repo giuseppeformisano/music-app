@@ -1416,34 +1416,27 @@ private fun ConnectAccountsDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
+                // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
+                // funzionalmente dipende dalle notifiche.
                 StreamingAccountItem(
                     serviceName = "Spotify Free",
                     serviceDesc = "Rileva l'ascolto dalle notifiche",
-                    isConnected = isNotificationListenerEnabled,
+                    isConnected = connectedServices["spotify_free"] == true,
                     brandColor = Color(0xFF1DB954),
                     iconComposable = { SpotifyBrandLogo() },
-                    onToggle = { onEnableNotificationListener() },
+                    onToggle = { onToggleService("spotify_free") },
                     testTag = "service_spotify_free"
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val amazonMusicEnabled = isNotificationListenerEnabled && connectedServices["amazon_music"] == true
                 StreamingAccountItem(
                     serviceName = "Amazon Music",
                     serviceDesc = "Rileva l'ascolto dalle notifiche",
-                    isConnected = amazonMusicEnabled,
+                    isConnected = connectedServices["amazon_music"] == true,
                     brandColor = Color(0xFF00A8E1),
                     iconComposable = { AmazonMusicBrandLogo() },
-                    onToggle = { 
-                        if (amazonMusicEnabled) {
-                            // Disconnetti: apri le impostazioni per disabilitare
-                            onEnableNotificationListener()
-                        } else {
-                            // Connetti: chiama toggleService che apre le impostazioni
-                            onToggleService("amazon_music")
-                        }
-                    },
+                    onToggle = { onToggleService("amazon_music") },
                     testTag = "service_amazon_music"
                 )
 
