@@ -265,7 +265,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val currentTrackId = _uiState.value.nowPlayingTrack?.id
 
         if (track == null) {
-            if (currentTrackId != null) {
+            // Clear anche se currentTrack è stato ripristinato da Firestore (nowPlayingTrack null al riavvio)
+            if (currentTrackId != null || _uiState.value.currentUser.currentTrack != null) {
                 val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
                 _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
                 FirebaseRepository.syncCurrentUser(updatedUser)
@@ -330,7 +331,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun clearNowPlayingFromBroadcast() {
-        if (_uiState.value.nowPlayingTrack == null) return
+        if (_uiState.value.nowPlayingTrack == null && _uiState.value.currentUser.currentTrack == null) return
         val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
         _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
         FirebaseRepository.syncCurrentUser(updatedUser)
@@ -612,12 +613,24 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             if (appContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         }
+        val intent = android.content.Intent(appContext, com.example.MainActivity::class.java).apply {
+            putExtra(com.example.MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
+            flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val pendingIntent = android.app.PendingIntent.getActivity(
+            appContext,
+            request.id.hashCode(),
+            intent,
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
         val notif = androidx.core.app.NotificationCompat.Builder(appContext, FRIEND_REQUEST_CHANNEL_ID)
             .setSmallIcon(com.example.R.drawable.ic_stat_notification)
             .setContentTitle("Nuova richiesta di follow")
             .setContentText("@${request.fromUserUsername} vuole seguirti")
             .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
             .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
+            .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
         androidx.core.app.NotificationManagerCompat.from(appContext)

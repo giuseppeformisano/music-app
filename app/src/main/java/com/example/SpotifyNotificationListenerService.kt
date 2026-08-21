@@ -4,6 +4,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.media.MediaMetadata
 import android.media.session.MediaSessionManager
+import android.media.session.PlaybackState
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
@@ -23,6 +24,10 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (sbn.packageName != SPOTIFY_PACKAGE) return
+        stopPlayback()
+    }
+
+    private fun stopPlayback() {
         lastTrack = ""
         pendingTrack = null
         onPlaybackStopped?.invoke()
@@ -34,7 +39,15 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             val controllers = manager.getActiveSessions(
                 ComponentName(this, SpotifyNotificationListenerService::class.java)
             )
-            val spotify = controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE } ?: return
+            val spotify = controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE }
+            if (spotify == null) { stopPlayback(); return }
+
+            // In pausa/stop la live deve sparire anche se la notifica resta visibile
+            val state = spotify.playbackState?.state
+            val isPlaying = state == PlaybackState.STATE_PLAYING ||
+                            state == PlaybackState.STATE_BUFFERING
+            if (!isPlaying) { stopPlayback(); return }
+
             val meta = spotify.metadata ?: return
             val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim() ?: return
             val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim() ?: ""

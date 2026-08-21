@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
         }
 
         handleSpotifyCallback(intent)
+        handleNotificationIntent(intent)
 
         setContent {
             MyApplicationTheme {
@@ -120,6 +121,13 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleSpotifyCallback(intent)
+        handleNotificationIntent(intent)
+    }
+
+    private fun handleNotificationIntent(intent: Intent) {
+        if (intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)) {
+            viewModel.openNotifications()
+        }
     }
 
     override fun onResume() {
@@ -156,6 +164,10 @@ class MainActivity : ComponentActivity() {
             val code = uri.getQueryParameter("code") ?: return
             viewModel.handleSpotifyCallback(code)
         }
+    }
+
+    companion object {
+        const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
     }
 }
 
