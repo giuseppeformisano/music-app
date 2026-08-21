@@ -195,46 +195,77 @@ object FirebaseRepository {
         }
     }
 
-    private const val REQUESTS_COLLECTION = "friend_requests"
-
     fun sendFollowRequest(from: User, to: User) {
         val db = firestore ?: return
         try {
             val requestId = "${from.id}_${to.id}"
-            val data = hashMapOf<String, Any>(
+            val requestData = mapOf(
                 "id" to requestId,
                 "fromUserId" to from.id,
                 "fromUserName" to from.name,
                 "fromUserUsername" to from.username,
                 "fromUserAvatarUrl" to from.avatarUrl,
-                "toUserId" to to.id,
-                "timestamp" to System.currentTimeMillis(),
-                "status" to "PENDING"
+                "timestamp" to System.currentTimeMillis()
             )
-            db.collection(REQUESTS_COLLECTION).document(requestId).set(data)
+            // 1 batch atomico: richiesta incorporata nel doc del destinatario (mappa
+            // pendingRequests.<fromId>) + id nell'array sentRequestIds del mittente.
+            db.batch().apply {
+                set(
+                    db.collection(USERS_COLLECTION).document(to.id),
+                    mapOf("pendingRequests" to mapOf(from.id to requestData)),
+                    SetOptions.merge()
+                )
+                set(
+                    db.collection(USERS_COLLECTION).document(from.id),
+                    mapOf("sentRequestIds" to FieldValue.arrayUnion(to.id)),
+                    SetOptions.merge()
+                )
+            }.commit()
         } catch (e: Exception) {
             Log.e(TAG, "sendFollowRequest error: ${e.message}")
         }
     }
 
-    fun acceptFollowRequest(requestId: String, currentUserId: String, fromUserId: String) {
+    // Accetta: 1 batch atomico. Il follow finisce in follower/following; la richiesta
+    // viene RIMOSSA (niente doc "ACCEPTED" che si accumulano) da entrambi i lati.
+    fun acceptFollowRequest(currentUserId: String, fromUserId: String) {
         val db = firestore ?: return
         try {
-            db.collection(REQUESTS_COLLECTION).document(requestId)
-                .update("status", "ACCEPTED")
-            db.collection(USERS_COLLECTION).document(currentUserId)
-                .update("followerIds", com.google.firebase.firestore.FieldValue.arrayUnion(fromUserId))
-            db.collection(USERS_COLLECTION).document(fromUserId)
-                .update("followingIds", com.google.firebase.firestore.FieldValue.arrayUnion(currentUserId))
+            db.batch().apply {
+                update(
+                    db.collection(USERS_COLLECTION).document(currentUserId),
+                    mapOf(
+                        "followerIds" to FieldValue.arrayUnion(fromUserId),
+                        "pendingRequests.$fromUserId" to FieldValue.delete()
+                    )
+                )
+                update(
+                    db.collection(USERS_COLLECTION).document(fromUserId),
+                    mapOf(
+                        "followingIds" to FieldValue.arrayUnion(currentUserId),
+                        "sentRequestIds" to FieldValue.arrayRemove(currentUserId)
+                    )
+                )
+            }.commit()
         } catch (e: Exception) {
             Log.e(TAG, "acceptFollowRequest error: ${e.message}")
         }
     }
 
-    fun rejectFollowRequest(requestId: String) {
+    // Rifiuta: 1 batch atomico. Rimuove la richiesta da entrambi i lati.
+    fun rejectFollowRequest(currentUserId: String, fromUserId: String) {
         val db = firestore ?: return
         try {
-            db.collection(REQUESTS_COLLECTION).document(requestId).delete()
+            db.batch().apply {
+                update(
+                    db.collection(USERS_COLLECTION).document(currentUserId),
+                    mapOf("pendingRequests.$fromUserId" to FieldValue.delete())
+                )
+                update(
+                    db.collection(USERS_COLLECTION).document(fromUserId),
+                    mapOf("sentRequestIds" to FieldValue.arrayRemove(currentUserId))
+                )
+            }.commit()
         } catch (e: Exception) {
             Log.e(TAG, "rejectFollowRequest error: ${e.message}")
         }
@@ -304,76 +335,9 @@ object FirebaseRepository {
         awaitClose { reg?.remove() }
     }
 
-    fun observeCurrentUserSocial(userId: String): Flow<Pair<List<String>, List<String>>> = callbackFlow {
-        val db = firestore
-        if (db == null) { channel.close(); return@callbackFlow }
-        var reg: ListenerRegistration? = null
-        try {
-            reg = db.collection(USERS_COLLECTION).document(userId)
-                .addSnapshotListener { snap, err ->
-                    if (err != null) return@addSnapshotListener
-                    val data = snap?.data ?: return@addSnapshotListener
-                    val followerIds = (data["followerIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                    val followingIds = (data["followingIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
-                    trySend(Pair(followerIds, followingIds))
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "observeCurrentUserSocial error: ${e.message}")
-        }
-        awaitClose { reg?.remove() }
-    }
-
-    fun observePendingSentRequests(fromUserId: String): Flow<Set<String>> = callbackFlow {
-        val db = firestore
-        if (db == null) { channel.close(); return@callbackFlow }
-        var reg: ListenerRegistration? = null
-        try {
-            // Query su singolo campo per evitare l'indice composito Firestore
-            reg = db.collection(REQUESTS_COLLECTION)
-                .whereEqualTo("fromUserId", fromUserId)
-                .addSnapshotListener { snap, err ->
-                    if (err != null) { Log.e(TAG, "observePendingSentRequests error: ${err.message}"); return@addSnapshotListener }
-                    val ids = snap?.documents
-                        ?.filter { (it.data?.get("status") as? String) == "PENDING" }
-                        ?.mapNotNull { it.data?.get("toUserId") as? String }
-                        ?.toSet() ?: emptySet()
-                    trySend(ids)
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "observePendingSentRequests error: ${e.message}")
-        }
-        awaitClose { reg?.remove() }
-    }
-
-    fun observeFriendRequests(currentUserId: String): Flow<List<FriendRequest>> = callbackFlow {
-        val db = firestore
-        if (db == null) { channel.close(); return@callbackFlow }
-        var reg: ListenerRegistration? = null
-        try {
-            // Query su singolo campo per evitare l'indice composito Firestore
-            reg = db.collection(REQUESTS_COLLECTION)
-                .whereEqualTo("toUserId", currentUserId)
-                .addSnapshotListener { snap, err ->
-                    if (err != null) { Log.e(TAG, "observeFriendRequests error: ${err.message}"); return@addSnapshotListener }
-                    val requests = snap?.documents?.mapNotNull { doc ->
-                        val data = doc.data ?: return@mapNotNull null
-                        if ((data["status"] as? String) != "PENDING") return@mapNotNull null
-                        FriendRequest(
-                            id = data["id"] as? String ?: doc.id,
-                            fromUserId = data["fromUserId"] as? String ?: return@mapNotNull null,
-                            fromUserName = data["fromUserName"] as? String ?: "Utente",
-                            fromUserUsername = data["fromUserUsername"] as? String ?: "",
-                            fromUserAvatarUrl = data["fromUserAvatarUrl"] as? String ?: "",
-                            timestamp = (data["timestamp"] as? Number)?.toLong() ?: 0L
-                        )
-                    } ?: emptyList()
-                    trySend(requests)
-                }
-        } catch (e: Exception) {
-            Log.e(TAG, "observeFriendRequests error: ${e.message}")
-        }
-        awaitClose { reg?.remove() }
-    }
+    // observeCurrentUserSocial / observePendingSentRequests / observeFriendRequests
+    // RIMOSSI: profilo, social, richieste ricevute e inviate ora arrivano tutti da un
+    // UNICO listener observeCurrentUserDocument (vedi mapDocToUser).
 
     private fun trackToMap(track: Track): Map<String, Any?> {
         return mapOf(
@@ -415,6 +379,21 @@ object FirebaseRepository {
         val followerIds = (data["followerIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
         val followingIds = (data["followingIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
 
+        // Richieste incorporate nel documento (niente collezione separata / listener extra)
+        val pendingMap = data["pendingRequests"] as? Map<String, Map<String, Any?>>
+        val pendingRequests = pendingMap?.values?.mapNotNull { req ->
+            val fromId = req["fromUserId"] as? String ?: return@mapNotNull null
+            com.example.model.FriendRequest(
+                id = req["id"] as? String ?: fromId,
+                fromUserId = fromId,
+                fromUserName = req["fromUserName"] as? String ?: "Utente",
+                fromUserUsername = req["fromUserUsername"] as? String ?: "",
+                fromUserAvatarUrl = req["fromUserAvatarUrl"] as? String ?: "",
+                timestamp = (req["timestamp"] as? Number)?.toLong() ?: 0L
+            )
+        }?.sortedByDescending { it.timestamp } ?: emptyList()
+        val sentRequestIds = (data["sentRequestIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+
         return User(
             id = id,
             name = name,
@@ -434,7 +413,9 @@ object FirebaseRepository {
             ),
             isCurrentUser = false,
             followerIds = followerIds,
-            followingIds = followingIds
+            followingIds = followingIds,
+            pendingRequests = pendingRequests,
+            sentRequestIds = sentRequestIds
         )
     }
 

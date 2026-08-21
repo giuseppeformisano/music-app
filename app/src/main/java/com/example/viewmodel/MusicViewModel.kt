@@ -478,49 +478,45 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
         }
-        viewModelScope.launch {
-            FirebaseRepository.observeCurrentUserSocial(userId)
-                .catch { }
-                .collect { (followerIds, followingIds) ->
-                    val updatedUser = _uiState.value.currentUser.copy(
-                        followerIds = followerIds,
-                        followingIds = followingIds
-                    )
-                    _uiState.update { it.copy(currentUser = updatedUser) }
-                    // Se il profilo dell'utente corrente è aperto, aggiorna i dettagli social
-                    if (_uiState.value.activeProfileUser?.isCurrentUser == true) {
-                        loadSocialDetails(updatedUser)
-                    }
-                }
-        }
-        viewModelScope.launch {
-            FirebaseRepository.observePendingSentRequests(userId)
-                .catch { }
-                .collect { sentIds ->
-                    _uiState.update { it.copy(sentRequestIds = sentIds) }
-                }
-        }
-        // Ripristina sharedTracks, stats e info profilo al riavvio — toAppUser() li perde
+        // UNICO listener sul documento utente: profilo, sharedTracks, stats, social
+        // (follower/following), richieste ricevute e inviate. Prima erano 4 listener.
+        friendRequestsInitialized = false
         viewModelScope.launch {
             FirebaseRepository.observeCurrentUserDocument(userId)
                 .catch { }
-                .collect { freshUser ->
+                .collect { fresh ->
+                    // Notifica solo le NUOVE richieste ricevute (dopo il primo snapshot)
+                    val newIds = fresh.pendingRequests.map { it.id }.toSet()
+                    if (friendRequestsInitialized) {
+                        fresh.pendingRequests.filter { it.id !in knownFriendRequestIds }
+                            .forEach { showFriendRequestNotification(it) }
+                    }
+                    friendRequestsInitialized = true
+                    knownFriendRequestIds = newIds
+
                     _uiState.update { current ->
                         current.copy(
                             currentUser = current.currentUser.copy(
-                                name = freshUser.name.ifBlank { current.currentUser.name },
-                                username = freshUser.username.ifBlank { current.currentUser.username },
-                                avatarUrl = freshUser.avatarUrl.ifBlank { current.currentUser.avatarUrl },
-                                coverUrl = freshUser.coverUrl ?: current.currentUser.coverUrl,
-                                sharedTracks = freshUser.sharedTracks,
-                                stats = freshUser.stats
+                                name = fresh.name.ifBlank { current.currentUser.name },
+                                username = fresh.username.ifBlank { current.currentUser.username },
+                                avatarUrl = fresh.avatarUrl.ifBlank { current.currentUser.avatarUrl },
+                                coverUrl = fresh.coverUrl ?: current.currentUser.coverUrl,
+                                sharedTracks = fresh.sharedTracks,
+                                stats = fresh.stats,
+                                followerIds = fresh.followerIds,
+                                followingIds = fresh.followingIds
                                 // isLiveNow e currentTrack restano gestiti localmente da Spotify
-                            )
+                            ),
+                            pendingFriendRequests = fresh.pendingRequests,
+                            sentRequestIds = fresh.sentRequestIds.toSet()
                         )
+                    }
+                    // Se il profilo proprio è aperto, aggiorna i dettagli social
+                    if (_uiState.value.activeProfileUser?.isCurrentUser == true) {
+                        loadSocialDetails(_uiState.value.currentUser)
                     }
                 }
         }
-        startFriendRequestListener()
     }
 
     // ===================== SERVICES =====================
@@ -677,40 +673,19 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 feedbackToast = "Ora segui @${request.fromUserUsername}"
             )
         }
-        FirebaseRepository.acceptFollowRequest(request.id, currentId, request.fromUserId)
+        FirebaseRepository.acceptFollowRequest(currentId, request.fromUserId)
     }
 
     fun rejectFriendRequest(request: FriendRequest) {
         val updated = _uiState.value.pendingFriendRequests.filter { it.id != request.id }
+        val currentId = _uiState.value.currentUser.id
         _uiState.update { it.copy(pendingFriendRequests = updated) }
-        FirebaseRepository.rejectFollowRequest(request.id)
+        FirebaseRepository.rejectFollowRequest(currentId, request.fromUserId)
     }
 
+    // Diffing per notificare solo le NUOVE richieste (usato dal listener unico del doc utente)
     private var knownFriendRequestIds = emptySet<String>()
     private var friendRequestsInitialized = false
-    private var friendRequestListenerJob: Job? = null
-
-    private fun startFriendRequestListener() {
-        val userId = _uiState.value.currentUser.id
-        if (userId.isBlank()) return
-        friendRequestListenerJob?.cancel()
-        friendRequestsInitialized = false
-        friendRequestListenerJob = viewModelScope.launch {
-            FirebaseRepository.observeFriendRequests(userId)
-                .catch { }
-                .collect { requests ->
-                    val newIds = requests.map { it.id }.toSet()
-                    if (friendRequestsInitialized) {
-                        // Solo le richieste arrivate DOPO il primo snapshot
-                        requests.filter { it.id !in knownFriendRequestIds }
-                            .forEach { showFriendRequestNotification(it) }
-                    }
-                    friendRequestsInitialized = true
-                    knownFriendRequestIds = newIds
-                    _uiState.update { it.copy(pendingFriendRequests = requests) }
-                }
-        }
-    }
 
     private fun showFriendRequestNotification(request: FriendRequest) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {

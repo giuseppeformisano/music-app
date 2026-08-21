@@ -29,7 +29,11 @@ data class User(
     val sharedTracks: List<Track> = emptyList(),
     val stats: UserStats = UserStats(),
     val followerIds: List<String> = emptyList(),
-    val followingIds: List<String> = emptyList()
+    val followingIds: List<String> = emptyList(),
+    // Richieste di follow incorporate nel documento utente (niente collezione separata):
+    // pendingRequests = ricevute (in attesa); sentRequestIds = inviate da me
+    val pendingRequests: List<FriendRequest> = emptyList(),
+    val sentRequestIds: List<String> = emptyList()
 )
 
 data class UserStats(
