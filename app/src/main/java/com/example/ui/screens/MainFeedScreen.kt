@@ -348,7 +348,7 @@ private fun FeedMinimalPost(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(300.dp)
+                .height(150.dp)
                 .clip(RoundedCornerShape(20.dp))
                 .background(Zinc900)
         ) {
@@ -368,7 +368,7 @@ private fun FeedMinimalPost(
                                 Color.Transparent,
                                 BlackPitch.copy(alpha = 0.85f)
                             ),
-                            startY = 420f
+                            startY = 210f
                         )
                     )
             )

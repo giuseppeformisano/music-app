@@ -68,7 +68,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -767,12 +766,9 @@ private fun SharedTracks3DCarousel(
                         translationX = rawOffset * 34f * density
                         translationY = absOffset * 18f * density
                     }
-                    .shadow(
-                        elevation = if (isCenter) 32.dp else 0.dp,
-                        shape = RoundedCornerShape(16.dp),
-                        ambientColor = Color.Black,
-                        spotColor = Color.Black
-                    )
+                    // Niente shadow: su sfondo scuro proiettava un alone nero
+                    // semi-trasparente sotto la card. La profondità resta data da
+                    // scala/rotazione/alpha del CoverFlow.
                     .clip(RoundedCornerShape(16.dp))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
