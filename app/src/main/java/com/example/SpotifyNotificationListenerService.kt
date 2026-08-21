@@ -71,7 +71,9 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
      * brani che contengono la parola "pubblicità" non vengono scartati per errore).
      */
     private fun isAdvertisement(meta: MediaMetadata): Boolean {
-        if (meta.getLong(MediaMetadata.METADATA_KEY_ADVERTISEMENT) == 1L) return true
+        // METADATA_KEY_ADVERTISEMENT esiste solo in MediaMetadataCompat, non nel framework:
+        // usiamo la chiave grezza (stesso valore). getLong ritorna 0 se assente.
+        if (meta.getLong(KEY_ADVERTISEMENT) == 1L) return true
         val title = meta.getString(MediaMetadata.METADATA_KEY_TITLE)?.trim().orEmpty()
         val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim().orEmpty()
         val duration = meta.getLong(MediaMetadata.METADATA_KEY_DURATION)
@@ -82,6 +84,7 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
     companion object {
         private const val SPOTIFY_PACKAGE = "com.spotify.music"
+        private const val KEY_ADVERTISEMENT = "android.media.metadata.ADVERTISEMENT"
 
         @Volatile var pendingTrack: Pair<String, String>? = null
 
