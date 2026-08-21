@@ -632,20 +632,6 @@ private fun CdGlowCircularCover(
         label = "base_cd_rotation"
     )
 
-    // Rotazione accentuata al cambio brano
-    var rollSpinTarget by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(trackId) {
-        rollSpinTarget += 720f
-    }
-    val animatedRollSpin by animateFloatAsState(
-        targetValue = rollSpinTarget,
-        animationSpec = tween(
-            durationMillis = 900,
-            easing = CubicBezierEasing(0.16f, 1f, 0.30f, 1f)
-        ),
-        label = "cd_track_change_spin"
-    )
-
     // CD Aura Pulse: Pulsazione e respirazione lenta dell'alone cromatico
     val auraScale by infiniteTransition.animateFloat(
         initialValue = 0.94f,
@@ -688,7 +674,7 @@ private fun CdGlowCircularCover(
         label = "cd_wave_pulse_alpha"
     )
 
-    val currentRotation = baseCdRotation + animatedRollSpin
+    val currentRotation = baseCdRotation
     val effectiveAuraAlpha = auraAlpha * glowFactor
     val effectiveWaveAlpha = waveAlpha * glowFactor
 
