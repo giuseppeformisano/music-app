@@ -9,6 +9,22 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
     private var lastTrack = ""
 
+    // Chiamato quando Android lega il service — legge subito le notifiche già attive
+    override fun onListenerConnected() {
+        super.onListenerConnected()
+        activeNotifications?.forEach { sbn ->
+            if (sbn.packageName == SPOTIFY_PACKAGE) {
+                val extras = sbn.notification.extras
+                val title = extras.getString("android.title")?.trim() ?: return@forEach
+                val artist = extras.getString("android.text")?.trim() ?: ""
+                if (title != lastTrack) {
+                    lastTrack = title
+                    onTrackChanged?.invoke(title, artist)
+                }
+            }
+        }
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         if (sbn.packageName != SPOTIFY_PACKAGE) return
         val extras = sbn.notification.extras
