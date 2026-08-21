@@ -157,16 +157,10 @@ fun MainFeedScreen(
     // Animazione d'ingresso pilotata dagli ID (dati sempre aggiornati). Ogni utente non
     // ancora "visto" anima l'entrata; poi diventa item normale.
     val seenLiveIds = remember { mutableStateListOf<String>() }
-    // Batch iniziale (utenti già live all'apertura): entrata VELOCE (~0.5s). I nuovi
-    // arrivi successivi usano l'entrata piena (~2s).
-    val fastEntranceIds = remember { mutableStateListOf<String>() }
-    var initialCaptured by remember { mutableStateOf(false) }
-    LaunchedEffect(liveFriends.isNotEmpty()) {
-        if (!initialCaptured && liveFriends.isNotEmpty()) {
-            fastEntranceIds.addAll(liveFriends.map { it.id })
-            initialCaptured = true
-        }
-    }
+    // Momento di apertura della schermata: gli utenti che compaiono ENTRO ~1.5s da qui
+    // sono il "batch iniziale" (entrata veloce 0.7s); chi entra DOPO (login mentre sei in
+    // app) usa l'entrata piena (2s). Legato al tempo, non al "primo che appare".
+    val screenOpenAt = remember { System.currentTimeMillis() }
 
     // Uscita: quando un amico (già visto) smette di ascoltare, esce con animazione (2s)
     // e solo dopo sparisce. Teniamo l'ultimo stato noto per animare con i suoi dati.
@@ -234,7 +228,7 @@ fun MainFeedScreen(
                             currentUser = currentUser,
                             liveUsers = liveFriends,
                             seenIds = seenLiveIds,
-                            fastIds = fastEntranceIds,
+                            screenOpenAtMs = screenOpenAt,
                             departing = departingUsers.values.toList(),
                             onUserSeen = { id -> if (id !in seenLiveIds) seenLiveIds.add(id) },
                             onExitComplete = { id ->
@@ -525,7 +519,7 @@ private fun LivePageContent(
     currentUser: User,
     liveUsers: List<User>,
     seenIds: List<String> = emptyList(),
-    fastIds: List<String> = emptyList(),
+    screenOpenAtMs: Long = 0L,
     departing: List<User> = emptyList(),
     onUserSeen: (String) -> Unit = {},
     onExitComplete: (String) -> Unit = {},
@@ -602,7 +596,8 @@ private fun LivePageContent(
                                 onClick = { onSelectLiveUser(user) },
                                 onProfileClick = { onOpenProfile(user) },
                                 onComplete = { onUserSeen(user.id) },
-                                fast = user.id in fastIds
+                                // batch iniziale (entro ~1.5s dall'apertura) = 0.7s; login in app = 2s
+                                fast = (System.currentTimeMillis() - screenOpenAtMs) < 1500L
                             )
                         }
                     }
