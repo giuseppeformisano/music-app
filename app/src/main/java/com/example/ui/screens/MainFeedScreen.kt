@@ -1330,23 +1330,45 @@ private fun JewelCaseFrontLid(
                 )
             }
 
-            // Riflesso Speculare Diagonale Acrilico / Vetro Lucido (Glass Gloss Glare)
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(
-                                PureWhite.copy(alpha = 0.28f),
-                                PureWhite.copy(alpha = 0.08f),
-                                Color.Transparent,
-                                PureWhite.copy(alpha = 0.05f)
-                            ),
-                            start = Offset(0f, 0f),
-                            end = Offset(80f, 80f)
-                        )
+            // Lucentezza plastica lucida (Glossy Acrylic Sheen) — proporzionale alla dimensione
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                // Sheen diagonale ampio dall'angolo alto-sinistro, riflesso plastica
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(
+                            PureWhite.copy(alpha = 0.34f),
+                            PureWhite.copy(alpha = 0.10f),
+                            Color.Transparent
+                        ),
+                        start = Offset(0f, 0f),
+                        end = Offset(w * 0.95f, h * 0.95f)
                     )
-            )
+                )
+                // Striscia speculare verticale lucida, luce riflessa sulla plastica
+                drawRect(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(Color.Transparent, PureWhite.copy(alpha = 0.26f), Color.Transparent),
+                        startX = w * 0.14f,
+                        endX = w * 0.40f
+                    )
+                )
+                // Bagliore morbido in basso-destra, secondo tocco di plastica lucida
+                drawRect(
+                    brush = Brush.linearGradient(
+                        colors = listOf(Color.Transparent, PureWhite.copy(alpha = 0.10f)),
+                        start = Offset(w * 0.5f, h * 0.5f),
+                        end = Offset(w, h)
+                    )
+                )
+                // Bordo superiore lucido netto, spigolo acrilico
+                drawRect(
+                    color = PureWhite.copy(alpha = 0.38f),
+                    topLeft = Offset(0f, 0f),
+                    size = Size(w, 1.2.dp.toPx())
+                )
+            }
 
             // Micro-linguette / fermagli ad aletta del libretto negli angoli destri
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -1437,8 +1459,9 @@ private fun LiveUserMinimalItem(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(BlackPitch)
+            // Sfondo arrotondato SENZA clip dei figli: così la custodia CD, mentre
+            // ruota a libro in 3D, resta interamente visibile e non viene tagliata.
+            .background(BlackPitch, RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(color = PureWhite.copy(alpha = 0.08f)),
