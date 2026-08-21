@@ -75,6 +75,8 @@ private fun ImmersiveScaffold(
                     WindowManager.LayoutParams.MATCH_PARENT,
                     WindowManager.LayoutParams.MATCH_PARENT
                 )
+                // Il contenuto (es. campo "rispondi in live") sale con la tastiera
+                setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
             }
             true
         }

@@ -1,7 +1,6 @@
 package com.example.ui.screens
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -11,7 +10,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,17 +43,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
@@ -109,13 +104,9 @@ fun LiveDetailScreen(
     val track = user.currentTrack ?: return
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val coroutineScope = rememberCoroutineScope()
 
     var replyMessage by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingReaction>() }
-
-    // Interattività Swipe Down: transizione fisica lineare fluida senza rimbalzo
-    val dragOffsetY = remember { Animatable(0f) }
 
     // Pulsazione audio dinamica
     val infiniteTransition = rememberInfiniteTransition(label = "live_pulse")
@@ -156,71 +147,15 @@ fun LiveDetailScreen(
     val totalFormatted = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
     val progressFraction = (elapsedSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
 
-    val currentDrag = dragOffsetY.value
-    val dragFraction = (currentDrag / 500f).coerceIn(0f, 1f)
-    val contentScale = 1f - (dragFraction * 0.08f)
-    val backgroundDim = (1f - (dragFraction * 0.7f)).coerceIn(0f, 1f)
-
-    Box(
-        modifier = modifier
+    // Stesso scaffold immersivo del dettaglio feed (fullscreen sopra la status bar,
+    // swipe-giù da ovunque con blur-fade lineare, cover sfocata di sfondo, niente X),
+    // ma con i CONTENUTI live: timer/progress reale, reazioni, "rispondi in live".
+    com.example.ui.components.TrackDialog(coverUrl = track.coverUrl, onDismiss = onClose) {
+      Box(
+        modifier = Modifier
             .fillMaxSize()
-            .background(BlackPitch)
-            // Gesture Swipe Down fluida
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragEnd = {
-                        if (dragOffsetY.value > 80f) {
-                            coroutineScope.launch {
-                                dragOffsetY.animateTo(
-                                    targetValue = 900f,
-                                    animationSpec = tween(durationMillis = 200, easing = FastOutLinearInEasing)
-                                )
-                                onClose()
-                            }
-                        } else {
-                            coroutineScope.launch {
-                                dragOffsetY.animateTo(
-                                    targetValue = 0f,
-                                    animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing)
-                                )
-                            }
-                        }
-                    },
-                    onDragCancel = {
-                        coroutineScope.launch {
-                            dragOffsetY.animateTo(
-                                targetValue = 0f,
-                                animationSpec = tween(durationMillis = 150, easing = FastOutSlowInEasing)
-                            )
-                        }
-                    },
-                    onDrag = { change, dragAmount ->
-                        change.consume()
-                        val newOffset = (dragOffsetY.value + dragAmount.y).coerceAtLeast(0f)
-                        coroutineScope.launch {
-                            dragOffsetY.snapTo(newOffset)
-                        }
-                    }
-                )
-            }
-            .graphicsLayer {
-                translationY = dragOffsetY.value
-                scaleX = contentScale
-                scaleY = contentScale
-                alpha = backgroundDim
-            }
             .testTag("live_detail_fullscreen")
     ) {
-        // ================= 1. COPERTINA SFONDO CON BLUR LEGGERO =================
-        AsyncImage(
-            model = track.coverUrl,
-            contentDescription = "Sfondo ${track.title}",
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(radius = 8.dp)
-        )
-
         // Overlay Scrim scuro per contrasto ottimale
         Box(
             modifier = Modifier
@@ -541,6 +476,7 @@ fun LiveDetailScreen(
                 onFinished = { floatingReactions.remove(item) }
             )
         }
+      }
     }
 }
 

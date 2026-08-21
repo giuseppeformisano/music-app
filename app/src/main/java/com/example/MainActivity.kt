@@ -222,8 +222,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     currentUser = uiState.currentUser,
                     feedUsers = uiState.feedUsers.filter { followingIds.contains(it.id) },
                     stories = viewModel.getStoriesList(),
-                    // Dettaglio live = stesso dettaglio del feed (TrackDetailDialog)
-                    onOpenLiveDetail = { user -> user.currentTrack?.let { viewModel.inspectTrack(it, user) } },
+                    onOpenLiveDetail = { user -> viewModel.openStory(user) },
                     onOpenProfile = { user -> viewModel.openProfile(user) },
                     onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
                     onOpenShareSheet = { viewModel.openShareSheet() },
@@ -263,7 +262,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     notificationCount = uiState.pendingFriendRequests.size,
                     onOpenChat = { targetUser -> viewModel.openChat(targetUser) },
                     onSelectTrack = { track, owner -> viewModel.inspectTrack(track, owner) },
-                    onOpenLiveDetail = { targetUser -> targetUser.currentTrack?.let { viewModel.inspectTrack(it, targetUser) } },
+                    onOpenLiveDetail = { targetUser -> viewModel.openStory(targetUser) },
                     onLogout = { viewModel.logout() },
                     followers = uiState.followerDetails,
                     following = uiState.followingDetails,
@@ -296,18 +295,8 @@ fun MusicApp(viewModel: MusicViewModel) {
             }
         }
 
-        // Overlay: Live Detail Screen Fullscreen
-        AnimatedVisibility(
-            visible = uiState.activeStoryUserIndex != null,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = tween(280, easing = androidx.compose.animation.core.FastOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(200)),
-            exit = slideOutVertically(
-                targetOffsetY = { it },
-                animationSpec = tween(220, easing = androidx.compose.animation.core.FastOutLinearInEasing)
-            ) + fadeOut(animationSpec = tween(180))
-        ) {
+        // Dettaglio Live (stesso scaffold immersivo del dettaglio feed, con contenuti live)
+        if (uiState.activeStoryUserIndex != null) {
             val allStories = viewModel.getStoriesList()
             val activeIndex = uiState.activeStoryUserIndex
             val liveUser = if (activeIndex != null && activeIndex in allStories.indices) allStories[activeIndex] else null
