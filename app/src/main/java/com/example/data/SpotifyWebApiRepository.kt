@@ -47,7 +47,8 @@ object SpotifyWebApiRepository {
             if (!obj.optBoolean("is_playing", false)) return null
             val item = obj.optJSONObject("item") ?: return null
             val title = item.optString("name").takeIf { it.isNotEmpty() } ?: return null
-            val artist = item.optJSONArray("artists")?.optJSONObject(0)?.optString("name") ?: return null
+            val rawArtist = item.optJSONArray("artists")?.optJSONObject(0)?.optString("name") ?: return null
+            val artist = sanitizeContext(rawArtist)
             val album = item.optJSONObject("album")
             val albumName = album?.optString("name") ?: ""
             val coverUrl = album?.optJSONArray("images")?.optJSONObject(0)?.optString("url") ?: ""
@@ -68,6 +69,16 @@ object SpotifyWebApiRepository {
             Log.e(TAG, "parseTrack error: ${e.message}")
             null
         }
+    }
+
+    // Match esatto (mai substring) per non toccare artisti reali con quelle parole nel nome
+    private fun sanitizeContext(value: String): String {
+        val contexts = setOf(
+            "consigliato per te", "consigliati per te",
+            "fatto per te", "made for you",
+            "radio", "mix del giorno", "daily mix"
+        )
+        return if (value.trim().lowercase() in contexts) "" else value.trim()
     }
 
     private fun formatDuration(ms: Long): String {

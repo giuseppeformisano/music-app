@@ -94,6 +94,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var userSearchJob: Job? = null
     private var firebaseObserverJob: Job? = null
     private var spotifyPollingJob: Job? = null
+    // Debounce: evita che un singolo poll vuoto (204 tra brani / errore rete transitorio)
+    // faccia sparire e riapparire la live agli altri
+    private var emptyPollCount = 0
     private val httpClient by lazy { OkHttpClient() }
 
     init {
@@ -265,15 +268,20 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val currentTrackId = _uiState.value.nowPlayingTrack?.id
 
         if (track == null) {
-            // Clear anche se currentTrack è stato ripristinato da Firestore (nowPlayingTrack null al riavvio)
-            if (currentTrackId != null || _uiState.value.currentUser.currentTrack != null) {
-                val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
-                _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
-                FirebaseRepository.syncCurrentUser(updatedUser)
-            }
+            val hasLive = currentTrackId != null || _uiState.value.currentUser.currentTrack != null
+            if (!hasLive) { emptyPollCount = 0; return }
+            // Richiede 2 poll vuoti consecutivi (~6s) prima di azzerare: assorbe i 204
+            // transitori tra un brano e l'altro e i micro-errori di rete
+            emptyPollCount++
+            if (emptyPollCount < 2) return
+            emptyPollCount = 0
+            val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
+            _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
+            FirebaseRepository.syncCurrentUser(updatedUser)
             return
         }
 
+        emptyPollCount = 0
         if (track.id == currentTrackId) return
         val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
         _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
@@ -315,19 +323,36 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (trackName.isBlank()) return
         val currentId = _uiState.value.nowPlayingTrack?.id
         if (trackId.isNotBlank() && trackId == currentId) return
+        val cleanArtist = sanitizeSpotifyContext(artistName)
+        val cleanAlbum = sanitizeSpotifyContext(albumName)
         viewModelScope.launch {
-            val coverUrl = fetchItunesCover(artistName, trackName)
+            val coverUrl = fetchItunesCover(cleanArtist, trackName)
             val track = Track(
-                id = trackId.ifBlank { "$artistName-$trackName".hashCode().toString() },
+                id = trackId.ifBlank { "$cleanArtist-$trackName".hashCode().toString() },
                 title = trackName,
-                artist = artistName,
-                album = albumName,
+                artist = cleanArtist,
+                album = cleanAlbum,
                 coverUrl = coverUrl
             )
             val updatedUser = _uiState.value.currentUser.copy(currentTrack = track, isLiveNow = true)
             _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
             FirebaseRepository.syncCurrentUser(updatedUser)
         }
+    }
+
+    /**
+     * Spotify (soprattutto Free) a volte riporta il nome del contesto/playlist
+     * ("Consigliati per te", "Fatto per te", …) al posto dell'artista. Match ESATTO
+     * (mai substring) per non toccare artisti o brani reali che contengono quelle parole.
+     */
+    private fun sanitizeSpotifyContext(value: String): String {
+        val v = value.trim()
+        val contexts = setOf(
+            "consigliato per te", "consigliati per te",
+            "fatto per te", "made for you",
+            "radio", "mix del giorno", "daily mix"
+        )
+        return if (v.lowercase() in contexts) "" else v
     }
 
     fun clearNowPlayingFromBroadcast() {

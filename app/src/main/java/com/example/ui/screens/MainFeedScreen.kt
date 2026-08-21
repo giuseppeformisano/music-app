@@ -85,6 +85,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -490,14 +491,7 @@ private fun LivePageContent(
                 // ─── La mia live ───────────────────────────────────────────
                 if (iAmLive && myTrack != null) {
                     item(key = "my_live_header") {
-                        Text(
-                            text = "LA TUA LIVE",
-                            color = PureWhite.copy(alpha = 0.35f),
-                            fontSize = 10.sp,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
-                            letterSpacing = 2.5.sp,
-                            modifier = Modifier.padding(bottom = 4.dp)
-                        )
+                        LiveSectionHeader(text = "LA TUA LIVE")
                     }
                     item(key = "my_live") {
                         LiveUserMinimalItem(
@@ -507,50 +501,46 @@ private fun LivePageContent(
                             onProfileClick = { onOpenProfile(currentUser) }
                         )
                     }
-                    // Separatore visivo tra la mia e quelle degli altri
-                    if (liveUsers.isNotEmpty()) {
-                        item(key = "separator") {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(1.dp)
-                                        .background(PureWhite.copy(alpha = 0.07f))
-                                )
-                                Text(
-                                    text = "  ALTRI LIVE  ",
-                                    color = PureWhite.copy(alpha = 0.28f),
-                                    fontSize = 9.sp,
-                                    letterSpacing = 2.sp
-                                )
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .height(1.dp)
-                                        .background(PureWhite.copy(alpha = 0.07f))
-                                )
-                            }
-                        }
-                    }
                 }
-                // ─── Live degli altri ──────────────────────────────────────
-                items(liveUsers, key = { it.id }) { user ->
-                    val track = user.currentTrack ?: return@items
-                    LiveUserMinimalItem(
-                        user = user,
-                        track = track,
-                        onClick = { onSelectLiveUser(user) },
-                        onProfileClick = { onOpenProfile(user) }
-                    )
+                // ─── Live degli amici ──────────────────────────────────────
+                if (liveUsers.isNotEmpty()) {
+                    item(key = "friends_live_header") {
+                        LiveSectionHeader(
+                            text = "FRIENDS LIVE",
+                            topPadding = if (iAmLive) 12.dp else 0.dp
+                        )
+                    }
+                    items(liveUsers, key = { it.id }) { user ->
+                        val track = user.currentTrack ?: return@items
+                        LiveUserMinimalItem(
+                            user = user,
+                            track = track,
+                            onClick = { onSelectLiveUser(user) },
+                            onProfileClick = { onOpenProfile(user) }
+                        )
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun LiveSectionHeader(
+    text: String,
+    topPadding: androidx.compose.ui.unit.Dp = 0.dp
+) {
+    Text(
+        text = text,
+        color = PureWhite.copy(alpha = 0.35f),
+        fontSize = 10.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = 2.5.sp,
+        textAlign = TextAlign.End,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = topPadding, bottom = 6.dp, end = 6.dp)
+    )
 }
 
 /**
