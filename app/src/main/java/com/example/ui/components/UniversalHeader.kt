@@ -124,7 +124,7 @@ fun UniversalHeader(
 
                 // Scritta Dinamica in corsivo calligrafico elegante
                 Text(
-                    text = if (currentPage == NavigationPage.FEED) "Feed" else "Live",
+                    text = if (currentPage == NavigationPage.FEED) "feed" else "live",
                     color = PureWhite.copy(alpha = 0.95f),
                     fontSize = 27.sp,
                     fontWeight = FontWeight.Normal,
