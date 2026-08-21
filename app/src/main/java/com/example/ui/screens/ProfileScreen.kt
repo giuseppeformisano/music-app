@@ -1390,16 +1390,20 @@ private fun ConnectAccountsDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Scelta unica in base al tipo di account: ognuna avvia il proprio flusso,
-                // ma entrambe alimentano la stessa sorgente "currentTrack" unificata.
+                // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
+                // l'altro viene oscurato e reso non cliccabile.
+                val premiumConnected = connectedServices["spotify"] == true
+                val freeConnected = connectedServices["spotify_free"] == true
+
                 StreamingAccountItem(
                     serviceName = "Spotify Premium",
                     serviceDesc = "Collega l'account: dati in tempo reale via API",
-                    isConnected = connectedServices["spotify"] == true,
+                    isConnected = premiumConnected,
+                    enabled = !freeConnected,
                     brandColor = Color(0xFF1DB954),
                     iconComposable = { SpotifyBrandLogo() },
                     onToggle = {
-                        if (connectedServices["spotify"] == true) onDisconnectSpotify()
+                        if (premiumConnected) onDisconnectSpotify()
                         else onConnectSpotify()
                     },
                     testTag = "service_spotify_premium"
@@ -1421,7 +1425,8 @@ private fun ConnectAccountsDialog(
                 StreamingAccountItem(
                     serviceName = "Spotify Free",
                     serviceDesc = "Rileva l'ascolto dalle notifiche",
-                    isConnected = connectedServices["spotify_free"] == true,
+                    isConnected = freeConnected,
+                    enabled = !premiumConnected,
                     brandColor = Color(0xFF1DB954),
                     iconComposable = { SpotifyBrandLogo() },
                     onToggle = { onToggleService("spotify_free") },
@@ -1456,16 +1461,20 @@ private fun StreamingAccountItem(
     brandColor: Color,
     iconComposable: @Composable () -> Unit,
     onToggle: () -> Unit,
-    testTag: String
+    testTag: String,
+    enabled: Boolean = true
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(if (isConnected) brandColor.copy(alpha = 0.12f) else PureWhite.copy(alpha = 0.05f))
+            // Oscurato e non cliccabile quando disabilitato (mutua esclusione)
+            .graphicsLayer { alpha = if (enabled) 1f else 0.35f }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
+                enabled = enabled,
                 onClick = onToggle
             )
             .padding(horizontal = 16.dp, vertical = 14.dp)
