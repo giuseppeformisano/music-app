@@ -124,6 +124,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.checkNotificationListenerEnabled()
         viewModel.startSpotifyPolling()
         val filter = IntentFilter().apply {
             addAction("com.spotify.music.metadatachanged")
@@ -258,7 +259,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onRemoveFollower = { user -> viewModel.removeFollower(user) },
                     onSendFollowRequest = { viewModel.sendFollowRequest(displayUser) },
                     isSentRequest = uiState.sentRequestIds.contains(displayUser.id),
-                    onOpenUserProfile = { u -> viewModel.openProfile(u) }
+                    onOpenUserProfile = { u -> viewModel.openProfile(u) },
+                    isNotificationListenerEnabled = uiState.isNotificationListenerEnabled,
+                    onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) }
                 )
             }
         }

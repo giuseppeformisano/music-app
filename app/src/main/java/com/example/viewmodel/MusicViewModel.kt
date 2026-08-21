@@ -79,7 +79,8 @@ data class MusicUiState(
     val peopleSearchResults: List<User> = emptyList(),
     val sentRequestIds: Set<String> = emptySet(),
     val followerDetails: List<User> = emptyList(),
-    val followingDetails: List<User> = emptyList()
+    val followingDetails: List<User> = emptyList(),
+    val isNotificationListenerEnabled: Boolean = false
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -270,6 +271,33 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearSpotifyError() {
         _uiState.update { it.copy(spotifyError = null) }
+    }
+
+    fun checkNotificationListenerEnabled() {
+        val enabled = com.example.SpotifyNotificationListenerService.isEnabled(appContext)
+        _uiState.update { it.copy(isNotificationListenerEnabled = enabled) }
+        if (enabled) registerNotificationListenerCallbacks()
+    }
+
+    fun openNotificationListenerSettings(context: Context) {
+        context.startActivity(
+            android.content.Intent(android.provider.Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+
+    private fun registerNotificationListenerCallbacks() {
+        com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist ->
+            // Usa solo come fallback se il Web API non sta già fornendo dati
+            if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
+                updateNowPlayingFromBroadcast("", trackName, artist, "")
+            }
+        }
+        com.example.SpotifyNotificationListenerService.onPlaybackStopped = {
+            if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
+                clearNowPlayingFromBroadcast()
+            }
+        }
     }
 
     fun updateNowPlayingFromBroadcast(trackId: String, trackName: String, artistName: String, albumName: String) {

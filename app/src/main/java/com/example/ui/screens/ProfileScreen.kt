@@ -152,6 +152,8 @@ fun ProfileScreen(
     onSendFollowRequest: () -> Unit = {},
     isSentRequest: Boolean = false,
     onOpenUserProfile: (User) -> Unit = {},
+    isNotificationListenerEnabled: Boolean = false,
+    onEnableNotificationListener: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -295,9 +297,11 @@ fun ProfileScreen(
             ConnectAccountsDialog(
                 connectedServices = connectedServices,
                 spotifyError = spotifyError,
+                isNotificationListenerEnabled = isNotificationListenerEnabled,
                 onConnectSpotify = { onConnectSpotify(context) },
                 onDisconnectSpotify = onDisconnectSpotify,
                 onToggleService = onToggleService,
+                onEnableNotificationListener = onEnableNotificationListener,
                 onDismiss = { showConnectAccountsSheet = false }
             )
         }
@@ -1468,9 +1472,11 @@ private fun MinimalTextInputField(
 private fun ConnectAccountsDialog(
     connectedServices: Map<String, Boolean>,
     spotifyError: String?,
+    isNotificationListenerEnabled: Boolean = false,
     onConnectSpotify: () -> Unit,
     onDisconnectSpotify: () -> Unit,
     onToggleService: (String) -> Unit,
+    onEnableNotificationListener: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     Dialog(
@@ -1480,7 +1486,7 @@ private fun ConnectAccountsDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.78f))
+                .background(Color.Black.copy(alpha = 0.88f))
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
@@ -1489,16 +1495,15 @@ private fun ConnectAccountsDialog(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 24.dp)
+                    .padding(horizontal = 18.dp)
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF0A0A0A))
-                    .border(1.dp, PureWhite.copy(alpha = 0.09f), RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF080808))
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }
                     ) { }
-                    .padding(24.dp)
+                    .padding(20.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1561,6 +1566,72 @@ private fun ConnectAccountsDialog(
                     onToggle = { onToggleService("amazon_music") },
                     testTag = "service_amazon_music"
                 )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Sezione: Rilevamento notifiche per account Free
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(PureWhite.copy(alpha = 0.06f))
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Rilevamento notifiche",
+                            color = PureWhite,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            text = if (isNotificationListenerEnabled)
+                                "Attivo — funziona con Free e Premium"
+                            else
+                                "Alternativa per account Free",
+                            color = if (isNotificationListenerEnabled)
+                                Color(0xFF1DB954)
+                            else
+                                SubtitleGray.copy(alpha = 0.6f),
+                            fontSize = 12.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    if (!isNotificationListenerEnabled) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(PureWhite.copy(alpha = 0.08f))
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = onEnableNotificationListener
+                                )
+                                .padding(horizontal = 14.dp, vertical = 7.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Abilita",
+                                color = PureWhite,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                    } else {
+                        Icon(
+                            imageVector = androidx.compose.material.icons.Icons.Default.Check,
+                            contentDescription = null,
+                            tint = Color(0xFF1DB954),
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(4.dp))
             }
