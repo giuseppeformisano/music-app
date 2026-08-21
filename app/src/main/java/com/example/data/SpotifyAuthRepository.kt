@@ -17,7 +17,7 @@ import java.security.SecureRandom
 object SpotifyAuthRepository {
 
     private const val TAG = "SpotifyAuthRepository"
-    private const val CLIENT_ID = "d22ae7ca717e4f289e61b6d3f2e40f8b"
+    private const val CLIENT_ID = "c5e76bdf7be443619df11fc322b0288e"
     const val REDIRECT_URI = "com.aistudio.music.livefeed://callback"
     private const val SCOPES = "user-read-currently-playing user-read-playback-state"
 
