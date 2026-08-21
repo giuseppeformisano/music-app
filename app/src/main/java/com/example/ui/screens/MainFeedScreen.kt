@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
@@ -152,15 +153,18 @@ fun MainFeedScreen(
     
     // Utenti live degli amici: SEMPRE con dati freschi da `stories` (niente copie statiche)
     val liveFriends = stories.filter { it.currentTrack != null && !it.isCurrentUser }
-    // L'animazione d'ingresso è pilotata SOLO dagli ID: i dati (brano/artista/utente)
-    // restano sempre aggiornati e non si "congelano".
+    // Animazione d'ingresso pilotata dagli ID (dati sempre aggiornati). Ogni utente non
+    // ancora "visto" anima l'entrata; poi diventa item normale.
     val seenLiveIds = remember { mutableStateListOf<String>() }
-    // Seed UNA sola volta all'apertura: marca "già visti" SOLO gli utenti live presenti
-    // in quel momento. Chiunque vada live DOPO (anche il primo in assoluto) anima l'ingresso.
-    LaunchedEffect(Unit) {
-        seenLiveIds.addAll(
-            stories.filter { it.currentTrack != null && !it.isCurrentUser }.map { it.id }
-        )
+    // Batch iniziale (utenti già live all'apertura): entrata VELOCE (~0.5s). I nuovi
+    // arrivi successivi usano l'entrata piena (~2s).
+    val fastEntranceIds = remember { mutableStateListOf<String>() }
+    var initialCaptured by remember { mutableStateOf(false) }
+    LaunchedEffect(liveFriends.isNotEmpty()) {
+        if (!initialCaptured && liveFriends.isNotEmpty()) {
+            fastEntranceIds.addAll(liveFriends.map { it.id })
+            initialCaptured = true
+        }
     }
 
     val currentPageEnum = if (pagerState.currentPage == 0) NavigationPage.LIVE else NavigationPage.FEED
@@ -208,6 +212,7 @@ fun MainFeedScreen(
                             currentUser = currentUser,
                             liveUsers = liveFriends,
                             seenIds = seenLiveIds,
+                            fastIds = fastEntranceIds,
                             onUserSeen = { id -> if (id !in seenLiveIds) seenLiveIds.add(id) },
                             onSelectLiveUser = onOpenLiveDetail,
                             onOpenProfile = onOpenProfile
@@ -492,6 +497,7 @@ private fun LivePageContent(
     currentUser: User,
     liveUsers: List<User>,
     seenIds: List<String> = emptyList(),
+    fastIds: List<String> = emptyList(),
     onUserSeen: (String) -> Unit = {},
     onSelectLiveUser: (User) -> Unit,
     onOpenProfile: (User) -> Unit
@@ -565,7 +571,8 @@ private fun LivePageContent(
                                 track = track,
                                 onClick = { onSelectLiveUser(user) },
                                 onProfileClick = { onOpenProfile(user) },
-                                onComplete = { onUserSeen(user.id) }
+                                onComplete = { onUserSeen(user.id) },
+                                fast = user.id in fastIds
                             )
                         }
                     }
@@ -1750,11 +1757,10 @@ private fun LiveUserMinimalItem(
 }
 
 /**
- * Animazione Supernova per l'ingresso di nuovi utenti nella lista Live:
- * - Esplosione cromatica iniziale con flash bianco accecante
- * - Particelle di luce che si espandono radialmente
- * - Dissolvenza progressiva verso la normale visualizzazione del brano
- * - Durata totale: 1.8 secondi
+ * Ingresso di un nuovo utente live: animazione INVERSA al cambio traccia.
+ * Si apre lo spazio riga, il porta-CD (jewel case) compare a destra e si apre, il disco
+ * ne esce e ROTOLA verso sinistra mentre compaiono i dati della traccia; il porta-CD
+ * svanisce (fade-out) e si arriva al layout live normale. Poi onComplete -> item normale.
  */
 @Composable
 private fun SupernovaEntranceItem(
@@ -1763,67 +1769,142 @@ private fun SupernovaEntranceItem(
     onClick: () -> Unit,
     onProfileClick: () -> Unit,
     onComplete: () -> Unit,
+    fast: Boolean = false,
     modifier: Modifier = Modifier
 ) {
-    val entrance = remember { Animatable(0f) }
+    val density = LocalDensity.current
+    val entrance = remember(user.id) { Animatable(0f) }
     val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex, track.genre) {
         extractDynamicTrackGlowColors(track)
     }
-    // Ingresso pulito: l'item VERO appare con fade + scala + glow d'accento, poi
-    // (onComplete) diventa un item normale. I dati restano sempre freschi.
     LaunchedEffect(user.id) {
         entrance.snapTo(0f)
-        entrance.animateTo(1f, tween(1100, easing = FastOutSlowInEasing))
+        entrance.animateTo(1f, tween(if (fast) 500 else 2000, easing = FastOutSlowInEasing))
         onComplete()
     }
-    val p = entrance.value
-    val scale = 0.70f + 0.30f * p
-    val itemAlpha = (p / 0.2f).coerceIn(0f, 1f)
-    val flash = (1f - p / 0.40f).coerceIn(0f, 1f)
-    val glow = (1f - kotlin.math.abs(p - 0.45f) / 0.45f).coerceIn(0f, 1f)
+    val e = entrance.value
+
+    val heightFactor = (e / 0.15f).coerceIn(0f, 1f)
+    val caseAlpha = when {
+        e < 0.05f -> 0f
+        e < 0.20f -> ((e - 0.05f) / 0.15f)
+        e < 0.68f -> 1f
+        e < 0.92f -> (1f - (e - 0.68f) / 0.24f)
+        else -> 0f
+    }.coerceIn(0f, 1f)
+    val openAmount = ((e - 0.10f) / 0.25f).coerceIn(0f, 1f)
+    val cdProgress = ((e - 0.30f) / 0.50f).coerceIn(0f, 1f)
+    val cdVisible = e >= 0.28f
+    val cdScale = 0.74f + 0.26f * cdProgress
+    val dataAlpha = ((e - 0.45f) / 0.40f).coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .graphicsLayer {
-                alpha = itemAlpha
-                scaleX = scale
-                scaleY = scale
-                translationY = (1f - p) * 44f * density
-            }
+            .background(BlackPitch, RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(color = PureWhite.copy(alpha = 0.08f)),
+                onClick = onClick
+            )
+            .padding(horizontal = 6.dp, vertical = 8.dp)
+            .graphicsLayer { alpha = (e / 0.08f).coerceIn(0f, 1f) }
             .testTag("live_item_arriving_${user.id}")
     ) {
-        // Alone d'accento d'ingresso dietro l'item
-        if (glow > 0.01f) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.horizontalGradient(
-                            listOf(
-                                primaryColor.copy(alpha = 0.22f * glow),
-                                secondaryColor.copy(alpha = 0.10f * glow),
-                                Color.Transparent
-                            )
-                        ),
-                        RoundedCornerShape(16.dp)
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(62.dp * heightFactor)
+                .clipToBounds(),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            val availableWidthPx = constraints.maxWidth.toFloat()
+            val cdSizePx = with(density) { 58.dp.toPx() }
+            val jewelCaseWidthPx = with(density) { 54.dp.toPx() }
+            val travelDistance = (availableWidthPx - jewelCaseWidthPx + (jewelCaseWidthPx * 0.46f) - (cdSizePx / 2f)).coerceAtLeast(0f)
+
+            // Dati traccia nella posizione finale (dopo il CD a sinistra), in fade-in
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Spacer(modifier = Modifier.width(72.dp))
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .graphicsLayer { alpha = dataAlpha },
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    com.example.ui.components.BouncingMarqueeText(
+                        text = track.title, color = PureWhite, fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold, letterSpacing = (-0.2).sp,
+                        modifier = Modifier.fillMaxWidth()
                     )
-            )
-        }
-        // Il VERO item live: stesso design, dati sempre aggiornati
-        LiveUserMinimalItem(
-            user = user,
-            track = track,
-            onClick = onClick,
-            onProfileClick = onProfileClick
-        )
-        // Flash bianco rapido iniziale
-        if (flash > 0.01f) {
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(Color.White.copy(alpha = flash * 0.45f), RoundedCornerShape(16.dp))
-            )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    com.example.ui.components.BouncingMarqueeText(
+                        text = track.artist, color = Zinc400, fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal, letterSpacing = 0.1.sp,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        AsyncImage(
+                            model = user.avatarUrl, contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(15.dp).clip(CircleShape)
+                        )
+                        Text(
+                            text = (if (user.username.startsWith("@")) user.username else "@${user.username}").lowercase(),
+                            color = PureWhite.copy(alpha = 0.65f), fontSize = 11.sp,
+                            fontWeight = FontWeight.Normal, letterSpacing = 0.1.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            // Porta-CD a destra: si apre e poi svanisce
+            if (caseAlpha > 0.01f) {
+                JewelCaseBackPlate(
+                    alpha = caseAlpha,
+                    modifier = Modifier.align(Alignment.CenterEnd).zIndex(6f)
+                )
+                JewelCaseFrontLid(
+                    coverUrl = track.coverUrl,
+                    title = track.title,
+                    openAmount = openAmount,
+                    alpha = caseAlpha,
+                    modifier = Modifier.align(Alignment.CenterEnd).zIndex(12f)
+                )
+            }
+
+            // Disco che esce dal porta-CD (destra) e rotola verso sinistra fino a riposo
+            if (cdVisible) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .zIndex(8f)
+                        .graphicsLayer {
+                            translationX = (1f - cdProgress) * travelDistance
+                            rotationZ = (1f - cdProgress) * -1200f
+                            scaleX = cdScale
+                            scaleY = cdScale
+                        }
+                        .size(58.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CdGlowCircularCover(
+                        coverUrl = track.coverUrl,
+                        title = track.title,
+                        trackId = track.id,
+                        primaryColor = primaryColor,
+                        secondaryColor = secondaryColor
+                    )
+                }
+            }
         }
     }
 }
