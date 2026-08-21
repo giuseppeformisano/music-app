@@ -122,16 +122,16 @@ fun UniversalHeader(
 
                 Spacer(modifier = Modifier.width(10.dp))
 
-                // Scritta Dinamica in corsivo elegante, sottile e raffinato (thin italic)
+                // Scritta Dinamica in corsivo calligrafico elegante
                 Text(
-                    text = if (currentPage == NavigationPage.FEED) "feed" else "live",
+                    text = if (currentPage == NavigationPage.FEED) "Feed" else "Live",
                     color = PureWhite.copy(alpha = 0.95f),
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Thin,
+                    fontSize = 27.sp,
+                    fontWeight = FontWeight.Normal,
                     fontStyle = FontStyle.Italic,
-                    fontFamily = FontFamily.Serif,
-                    letterSpacing = 0.8.sp,
-                    modifier = Modifier.padding(top = 1.dp)
+                    fontFamily = FontFamily.Cursive,
+                    letterSpacing = 0.5.sp,
+                    modifier = Modifier.padding(top = 1.dp, bottom = 2.dp)
                 )
             }
         }

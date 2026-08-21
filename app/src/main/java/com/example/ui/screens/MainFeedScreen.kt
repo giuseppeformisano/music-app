@@ -1515,24 +1515,22 @@ private fun LiveUserMinimalItem(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
+                    com.example.ui.components.BouncingMarqueeText(
                         text = currentDisplayTrack.title,
                         color = PureWhite,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.2).sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text(
+                    com.example.ui.components.BouncingMarqueeText(
                         text = currentDisplayTrack.artist,
                         color = Zinc400,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Normal,
                         letterSpacing = 0.1.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     // Nickname e avatar completamente statici, non cliccabili, senza box né bordi
