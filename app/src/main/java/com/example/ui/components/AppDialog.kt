@@ -3,17 +3,14 @@ package com.example.ui.components
 import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -33,27 +30,14 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-/**
- * Estende la finestra del Dialog a tutto lo schermo, DIETRO status bar e barra di
- * navigazione: il backdrop copre anche il pannello notifiche/barra di stato Android.
- */
-@Composable
-private fun ImmersiveDialogWindow() {
-    val view = LocalView.current
-    SideEffect {
-        val window = (view.parent as? DialogWindowProvider)?.window
-        window?.setFlags(
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
-        )
-    }
-}
-
-private const val DISMISS_THRESHOLD = 260f
+private const val DISMISS_THRESHOLD = 240f
 
 /**
- * Contenitore comune: backdrop a tutto schermo, chiusura con swipe verso il basso
- * o tap sul backdrop. Niente pulsante X. Contenuto centrato verticalmente/orizzontalmente.
+ * Contenitore comune per TUTTE le dialog:
+ * - backdrop a tutto schermo, GIÀ fullscreen dietro status bar/barra di navigazione
+ *   sin dal primo frame (flag impostati in composizione, niente "scatto")
+ * - chiusura con swipe verso il basso DA QUALSIASI PUNTO, o tap sullo sfondo
+ * - niente pulsante X; contenuto centrato verticalmente e orizzontalmente
  */
 @Composable
 private fun ImmersiveScaffold(
@@ -65,44 +49,56 @@ private fun ImmersiveScaffold(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
     ) {
-        ImmersiveDialogWindow()
+        // Fullscreen sopra la barra di sistema impostato SUBITO in composizione
+        // (prima del primo draw) così non si vede il salto dal sotto-barra a fullscreen.
+        val view = LocalView.current
+        val window = (view.parent as? DialogWindowProvider)?.window
+        remember(window) {
+            window?.apply {
+                setFlags(
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                )
+                setLayout(
+                    WindowManager.LayoutParams.MATCH_PARENT,
+                    WindowManager.LayoutParams.MATCH_PARENT
+                )
+            }
+            true
+        }
+
         val scope = rememberCoroutineScope()
         val offsetY = remember { Animatable(0f) }
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onDismiss
-                ),
+                // Swipe verso il basso da QUALSIASI punto della dialog
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = {
+                            if (offsetY.value > DISMISS_THRESHOLD) onDismiss()
+                            else scope.launch { offsetY.animateTo(0f) }
+                        },
+                        onVerticalDrag = { _, dy ->
+                            scope.launch { offsetY.snapTo((offsetY.value + dy).coerceAtLeast(0f)) }
+                        }
+                    )
+                }
+                // Tap sullo sfondo (non sul contenuto) chiude
+                .pointerInput(Unit) {
+                    detectTapGestures(onTap = { onDismiss() })
+                },
             contentAlignment = Alignment.Center
         ) {
+            // Backdrop statico (non trasla con lo swipe)
             backdrop()
 
+            // Contenuto: trasla con lo swipe; i tap qui NON propagano allo sfondo
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
                     .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                    // Consuma i tap così toccare il contenuto non chiude la dialog
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = {}
-                    )
-                    // Swipe verso il basso per chiudere
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragEnd = {
-                                if (offsetY.value > DISMISS_THRESHOLD) onDismiss()
-                                else scope.launch { offsetY.animateTo(0f) }
-                            },
-                            onVerticalDrag = { _, dy ->
-                                scope.launch { offsetY.snapTo((offsetY.value + dy).coerceAtLeast(0f)) }
-                            }
-                        )
-                    },
+                    .pointerInput(Unit) { detectTapGestures { /* consuma i tap sul contenuto */ } },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 content = content
             )

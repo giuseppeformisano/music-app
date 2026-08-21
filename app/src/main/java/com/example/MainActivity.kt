@@ -222,7 +222,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                     currentUser = uiState.currentUser,
                     feedUsers = uiState.feedUsers.filter { followingIds.contains(it.id) },
                     stories = viewModel.getStoriesList(),
-                    onOpenLiveDetail = { user -> viewModel.openStory(user) },
+                    // Dettaglio live = stesso dettaglio del feed (TrackDetailDialog)
+                    onOpenLiveDetail = { user -> user.currentTrack?.let { viewModel.inspectTrack(it, user) } },
                     onOpenProfile = { user -> viewModel.openProfile(user) },
                     onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
                     onOpenShareSheet = { viewModel.openShareSheet() },
@@ -262,7 +263,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     notificationCount = uiState.pendingFriendRequests.size,
                     onOpenChat = { targetUser -> viewModel.openChat(targetUser) },
                     onSelectTrack = { track, owner -> viewModel.inspectTrack(track, owner) },
-                    onOpenLiveDetail = { targetUser -> viewModel.openStory(targetUser) },
+                    onOpenLiveDetail = { targetUser -> targetUser.currentTrack?.let { viewModel.inspectTrack(it, targetUser) } },
                     onLogout = { viewModel.logout() },
                     followers = uiState.followerDetails,
                     following = uiState.followingDetails,
