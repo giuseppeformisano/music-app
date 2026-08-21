@@ -1080,7 +1080,7 @@ private fun FollowersFollowingDialog(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.80f))
+                .background(Color.Black.copy(alpha = 0.88f))
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() }
@@ -1089,12 +1089,11 @@ private fun FollowersFollowingDialog(
         ) {
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 14.dp)
                     .fillMaxWidth()
                     .fillMaxHeight(0.75f)
-                    .clip(RoundedCornerShape(24.dp))
-                    .background(Color(0xFF0A0A0A))
-                    .border(1.dp, PureWhite.copy(alpha = 0.09f), RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF080808))
                     .clickable(
                         indication = null,
                         interactionSource = remember { MutableInteractionSource() }

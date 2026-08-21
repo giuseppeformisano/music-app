@@ -1,7 +1,8 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,15 +21,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,14 +36,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.example.model.Track
 import com.example.model.User
-import com.example.ui.theme.BlackCard
-import com.example.ui.theme.BlackPitch
-import com.example.ui.theme.BlackSurface
-import com.example.ui.theme.CharcoalBorder
-import com.example.ui.theme.DarkGraphite
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
 
@@ -58,39 +51,48 @@ fun TrackDetailDialog(
     onSendMessage: (User, Track) -> Unit,
     onShareToMyFeed: (Track) -> Unit
 ) {
-    val dynamicAccent = Color(track.accentColorHex)
+    val accentColor = Color(track.accentColorHex)
 
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = BlackSurface),
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, CharcoalBorder, RoundedCornerShape(24.dp))
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.88f))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                ),
+            contentAlignment = Alignment.Center
         ) {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp)
+                    .fillMaxWidth(0.90f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color(0xFF080808))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    )
+                    .padding(18.dp)
             ) {
-                // Top header with close
+                // Header
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "DETTAGLI BRANO",
-                        color = SubtitleGray,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
+                        text = "Brano",
+                        color = SubtitleGray.copy(alpha = 0.6f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
-
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
-                    ) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(28.dp)) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = "Chiudi",
@@ -100,21 +102,32 @@ fun TrackDetailDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // Big Album Cover
+                // Album cover — hero
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(1.dp, dynamicAccent.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(14.dp))
                 ) {
                     AsyncImage(
                         model = track.coverUrl,
                         contentDescription = track.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
+                    )
+                    // sottile accent glow sul bordo basso
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(40.dp)
+                            .align(Alignment.BottomCenter)
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, accentColor.copy(alpha = 0.25f))
+                                )
+                            )
                     )
                 }
 
@@ -124,111 +137,111 @@ fun TrackDetailDialog(
                     text = track.title,
                     color = PureWhite,
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Black,
+                    fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = "${track.artist} • ${track.album}",
-                    color = SubtitleGray,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    text = "${track.artist} · ${track.album}",
+                    color = SubtitleGray.copy(alpha = 0.7f),
+                    fontSize = 13.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DarkGraphite)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF141414))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = track.genre,
-                            color = PureWhite,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        Text(text = track.genre, color = SubtitleGray, fontSize = 11.sp)
                     }
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DarkGraphite)
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF141414))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Text(
-                            text = "Anno ${track.releaseYear}",
-                            color = SubtitleGray,
-                            fontSize = 11.sp
-                        )
+                        Text(text = "${track.releaseYear}", color = SubtitleGray, fontSize = 11.sp)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
-                // Actions
+                // Azioni
                 if (user != null && !user.isCurrentUser) {
-                    Button(
-                        onClick = {
-                            onSendMessage(user, track)
-                            onDismiss()
-                        },
-                        shape = RoundedCornerShape(14.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PureWhite,
-                            contentColor = BlackPitch
-                        ),
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(46.dp)
+                            .clip(CircleShape)
+                            .background(PureWhite)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onSendMessage(user, track); onDismiss() }
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Email,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Commenta con ${user.name.split(" ").first()}",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Email,
+                                contentDescription = null,
+                                tint = Color.Black,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Commenta con ${user.name.split(" ").first()}",
+                                color = Color.Black,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                OutlinedButton(
-                    onClick = {
-                        onShareToMyFeed(track)
-                        onDismiss()
-                    },
-                    shape = RoundedCornerShape(14.dp),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(brush = androidx.compose.ui.graphics.SolidColor(CharcoalBorder)),
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(46.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF141414))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onShareToMyFeed(track); onDismiss() }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Share,
-                        contentDescription = null,
-                        tint = PureWhite,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Condividi sul mio Feed",
-                        color = PureWhite,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = null,
+                            tint = PureWhite,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Condividi sul mio Feed",
+                            color = PureWhite,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp
+                        )
+                    }
                 }
             }
         }
