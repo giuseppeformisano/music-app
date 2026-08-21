@@ -59,14 +59,22 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST)?.trim() ?: ""
             val durationMs = meta.getLong(MediaMetadata.METADATA_KEY_DURATION).coerceAtLeast(0L)
             val positionMs = spotify.playbackState?.position?.coerceAtLeast(0L) ?: 0L
+            // Artwork esatto dalla MediaSession (se Spotify espone un URL http/https)
+            val artUrl = listOf(
+                MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                MediaMetadata.METADATA_KEY_ART_URI,
+                MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI
+            ).firstNotNullOfOrNull { key ->
+                meta.getString(key)?.takeIf { it.startsWith("http", ignoreCase = true) }
+            } ?: ""
             if (title == lastTrack) {
                 // Stesso brano: aggiorna solo la posizione reale (avanzamento/seek)
                 onProgressChanged?.invoke(positionMs, durationMs)
                 return
             }
             lastTrack = title
-            pendingTrack = Pending(title, artist, durationMs, positionMs)
-            onTrackChanged?.invoke(title, artist, durationMs, positionMs)
+            pendingTrack = Pending(title, artist, durationMs, positionMs, artUrl)
+            onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl)
         } catch (_: Exception) {}
     }
 
@@ -88,7 +96,7 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
         return adTitle && artist.isEmpty() && duration <= 0L
     }
 
-    data class Pending(val title: String, val artist: String, val durationMs: Long, val positionMs: Long)
+    data class Pending(val title: String, val artist: String, val durationMs: Long, val positionMs: Long, val artUrl: String)
 
     companion object {
         private const val SPOTIFY_PACKAGE = "com.spotify.music"
@@ -96,10 +104,10 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
         @Volatile var pendingTrack: Pending? = null
 
-        var onTrackChanged: ((trackName: String, artist: String, durationMs: Long, positionMs: Long) -> Unit)? = null
+        var onTrackChanged: ((trackName: String, artist: String, durationMs: Long, positionMs: Long, artUrl: String) -> Unit)? = null
             set(value) {
                 field = value
-                pendingTrack?.let { value?.invoke(it.title, it.artist, it.durationMs, it.positionMs) }
+                pendingTrack?.let { value?.invoke(it.title, it.artist, it.durationMs, it.positionMs, it.artUrl) }
             }
 
         // Aggiornamento posizione mentre lo stesso brano continua

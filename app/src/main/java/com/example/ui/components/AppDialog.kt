@@ -2,6 +2,7 @@ package com.example.ui.components
 
 import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -17,11 +18,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -30,19 +35,27 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
+// Distanza (px) di trascinamento a cui il pannello è considerato "chiuso" e a cui il
+// backdrop è completamente dissolto: la transizione è LINEARE con la discesa.
+private const val DISMISS_DISTANCE = 620f
 private const val DISMISS_THRESHOLD = 240f
 
 /**
  * Contenitore comune per TUTTE le dialog:
  * - backdrop a tutto schermo, GIÀ fullscreen dietro status bar/barra di navigazione
- *   sin dal primo frame (flag impostati in composizione, niente "scatto")
- * - chiusura con swipe verso il basso DA QUALSIASI PUNTO, o tap sullo sfondo
- * - niente pulsante X; contenuto centrato verticalmente e orizzontalmente
+ *   sin dal primo frame (niente "scatto")
+ * - chiusura con swipe verso il basso DA QUALSIASI PUNTO (anche sopra le liste, via
+ *   nested scroll), o tap sullo sfondo
+ * - durante la discesa il backdrop si dissolve/sfoca in modo LINEARE, rivelando la
+ *   schermata sottostante
+ * - niente pulsante X; contenuto centrato
+ *
+ * `backdrop` riceve `dragFraction` (0 = chiuso/coperto, 1 = trascinato a fondo/rivelato).
  */
 @Composable
 private fun ImmersiveScaffold(
     onDismiss: () -> Unit,
-    backdrop: @Composable () -> Unit,
+    backdrop: @Composable (dragFraction: Float) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Dialog(
@@ -50,7 +63,6 @@ private fun ImmersiveScaffold(
         properties = DialogProperties(usePlatformDefaultWidth = false, dismissOnClickOutside = true)
     ) {
         // Fullscreen sopra la barra di sistema impostato SUBITO in composizione
-        // (prima del primo draw) così non si vede il salto dal sotto-barra a fullscreen.
         val view = LocalView.current
         val window = (view.parent as? DialogWindowProvider)?.window
         remember(window) {
@@ -70,35 +82,71 @@ private fun ImmersiveScaffold(
         val scope = rememberCoroutineScope()
         val offsetY = remember { Animatable(0f) }
 
+        fun settle() {
+            scope.launch {
+                if (offsetY.value > DISMISS_THRESHOLD) onDismiss()
+                else offsetY.animateTo(0f, tween(220))
+            }
+        }
+
+        // Nested scroll: consente lo swipe-giù-per-chiudere anche partendo SOPRA una lista
+        // scrollabile (quando la lista è in cima e non può più scrollare verso l'alto).
+        val nested = remember {
+            object : NestedScrollConnection {
+                override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                    // Se il pannello è già sceso e si trascina verso l'alto, prima lo si riporta su
+                    val dy = available.y
+                    if (dy < 0f && offsetY.value > 0f) {
+                        val target = (offsetY.value + dy).coerceAtLeast(0f)
+                        val consumed = target - offsetY.value
+                        scope.launch { offsetY.snapTo(target) }
+                        return Offset(0f, consumed)
+                    }
+                    return Offset.Zero
+                }
+
+                override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                    // La lista non ha consumato lo scroll verso il basso -> abbassa il pannello
+                    if (available.y > 0f) {
+                        scope.launch { offsetY.snapTo(offsetY.value + available.y) }
+                        return Offset(0f, available.y)
+                    }
+                    return Offset.Zero
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    if (offsetY.value > 0f) { settle(); return available }
+                    return Velocity.Zero
+                }
+            }
+        }
+
+        val dragFraction = (offsetY.value / DISMISS_DISTANCE).coerceIn(0f, 1f)
+
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                // Swipe verso il basso da QUALSIASI punto della dialog
+                .nestedScroll(nested)
+                // Swipe verso il basso da QUALSIASI punto (aree non scrollabili)
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
-                        onDragEnd = {
-                            if (offsetY.value > DISMISS_THRESHOLD) onDismiss()
-                            else scope.launch { offsetY.animateTo(0f) }
-                        },
+                        onDragEnd = { settle() },
+                        onDragCancel = { settle() },
                         onVerticalDrag = { _, dy ->
                             scope.launch { offsetY.snapTo((offsetY.value + dy).coerceAtLeast(0f)) }
                         }
                     )
                 }
-                // Tap sullo sfondo (non sul contenuto) chiude
+                // Tap sullo sfondo chiude
                 .pointerInput(Unit) {
                     detectTapGestures(onTap = { onDismiss() })
                 },
             contentAlignment = Alignment.Center
         ) {
-            // Backdrop statico (non trasla con lo swipe)
-            backdrop()
+            backdrop(dragFraction)
 
-            // Contenuto: trasla con lo swipe; i tap qui NON propagano allo sfondo
             Column(
-                modifier = Modifier
-                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                    .pointerInput(Unit) { detectTapGestures { /* consuma i tap sul contenuto */ } },
+                modifier = Modifier.offset { IntOffset(0, offsetY.value.roundToInt()) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 content = content
             )
@@ -107,8 +155,8 @@ private fun ImmersiveScaffold(
 }
 
 /**
- * Dialog di UTILITÀ (ricerca, notifiche, modifica profilo, collega account, follower/following).
- * Backdrop quasi completamente nero, nessuno spazio delimitato da bordi, contenuto centrato.
+ * Dialog di UTILITÀ (ricerca, notifiche, modifica profilo, collega account, follower,
+ * aggiornamento). Backdrop quasi nero che si dissolve linearmente con la discesa.
  */
 @Composable
 fun UtilityDialog(
@@ -117,16 +165,20 @@ fun UtilityDialog(
 ) {
     ImmersiveScaffold(
         onDismiss = onDismiss,
-        backdrop = {
-            Box(modifier = Modifier.fillMaxSize().background(Color(0xF7000000)))
+        backdrop = { frac ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.965f * (1f - frac)))
+            )
         },
         content = content
     )
 }
 
 /**
- * Dialog dei BRANI (dettaglio brano feed/live, condivisione). Backdrop = copertina
- * dell'album sfocata + velo scuro, coerente col dettaglio live.
+ * Dialog dei BRANI (dettaglio brano, condivisione). Backdrop = copertina sfocata + velo;
+ * lo sfocato e il velo si riducono linearmente con la discesa, rivelando la schermata sotto.
  */
 @Composable
 fun TrackDialog(
@@ -136,14 +188,21 @@ fun TrackDialog(
 ) {
     ImmersiveScaffold(
         onDismiss = onDismiss,
-        backdrop = {
+        backdrop = { frac ->
             AsyncImage(
                 model = coverUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize().blur(42.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .blur((42.dp) * (1f - frac))
+                    .background(Color.Black.copy(alpha = 0.15f * (1f - frac)))
             )
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.62f)))
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.62f * (1f - frac)))
+            )
         },
         content = content
     )

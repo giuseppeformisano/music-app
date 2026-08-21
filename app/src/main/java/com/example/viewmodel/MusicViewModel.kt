@@ -341,10 +341,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun registerNotificationListenerCallbacks() {
-        com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs ->
+        com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
             // Usa solo come fallback se il Web API non sta già fornendo dati
             if (!SpotifyAuthRepository.isAuthorized || spotifyPollingJob?.isActive != true) {
-                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs)
+                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl)
             }
         }
         com.example.SpotifyNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
@@ -372,7 +372,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateNowPlayingFromBroadcast(
         trackId: String, trackName: String, artistName: String, albumName: String,
-        durationMs: Long = 0L, positionMs: Long = 0L
+        durationMs: Long = 0L, positionMs: Long = 0L, artUrl: String = ""
     ) {
         if (trackName.isBlank()) return
         val currentId = _uiState.value.nowPlayingTrack?.id
@@ -380,7 +380,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val cleanArtist = sanitizeSpotifyContext(artistName)
         val cleanAlbum = sanitizeSpotifyContext(albumName)
         viewModelScope.launch {
-            val coverUrl = fetchItunesCover(cleanArtist, trackName)
+            // Preferisci l'artwork reale della MediaSession; altrimenti cerca su iTunes
+            val coverUrl = if (artUrl.startsWith("http", ignoreCase = true)) artUrl
+                           else fetchItunesCover(cleanArtist, trackName)
             val now = System.currentTimeMillis()
             lastLiveHeartbeat = now
             val track = Track(
