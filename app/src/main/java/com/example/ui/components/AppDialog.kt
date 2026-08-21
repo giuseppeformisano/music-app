@@ -56,7 +56,7 @@ private const val DISMISS_THRESHOLD = 240f
 @Composable
 private fun ImmersiveScaffold(
     onDismiss: () -> Unit,
-    backdrop: @Composable (dragFraction: Float) -> Unit,
+    backdrop: @Composable (dragFraction: Float, offsetY: Float) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Dialog(
@@ -146,7 +146,7 @@ private fun ImmersiveScaffold(
                 },
             contentAlignment = Alignment.Center
         ) {
-            backdrop(dragFraction)
+            backdrop(dragFraction, offsetY.value)
 
             Column(
                 modifier = Modifier.offset { IntOffset(0, offsetY.value.roundToInt()) },
@@ -168,7 +168,7 @@ fun UtilityDialog(
 ) {
     ImmersiveScaffold(
         onDismiss = onDismiss,
-        backdrop = { frac ->
+        backdrop = { frac, _ ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -191,26 +191,36 @@ fun TrackDialog(
 ) {
     ImmersiveScaffold(
         onDismiss = onDismiss,
-        backdrop = { frac ->
-            // Base nera piena: la copertina È lo sfondo del dialog a tutto schermo
-            // (anche sopra la status bar); niente app che traspare dietro.
-            Box(modifier = Modifier.fillMaxSize().background(Color.Black))
-            AsyncImage(
-                model = coverUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    // leggero ingrandimento: il blur altrimenti lascia bordi trasparenti
-                    .graphicsLayer { scaleX = 1.12f; scaleY = 1.12f }
-                    .blur((30.dp) * (1f - frac))
-            )
-            // Velo leggero per la leggibilità del testo; si dissolve con la discesa
+        backdrop = { frac, off ->
+            // La copertina è lo sfondo del dialog e SCENDE + si dissolve INSIEME al
+            // contenuto durante lo swipe (translationY = offset, alpha = 1 - frazione),
+            // rivelando linearmente l'app sottostante. A riposo copre tutto (anche la
+            // status bar); la base nera evita bordi trasparenti dello sfocato.
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.38f * (1f - frac)))
-            )
+                    .graphicsLayer {
+                        translationY = off
+                        alpha = (1f - frac).coerceIn(0f, 1f)
+                    }
+            ) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                AsyncImage(
+                    model = coverUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { scaleX = 1.12f; scaleY = 1.12f }
+                        .blur(30.dp)
+                )
+                // Velo leggero per la leggibilità del testo
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.38f))
+                )
+            }
         },
         content = content
     )
