@@ -115,9 +115,18 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
+                saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
             }
         }
+    }
+
+    private fun saveFcmToken(userId: String) {
+        if (userId.isBlank()) return
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { token ->
+                FirebaseRepository.saveFcmToken(userId, token)
+            }
     }
 
     // ===================== UPDATE =====================
@@ -169,6 +178,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
+                saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
             }.onFailure { error ->
                 _uiState.update {
@@ -572,19 +582,25 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var knownFriendRequestIds = emptySet<String>()
+    private var friendRequestsInitialized = false
+    private var friendRequestListenerJob: Job? = null
 
     private fun startFriendRequestListener() {
         val userId = _uiState.value.currentUser.id
         if (userId.isBlank()) return
-        viewModelScope.launch {
+        friendRequestListenerJob?.cancel()
+        friendRequestsInitialized = false
+        friendRequestListenerJob = viewModelScope.launch {
             FirebaseRepository.observeFriendRequests(userId)
                 .catch { }
                 .collect { requests ->
                     val newIds = requests.map { it.id }.toSet()
-                    if (knownFriendRequestIds.isNotEmpty()) {
+                    if (friendRequestsInitialized) {
+                        // Solo le richieste arrivate DOPO il primo snapshot
                         requests.filter { it.id !in knownFriendRequestIds }
                             .forEach { showFriendRequestNotification(it) }
                     }
+                    friendRequestsInitialized = true
                     knownFriendRequestIds = newIds
                     _uiState.update { it.copy(pendingFriendRequests = requests) }
                 }

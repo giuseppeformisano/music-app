@@ -50,6 +50,17 @@ object FirebaseRepository {
     /**
      * Sincronizza il profilo dell'utente loggato e lo stato di ascolto Live (1 sola scrittura per aggiornamento).
      */
+    fun saveFcmToken(userId: String, token: String) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(userId)
+            .update("fcmToken", token)
+            .addOnFailureListener {
+                // Document might not exist yet — use set with merge
+                db.collection(USERS_COLLECTION).document(userId)
+                    .set(mapOf("fcmToken" to token), SetOptions.merge())
+            }
+    }
+
     fun syncCurrentUser(user: User) {
         val db = firestore ?: return
         try {
