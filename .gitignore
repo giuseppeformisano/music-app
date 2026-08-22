@@ -3,20 +3,10 @@
 *.o
 *.obj
 *.out
-*.dll
-*.so
-*.a
-*.exe
 
 # Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-target/
 .gradle/
+build/
 
 # Logs and temp files
 *.log
@@ -31,19 +21,52 @@ target/
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
-# System files
-.DS_Store
-Thumbs.db
-
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# Archives
+# Python specific
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Java specific
+*.jar
+*.war
+*.ear
+*.class
+target/
+
+# Distribution artifacts
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE specific
+*.swp
+*.swo
+Thumbs.db
+.DS_Store
+
+# Testing
+.mypy_cache/
+.pytest_cache/
+.nyc_output
+coverage.xml
+*.gcda
+*.gcno
+
+# Compressed files
 *.zip
 *.gz
 *.tar
