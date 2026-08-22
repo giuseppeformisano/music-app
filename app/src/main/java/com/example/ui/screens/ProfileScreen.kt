@@ -1501,67 +1501,67 @@ private fun ConnectAccountsDialog(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                 ) {
+                    // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
+                    // l'altro viene oscurato e reso non cliccabile.
+                    val premiumConnected = connectedServices["spotify"] == true
+                    val freeConnected = connectedServices["spotify_free"] == true
 
-                // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
-                // l'altro viene oscurato e reso non cliccabile.
-                val premiumConnected = connectedServices["spotify"] == true
-                val freeConnected = connectedServices["spotify_free"] == true
-
-                StreamingAccountItem(
-                    serviceName = "Spotify Premium",
-                    serviceDesc = "Collega l'account: dati in tempo reale via API",
-                    isConnected = premiumConnected,
-                    enabled = !freeConnected,
-                    brandColor = Color(0xFF1DB954),
-                    iconComposable = { SpotifyBrandLogo() },
-                    onToggle = {
-                        if (premiumConnected) onDisconnectSpotify()
-                        else onConnectSpotify()
-                    },
-                    testTag = "service_spotify_premium"
-                )
-
-                if (spotifyError != null) {
-                    Text(
-                        text = "Errore: $spotifyError",
-                        color = Color(0xFFFF6B6B),
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
+                    StreamingAccountItem(
+                        serviceName = "Spotify Premium",
+                        serviceDesc = "Collega l'account: dati in tempo reale via API",
+                        isConnected = premiumConnected,
+                        enabled = !freeConnected,
+                        brandColor = Color(0xFF1DB954),
+                        iconComposable = { SpotifyBrandLogo() },
+                        onToggle = {
+                            if (premiumConnected) onDisconnectSpotify()
+                            else onConnectSpotify()
+                        },
+                        testTag = "service_spotify_premium"
                     )
-                }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    if (spotifyError != null) {
+                        Text(
+                            text = "Errore: $spotifyError",
+                            color = Color(0xFFFF6B6B),
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
+                        )
+                    }
 
-                // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
-                // funzionalmente dipende dalle notifiche.
-                StreamingAccountItem(
-                    serviceName = "Spotify Free",
-                    serviceDesc = "Rileva l'ascolto dalle notifiche",
-                    isConnected = freeConnected,
-                    enabled = !premiumConnected,
-                    brandColor = Color(0xFF1DB954),
-                    iconComposable = { SpotifyBrandLogo() },
-                    onToggle = { onToggleService("spotify_free") },
-                    testTag = "service_spotify_free"
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Spacer(modifier = Modifier.height(12.dp))
+                    // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
+                    // funzionalmente dipende dalle notifiche.
+                    StreamingAccountItem(
+                        serviceName = "Spotify Free",
+                        serviceDesc = "Rileva l'ascolto dalle notifiche",
+                        isConnected = freeConnected,
+                        enabled = !premiumConnected,
+                        brandColor = Color(0xFF1DB954),
+                        iconComposable = { SpotifyBrandLogo() },
+                        onToggle = { onToggleService("spotify_free") },
+                        testTag = "service_spotify_free"
+                    )
 
-                StreamingAccountItem(
-                    serviceName = "Amazon Music",
-                    serviceDesc = "Rileva l'ascolto dalle notifiche",
-                    isConnected = connectedServices["amazon_music"] == true,
-                    brandColor = Color(0xFF00A8E1),
-                    iconComposable = { AmazonMusicBrandLogo() },
-                    onToggle = { onToggleService("amazon_music") },
-                    testTag = "service_amazon_music"
-                )
+                    Spacer(modifier = Modifier.height(12.dp))
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    StreamingAccountItem(
+                        serviceName = "Amazon Music",
+                        serviceDesc = "Rileva l'ascolto dalle notifiche",
+                        isConnected = connectedServices["amazon_music"] == true,
+                        brandColor = Color(0xFF00A8E1),
+                        iconComposable = { AmazonMusicBrandLogo() },
+                        onToggle = { onToggleService("amazon_music") },
+                        testTag = "service_amazon_music"
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
         }
     }
+}
 
 /**
  * Singola riga di servizio streaming musicale
