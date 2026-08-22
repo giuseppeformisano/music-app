@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -56,7 +55,7 @@ fun LoginScreen(
         modifier = modifier
             .fillMaxSize()
             .background(BlackPitch)
-            .statusBarsPadding()
+            .padding(top = 28.dp)
             .navigationBarsPadding()
             .testTag("login_screen")
     ) {
