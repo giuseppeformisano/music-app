@@ -55,11 +55,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import android.graphics.drawable.BitmapDrawable
 import com.example.model.Track
 import com.example.model.User
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
 import com.example.ui.theme.Zinc400
+import androidx.compose.ui.platform.LocalContext
 
 private data class FloatingFeedReaction(
     val id: Long,
@@ -79,13 +84,33 @@ fun TrackDetailDialog(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val context = LocalContext.current
 
     var commentText by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingFeedReaction>() }
 
-    val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex) {
-        extractDynamicTrackGlowColors(track)
+    // Colori dinamici estratti dalla COPERTINA VERA del brano (non dal background blurrato)
+    var dynamicColors by remember(track.id, track.accentColorHex, track.coverUrl) {
+        mutableStateOf(extractDynamicTrackGlowColors(track))
     }
+
+    LaunchedEffect(track.coverUrl) {
+        if (track.coverUrl.isNotBlank()) {
+            val request = ImageRequest.Builder(context)
+                .data(track.coverUrl)
+                .allowHardware(false)
+                .build()
+            val result = context.imageLoader.execute(request)
+            if (result is SuccessResult) {
+                val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+                if (bitmap != null) {
+                    dynamicColors = extractBitmapDominantColors(bitmap)
+                }
+            }
+        }
+    }
+
+    val (primaryColor, secondaryColor) = dynamicColors
 
     TrackDialog(coverUrl = track.coverUrl, onDismiss = onDismiss) {
         Box(modifier = Modifier.fillMaxSize()) {
@@ -480,4 +505,80 @@ private fun extractDynamicTrackGlowColors(track: Track): Pair<Color, Color> {
     }
 
     return Pair(primary, secondary)
+}
+
+/**
+ * Estrae i colori predominanti VIVACI e LUMINOSI direttamente dai pixel del bitmap della copertina del brano.
+ * Favorisce fortemente i colori saturi e brillanti (quelli della copertina vera) rispetto
+ * ai toni scuri e spenti (che verrebbero dalla versione blurrata/sfondo).
+ */
+private fun extractBitmapDominantColors(bitmap: android.graphics.Bitmap): Pair<Color, Color> {
+    val w = bitmap.width
+    val h = bitmap.height
+    val stepX = (w / 16).coerceAtLeast(1)
+    val stepY = (h / 16).coerceAtLeast(1)
+
+    data class ColorCandidate(val pixel: Int, val score: Float, val hue: Float)
+
+    val candidates = mutableListOf<ColorCandidate>()
+    val hsv = FloatArray(3)
+
+    for (x in 0 until w step stepX) {
+        for (y in 0 until h step stepY) {
+            val pixel = bitmap.getPixel(x, y)
+            val alpha = (pixel ushr 24) and 0xFF
+            if (alpha < 128) continue
+
+            val r = (pixel ushr 16) and 0xFF
+            val g = (pixel ushr 8) and 0xFF
+            val b = pixel and 0xFF
+
+            android.graphics.Color.RGBToHSV(r, g, b, hsv)
+            val sat = hsv[1]
+            val value = hsv[2]
+
+            if (value >= 0.35f && value <= 0.98f && sat >= 0.25f) {
+                val score = sat * 0.55f + value * 0.35f + (1f - kotlin.math.abs(value - 0.7f)) * 0.10f
+                candidates.add(ColorCandidate(pixel, score, hsv[0]))
+            }
+        }
+    }
+
+    if (candidates.isEmpty()) {
+        return Pair(Color(0xFF00E5FF), Color(0xFF0070F3))
+    }
+
+    candidates.sortByDescending { it.score }
+    val best1 = candidates[0]
+
+    val best2 = candidates.firstOrNull { c ->
+        c.pixel != best1.pixel &&
+        kotlin.math.abs(c.hue - best1.hue).let { diff ->
+            kotlin.math.min(diff, 360f - diff)
+        } > 30f
+    } ?: candidates.getOrNull(1)
+
+    fun boostColor(pixel: Int): Color {
+        val hsvBoost = FloatArray(3)
+        val r = (pixel ushr 16) and 0xFF
+        val g = (pixel ushr 8) and 0xFF
+        val b = pixel and 0xFF
+        android.graphics.Color.RGBToHSV(r, g, b, hsvBoost)
+        hsvBoost[1] = hsvBoost[1].coerceAtLeast(0.55f)
+        hsvBoost[2] = hsvBoost[2].coerceAtLeast(0.55f)
+        val boosted = android.graphics.Color.HSVToColor(hsvBoost)
+        return Color(boosted)
+    }
+
+    val prim = boostColor(best1.pixel)
+    val sec = if (best2 != null) {
+        boostColor(best2.pixel)
+    } else {
+        val r = (prim.red * 0.75f + prim.blue * 0.25f).coerceIn(0f, 1f)
+        val g = (prim.green * 0.45f + prim.red * 0.55f).coerceIn(0f, 1f)
+        val b = (prim.blue * 0.85f + prim.green * 0.15f).coerceIn(0f, 1f)
+        Color(r, g, b, 1f)
+    }
+
+    return Pair(prim, sec)
 }

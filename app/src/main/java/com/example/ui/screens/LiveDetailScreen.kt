@@ -633,21 +633,19 @@ private fun extractDynamicTrackGlowColors(track: Track): Pair<Color, Color> {
 }
 
 /**
- * Estrae i colori predominanti e vibranti direttamente dai pixel del bitmap della copertina del brano:
- * - Algoritmo rapido e privo di dipendenze esterne
- * - Seleziona i pixel cromatici più saturi e bilanciati
+ * Estrae i colori predominanti VIVACI e LUMINOSI direttamente dai pixel del bitmap della copertina del brano.
+ * Favorisce fortemente i colori saturi e brillanti (quelli della copertina vera) rispetto
+ * ai toni scuri e spenti (che verrebbero dalla versione blurrata/sfondo).
  */
 private fun extractBitmapDominantColors(bitmap: android.graphics.Bitmap): Pair<Color, Color> {
     val w = bitmap.width
     val h = bitmap.height
-    val stepX = (w / 14).coerceAtLeast(1)
-    val stepY = (h / 14).coerceAtLeast(1)
+    val stepX = (w / 16).coerceAtLeast(1)
+    val stepY = (h / 16).coerceAtLeast(1)
 
-    var bestColor1 = 0
-    var maxScore1 = -1f
-    var bestColor2 = 0
-    var maxScore2 = -1f
+    data class ColorCandidate(val pixel: Int, val score: Float, val hue: Float)
 
+    val candidates = mutableListOf<ColorCandidate>()
     val hsv = FloatArray(3)
 
     for (x in 0 until w step stepX) {
@@ -664,24 +662,51 @@ private fun extractBitmapDominantColors(bitmap: android.graphics.Bitmap): Pair<C
             val sat = hsv[1]
             val value = hsv[2]
 
-            // Filtra neri assoluti e bianchi puri
-            if (value in 0.18f..0.95f && sat >= 0.15f) {
-                val score = sat * 0.75f + (1f - kotlin.math.abs(value - 0.6f)) * 0.25f
-                if (score > maxScore1) {
-                    maxScore2 = maxScore1
-                    bestColor2 = bestColor1
-                    maxScore1 = score
-                    bestColor1 = pixel
-                } else if (score > maxScore2 && pixel != bestColor1) {
-                    maxScore2 = score
-                    bestColor2 = pixel
-                }
+            // Filtra solo pixel luminosi e saturi: esclude neri, grigi, bianchi puri
+            // Value >= 0.35 esclude i toni scuri del background blurrato
+            // Sat >= 0.25 esclude i grigi e i colori desaturati
+            if (value >= 0.35f && value <= 0.98f && sat >= 0.25f) {
+                // Score: forte peso su saturazione e luminosità per favorire i colori vivaci
+                val score = sat * 0.55f + value * 0.35f + (1f - kotlin.math.abs(value - 0.7f)) * 0.10f
+                candidates.add(ColorCandidate(pixel, score, hsv[0]))
             }
         }
     }
 
-    val prim = if (bestColor1 != 0) Color(bestColor1) else Color(0xFF00E5FF)
-    val sec = if (bestColor2 != 0 && bestColor2 != bestColor1) Color(bestColor2) else {
+    if (candidates.isEmpty()) {
+        return Pair(Color(0xFF00E5FF), Color(0xFF0070F3))
+    }
+
+    // Ordina per score decrescente e prendi il migliore
+    candidates.sortByDescending { it.score }
+    val best1 = candidates[0]
+
+    // Per il secondo colore, cerca uno con hue sufficientemente diversa (>30°)
+    val best2 = candidates.firstOrNull { c ->
+        c.pixel != best1.pixel &&
+        kotlin.math.abs(c.hue - best1.hue).let { diff ->
+            kotlin.math.min(diff, 360f - diff)
+        } > 30f
+    } ?: candidates.getOrNull(1)
+
+    // Post-process: aumenta saturazione e luminosità per garantire colori vividi
+    fun boostColor(pixel: Int): Color {
+        val hsvBoost = FloatArray(3)
+        val r = (pixel ushr 16) and 0xFF
+        val g = (pixel ushr 8) and 0xFF
+        val b = pixel and 0xFF
+        android.graphics.Color.RGBToHSV(r, g, b, hsvBoost)
+        // Aumenta saturazione a minimo 0.55 e luminosità a minimo 0.55
+        hsvBoost[1] = hsvBoost[1].coerceAtLeast(0.55f)
+        hsvBoost[2] = hsvBoost[2].coerceAtLeast(0.55f)
+        val boosted = android.graphics.Color.HSVToColor(hsvBoost)
+        return Color(boosted)
+    }
+
+    val prim = boostColor(best1.pixel)
+    val sec = if (best2 != null) {
+        boostColor(best2.pixel)
+    } else {
         val r = (prim.red * 0.75f + prim.blue * 0.25f).coerceIn(0f, 1f)
         val g = (prim.green * 0.45f + prim.red * 0.55f).coerceIn(0f, 1f)
         val b = (prim.blue * 0.85f + prim.green * 0.15f).coerceIn(0f, 1f)
