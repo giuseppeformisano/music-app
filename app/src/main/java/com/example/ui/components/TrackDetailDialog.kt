@@ -84,6 +84,10 @@ fun TrackDetailDialog(
     var commentText by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingFeedReaction>() }
 
+    val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex) {
+        extractDynamicTrackGlowColors(track)
+    }
+
     TrackDialog(coverUrl = track.coverUrl, onDismiss = onDismiss) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
@@ -95,24 +99,14 @@ fun TrackDetailDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // 1. HEADER: Condiviso da / @username
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth().padding(top = 28.dp)
-                ) {
-                    Text(
-                        text = "Condiviso da",
-                        color = PureWhite.copy(alpha = 0.70f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "@${user?.username?.lowercase() ?: "utente"}",
-                        color = PureWhite,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable(
+                // 1. HEADER: POST/FEED @username
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 28.dp)
+                        .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = {
@@ -122,65 +116,166 @@ fun TrackDetailDialog(
                                 }
                             }
                         )
-                    )
-                }
-
-                // 2. COVER ALBUM HERO QUADRATA
-                Box(
-                    modifier = Modifier
-                        .size(240.dp)
-                        .shadow(
-                            elevation = 20.dp,
-                            shape = RoundedCornerShape(14.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.6f),
-                            spotColor = Color.Black.copy(alpha = 0.85f)
-                        )
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF141418)),
-                    contentAlignment = Alignment.Center
                 ) {
-                    AsyncImage(
-                        model = track.coverUrl,
-                        contentDescription = "Cover ${track.title}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(primaryColor.copy(alpha = 0.25f))
+                            .border(0.8.dp, primaryColor, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "POST",
+                            color = primaryColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.8.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "@${user?.username?.lowercase() ?: "utente"}",
+                        color = PureWhite,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.2).sp
                     )
                 }
 
-                // 3. TITOLO, ARTISTA / ALBUM E PILL GENERE / ANNO
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                // 2. AVATAR PROFILO CENTRALE CIRCOLARE CON ANELLO LUMINOSO E SOUNDWAVE
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(
-                        text = track.title,
-                        color = PureWhite,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        letterSpacing = (-0.4).sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
+                    // Equalizzatore stilizzato a Sinistra (due colori dalla palette della cover)
+                    LiveEqualizerSymmetrical(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(primaryColor, secondaryColor)
+                        ),
+                        maxHeight = 64.dp,
+                        barCount = 5,
+                        isReversed = true,
+                        modifier = Modifier.padding(end = 18.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    val subtitle = if (track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true)) {
-                        "${track.artist} · ${track.album}"
-                    } else {
-                        track.artist
+                    // Cerchio Avatar Profilo grande (~190dp) con cerchio/anello luminoso nel colore predominante
+                    Box(
+                        modifier = Modifier
+                            .size(190.dp)
+                            .shadow(
+                                elevation = 24.dp,
+                                shape = CircleShape,
+                                ambientColor = primaryColor.copy(alpha = 0.45f),
+                                spotColor = primaryColor.copy(alpha = 0.75f)
+                            )
+                            .border(
+                                width = 3.dp,
+                                color = primaryColor,
+                                shape = CircleShape
+                            )
+                            .padding(4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF141418))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    if (user != null) {
+                                        onOpenUserProfile(user)
+                                        onDismiss()
+                                    }
+                                }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = user?.avatarUrl,
+                            contentDescription = "Foto ${user?.name ?: "Utente"}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
                     }
-                    Text(
-                        text = subtitle,
-                        color = Zinc400,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    // Equalizzatore stilizzato a Destra (due colori dalla palette della cover)
+                    LiveEqualizerSymmetrical(
+                        brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(secondaryColor, primaryColor)
+                        ),
+                        maxHeight = 64.dp,
+                        barCount = 5,
+                        isReversed = false,
+                        modifier = Modifier.padding(start = 18.dp)
+                    )
+                }
+
+                // 3. SEZIONE BRANO: Copertina quadrata a sinistra + Titolo e Artista a destra + Pill Genere/Anno
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    // Riga Copertina a sinistra + Titolo/Artista subito a destra
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(68.dp)
+                                .shadow(
+                                    elevation = 10.dp,
+                                    shape = RoundedCornerShape(10.dp),
+                                    ambientColor = Color.Black.copy(alpha = 0.5f),
+                                    spotColor = Color.Black.copy(alpha = 0.8f)
+                                )
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF141418)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = track.coverUrl,
+                                contentDescription = "Cover ${track.title}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = track.title,
+                                color = PureWhite,
+                                fontSize = 19.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.3).sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            val subtitle = if (track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true)) {
+                                "${track.artist} · ${track.album}"
+                            } else {
+                                track.artist
+                            }
+                            Text(
+                                text = subtitle,
+                                color = Zinc400,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
 
                     // Pill Genere e Anno di Rilascio
                     Row(
@@ -192,8 +287,8 @@ fun TrackDetailDialog(
                                 modifier = Modifier
                                     .clip(CircleShape)
                                     .background(Color(0xFF141418).copy(alpha = 0.85f))
-                                    .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
-                                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                                    .border(0.75.dp, primaryColor.copy(alpha = 0.40f), CircleShape)
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
                             ) {
                                 Text(
                                     text = track.genre,
@@ -209,8 +304,8 @@ fun TrackDetailDialog(
                                 modifier = Modifier
                                     .clip(CircleShape)
                                     .background(Color(0xFF141418).copy(alpha = 0.85f))
-                                    .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
-                                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                                    .border(0.75.dp, primaryColor.copy(alpha = 0.40f), CircleShape)
+                                    .padding(horizontal = 12.dp, vertical = 4.dp)
                             ) {
                                 Text(
                                     text = track.releaseYear,
@@ -400,4 +495,61 @@ private fun FloatingFeedReactionEffect(
             )
         }
     }
+}
+
+/**
+ * Estrazione dinamica in tempo reale della palette cromatica per il dettaglio feed:
+ * - Estrae il colore base dalla palette della copertina/traccia (accentColorHex).
+ * - Genera una sfumatura secondaria ricca ed elegante.
+ */
+private fun extractDynamicTrackGlowColors(track: Track): Pair<Color, Color> {
+    val baseHex = track.accentColorHex
+    val primary = if (baseHex != 0L && baseHex != 0xFF1DB954) {
+        Color(baseHex)
+    } else {
+        when (track.genre.lowercase()) {
+            "progressive rock", "rock" -> Color(0xFFE040FB)
+            "ambient", "synthwave" -> Color(0xFF00E5FF)
+            "r&b", "soul" -> Color(0xFFFF9100)
+            "dream pop / synthpop" -> Color(0xFF7928CA)
+            "r&b / experimental" -> Color(0xFF00DF89)
+            "french house" -> Color(0xFF0070F3)
+            "darkwave / synthpop" -> Color(0xFFE000FF)
+            "electro house" -> Color(0xFFFFBE0B)
+            "psychedelic rock", "indie" -> Color(0xFFFF5252)
+            else -> {
+                val hash = kotlin.math.abs((track.title + track.artist + track.id).hashCode())
+                when (hash % 8) {
+                    0 -> Color(0xFFFF0055)
+                    1 -> Color(0xFF7928CA)
+                    2 -> Color(0xFF00E5FF)
+                    3 -> Color(0xFFFF9900)
+                    4 -> Color(0xFF0070F3)
+                    5 -> Color(0xFFE000FF)
+                    6 -> Color(0xFFFFBE0B)
+                    else -> Color(0xFF00E676)
+                }
+            }
+        }
+    }
+
+    val secondary = when (primary) {
+        Color(0xFFFF0055) -> Color(0xFF9333EA)
+        Color(0xFF7928CA) -> Color(0xFF00E5FF)
+        Color(0xFF00E5FF) -> Color(0xFF0070F3)
+        Color(0xFFFF9100) -> Color(0xFFFF3366)
+        Color(0xFF0070F3) -> Color(0xFF00E5FF)
+        Color(0xFFE000FF) -> Color(0xFF4F46E5)
+        Color(0xFFFFBE0B) -> Color(0xFFF97316)
+        Color(0xFF00DF89) -> Color(0xFF10B981)
+        Color(0xFFFF5252) -> Color(0xFF9C27B0)
+        else -> {
+            val r = (primary.red * 0.75f + primary.blue * 0.25f).coerceIn(0f, 1f)
+            val g = (primary.green * 0.45f + primary.red * 0.55f).coerceIn(0f, 1f)
+            val b = (primary.blue * 0.85f + primary.green * 0.15f).coerceIn(0f, 1f)
+            Color(r, g, b, 1f)
+        }
+    }
+
+    return Pair(primary, secondary)
 }

@@ -176,131 +176,181 @@ fun LiveDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. HEADER: In ascolto da / @username
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth().padding(top = 28.dp)
-            ) {
-                Text(
-                    text = "In ascolto da",
-                    color = PureWhite.copy(alpha = 0.70f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = "@${user.username.lowercase()}",
-                    color = PureWhite,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.clickable(
+            // 1. HEADER: LIVE @username
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 28.dp)
+                    .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = { onOpenUserProfile(user) }
                     )
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(primaryColor.copy(alpha = 0.25f))
+                        .border(0.8.dp, primaryColor, RoundedCornerShape(6.dp))
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "LIVE",
+                        color = primaryColor,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.8.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = "@${user.username.lowercase()}",
+                    color = PureWhite,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.2).sp
                 )
             }
 
-            // 2. COVER ALBUM CENTRALE FIANCATA DA EQUALIZZATORI GRADIENTI DINAMICI
+            // 2. AVATAR PROFILO CENTRALE CIRCOLARE CON ANELLO LUMINOSO E EQUALIZZATORI GRADIENTI
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Equalizzatore stilizzato a Sinistra (gradiente dinamico dalla palette della cover)
+                // Equalizzatore stilizzato a Sinistra (due colori dalla palette della cover)
                 LiveEqualizerSymmetrical(
                     brush = Brush.verticalGradient(
                         listOf(primaryColor, secondaryColor)
                     ),
-                    maxHeight = 56.dp,
+                    maxHeight = 64.dp,
                     barCount = 5,
                     isReversed = true,
                     modifier = Modifier.padding(end = 18.dp)
                 )
 
-                // Cover album centrale quadrata fissa (senza rimbalzo) con angoli arrotondati
+                // Cerchio Avatar Profilo grande (~190dp) con cerchio/anello luminoso nel colore predominante
                 Box(
                     modifier = Modifier
-                        .size(220.dp)
+                        .size(190.dp)
                         .shadow(
-                            elevation = 20.dp,
-                            shape = RoundedCornerShape(14.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.6f),
-                            spotColor = Color.Black.copy(alpha = 0.85f)
+                            elevation = 24.dp,
+                            shape = CircleShape,
+                            ambientColor = primaryColor.copy(alpha = 0.45f),
+                            spotColor = primaryColor.copy(alpha = 0.75f)
                         )
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF141418)),
+                        .border(
+                            width = 3.dp,
+                            color = primaryColor,
+                            shape = CircleShape
+                        )
+                        .padding(4.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF141418))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onOpenUserProfile(user) }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     AsyncImage(
-                        model = track.coverUrl,
-                        contentDescription = "Cover ${track.title}",
+                        model = user.avatarUrl,
+                        contentDescription = "Foto ${user.name}",
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
 
-                // Equalizzatore stilizzato a Destra (gradiente dinamico dalla palette della cover)
+                // Equalizzatore stilizzato a Destra (due colori dalla palette della cover)
                 LiveEqualizerSymmetrical(
                     brush = Brush.verticalGradient(
                         listOf(secondaryColor, primaryColor)
                     ),
-                    maxHeight = 56.dp,
+                    maxHeight = 64.dp,
                     barCount = 5,
                     isReversed = false,
                     modifier = Modifier.padding(start = 18.dp)
                 )
             }
 
-            // 3. DATI DI RIPRODUZIONE DEL BRANO
+            // 3. SEZIONE BRANO: Copertina quadrata a sinistra + Titolo e Artista a destra + Slide temporale
             Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
-                Text(
-                    text = track.title,
-                    color = PureWhite,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    letterSpacing = (-0.4).sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Riga Copertina a sinistra + Titolo/Artista subito a destra
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(68.dp)
+                            .shadow(
+                                elevation = 10.dp,
+                                shape = RoundedCornerShape(10.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.5f),
+                                spotColor = Color.Black.copy(alpha = 0.8f)
+                            )
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color(0xFF141418)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = track.coverUrl,
+                            contentDescription = "Cover ${track.title}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
 
-                val subtitle = if (track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true)) {
-                    "${track.artist} · ${track.album}"
-                } else {
-                    track.artist
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = track.title,
+                            color = PureWhite,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.3).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = track.artist,
+                            color = Zinc400,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Normal,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
-                Text(
-                    text = subtitle,
-                    color = Zinc400,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
 
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // Barra Temporale con minutaggio monospace
+                // Barra Temporale con colore predominante della copertina
                 Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 14.dp)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     LinearProgressIndicator(
                         progress = { progressFraction },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(3.5.dp)
+                            .height(4.dp)
                             .clip(RoundedCornerShape(2.dp)),
-                        color = PureWhite,
-                        trackColor = PureWhite.copy(alpha = 0.20f)
+                        color = primaryColor,
+                        trackColor = PureWhite.copy(alpha = 0.15f)
                     )
 
                     Spacer(modifier = Modifier.height(6.dp))
