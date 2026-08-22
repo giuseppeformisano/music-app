@@ -177,9 +177,9 @@ fun LiveDetailScreen(
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            BlackPitch.copy(alpha = 0.50f),
-                            BlackPitch.copy(alpha = 0.78f),
-                            BlackPitch.copy(alpha = 0.95f)
+                            BlackPitch.copy(alpha = 0.15f),
+                            BlackPitch.copy(alpha = 0.35f),
+                            BlackPitch.copy(alpha = 0.55f)
                         )
                     )
                 )

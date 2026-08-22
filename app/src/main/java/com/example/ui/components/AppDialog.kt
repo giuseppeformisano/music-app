@@ -222,14 +222,14 @@ fun TrackDialog(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxSize()
-                        .graphicsLayer { scaleX = 1.12f; scaleY = 1.12f }
-                        .blur(30.dp)
+                        .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f }
+                        .blur(12.dp)
                 )
-                // Velo leggero per la leggibilità del testo
+                // Velo leggero per la leggibilità del testo (ridotto per mostrare i colori reali)
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(Color.Black.copy(alpha = 0.38f))
+                        .background(Color.Black.copy(alpha = 0.18f))
                 )
             }
         },
