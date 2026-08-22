@@ -190,7 +190,7 @@ fun ProfileScreen(
                     scaleX = 1.15f
                     scaleY = 1.15f
                 }
-                .blur(radius = 16.dp)
+                .blur(radius = 12.dp)
         )
 
         // Scrim scuro sfumato per contrasto e leggibilità perfetta

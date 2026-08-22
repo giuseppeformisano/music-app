@@ -122,7 +122,7 @@ fun LiveStoryScreen(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxSize()
-                .blur(radius = 35.dp)
+                .blur(radius = 12.dp)
         )
 
         // Dark Vignette Gradients for crisp readability
