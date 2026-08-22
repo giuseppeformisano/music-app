@@ -10,14 +10,8 @@
 *.out
 
 # Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-target/
 .gradle/
+build/
 
 # Logs and temp files
 *.log
