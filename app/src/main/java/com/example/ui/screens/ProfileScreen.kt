@@ -1045,9 +1045,9 @@ private fun FollowersFollowingDialog(
                 Text(
                     text = title,
                     color = PureWhite,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.3).sp,
+                    letterSpacing = (-0.4).sp,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)
                 )
 
@@ -1196,9 +1196,9 @@ private fun EditProfileDialog(
                 Text(
                     text = "Modifica Profilo",
                     color = PureWhite,
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.3).sp,
+                    letterSpacing = (-0.4).sp,
                     modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                 )
 
