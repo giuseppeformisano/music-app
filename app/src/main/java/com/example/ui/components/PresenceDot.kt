@@ -47,7 +47,7 @@ fun PresenceDot(
                 animationSpec = infiniteRepeatable(tween(800), RepeatMode.Reverse),
                 label = "pulse"
             )
-            val core = androidx.compose.ui.graphics.lerp(green, red, pulse) // verde ↔ rosso
+            val core = red // solo rosso lampeggiante
             val haloScale = 0.72f + pulse * 0.28f
             val haloAlpha = 0.40f * (1f - pulse) + 0.05f
             // Alone pulsante
@@ -58,7 +58,7 @@ fun PresenceDot(
                     .clip(CircleShape)
                     .background(core.copy(alpha = haloAlpha))
             )
-            // Nucleo pieno che pulsa tra verde e rosso
+            // Nucleo pieno rosso che pulsa
             Box(
                 modifier = Modifier
                     .size(size * 0.62f)
