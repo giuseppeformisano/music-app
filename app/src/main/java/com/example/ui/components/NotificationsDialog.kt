@@ -52,42 +52,72 @@ fun NotificationsDialog(
     onDismiss: () -> Unit
 ) {
     UtilityDialog(onDismiss = onDismiss) {
-        Column(
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
-                .fillMaxHeight(0.62f)
-                .padding(horizontal = 4.dp)
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.65f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF141418))
+                .border(1.dp, PureWhite.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
+                .padding(bottom = 16.dp)
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                Text(
-                    text = "Notifiche",
-                    color = PureWhite,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (pendingRequests.isNotEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(Color(0xFFFF3B30))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                        contentAlignment = Alignment.Center
+                // Header standardizzato in alto a sinistra
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = pendingRequests.size.toString(),
+                            text = "Notifiche",
                             color = PureWhite,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.4).sp
+                        )
+                        if (pendingRequests.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFF3B30))
+                                    .padding(horizontal = 7.dp, vertical = 2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = pendingRequests.size.toString(),
+                                    color = PureWhite,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Chiudi",
+                            tint = SubtitleGray,
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 20.dp)
+                ) {
 
             if (pendingRequests.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -216,6 +246,7 @@ private fun FriendRequestRow(
                     tint = Color.Black,
                     modifier = Modifier.size(14.dp)
                 )
+            }
             }
         }
     }

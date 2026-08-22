@@ -1211,11 +1211,11 @@ private fun EditProfileDialog(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Header con titolo e pulsante di chiusura
+                // Header standardizzato in alto a sinistra
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1449,28 +1449,58 @@ private fun ConnectAccountsDialog(
     onDismiss: () -> Unit
 ) {
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF141418))
+                .border(1.dp, PureWhite.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
+                .padding(bottom = 20.dp)
+        ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .padding(horizontal = 4.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Text(
-                        text = "Collega Account",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
-                    )
-                    Text(
-                        text = "Scegli i tuoi servizi di streaming",
-                        color = SubtitleGray,
-                        fontSize = 13.sp,
-                        letterSpacing = 0.2.sp
-                    )
+                // Header standardizzato in alto a sinistra
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 20.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Collega Account",
+                            color = PureWhite,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.4).sp
+                        )
+                        Text(
+                            text = "Scegli i tuoi servizi di streaming",
+                            color = SubtitleGray,
+                            fontSize = 13.sp,
+                            letterSpacing = 0.2.sp
+                        )
+                    }
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Chiudi",
+                            tint = SubtitleGray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
+                ) {
 
                 // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
                 // l'altro viene oscurato e reso non cliccabile.
@@ -1528,6 +1558,7 @@ private fun ConnectAccountsDialog(
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
+                }
             }
         }
     }
