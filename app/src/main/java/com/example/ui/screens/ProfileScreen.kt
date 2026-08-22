@@ -1208,14 +1208,14 @@ private fun EditProfileDialog(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 24.dp)
+                .padding(top = 36.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             // Header standardizzato in alto a sinistra
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -1225,17 +1225,6 @@ private fun EditProfileDialog(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = (-0.4).sp
                 )
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Chiudi",
-                        tint = SubtitleGray,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -1448,14 +1437,14 @@ private fun ConnectAccountsDialog(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp)
+                .padding(horizontal = 24.dp)
+                .padding(top = 36.dp, bottom = 20.dp)
         ) {
             // Header standardizzato in alto a sinistra
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
@@ -1471,17 +1460,6 @@ private fun ConnectAccountsDialog(
                         color = SubtitleGray,
                         fontSize = 13.sp,
                         letterSpacing = 0.2.sp
-                    )
-                }
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Chiudi",
-                        tint = SubtitleGray,
-                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

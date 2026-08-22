@@ -63,14 +63,14 @@ fun NotificationsDialog(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp)
+                .padding(horizontal = 24.dp)
+                .padding(top = 36.dp, bottom = 20.dp)
         ) {
             // Header standardizzato in alto a sinistra
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 20.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
@@ -100,17 +100,6 @@ fun NotificationsDialog(
                             )
                         }
                     }
-                }
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Chiudi",
-                        tint = SubtitleGray,
-                        modifier = Modifier.size(20.dp)
-                    )
                 }
             }
 
