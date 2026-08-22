@@ -103,15 +103,57 @@ fun LiveDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val track = user.currentTrack ?: return
+    val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
     var replyMessage by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingReaction>() }
 
-    val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex) {
-        extractDynamicTrackGlowColors(track)
+    // Colori dinamici estratti DIRETTAMENTE dalla COPERTINA DEL BRANO (non dal profilo)
+    var dynamicColors by remember(track.id, track.accentColorHex, track.coverUrl) {
+        mutableStateOf(extractDynamicTrackGlowColors(track))
     }
+
+    LaunchedEffect(track.coverUrl) {
+        if (track.coverUrl.isNotBlank()) {
+            val request = ImageRequest.Builder(context)
+                .data(track.coverUrl)
+                .allowHardware(false)
+                .build()
+            val result = context.imageLoader.execute(request)
+            if (result is SuccessResult) {
+                val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
+                if (bitmap != null) {
+                    val palette = androidx.palette.graphics.Palette.from(bitmap).generate()
+                    val domInt = palette.getVibrantColor(
+                        palette.getDominantColor(
+                            palette.getLightVibrantColor(
+                                palette.getDarkVibrantColor(0)
+                            )
+                        )
+                    )
+                    if (domInt != 0) {
+                        val prim = Color(domInt)
+                        val secInt = palette.getLightVibrantColor(
+                            palette.getMutedColor(
+                                palette.getDarkVibrantColor(0)
+                            )
+                        )
+                        val sec = if (secInt != 0 && secInt != domInt) Color(secInt) else {
+                            val r = (prim.red * 0.75f + prim.blue * 0.25f).coerceIn(0f, 1f)
+                            val g = (prim.green * 0.45f + prim.red * 0.55f).coerceIn(0f, 1f)
+                            val b = (prim.blue * 0.85f + prim.green * 0.15f).coerceIn(0f, 1f)
+                            Color(r, g, b, 1f)
+                        }
+                        dynamicColors = Pair(prim, sec)
+                    }
+                }
+            }
+        }
+    }
+
+    val (primaryColor, secondaryColor) = dynamicColors
 
     // Minutaggio REALE: durata dal brano; posizione estrapolata dalla posizione
     // catturata (trackProgressMs) + tempo trascorso da trackProgressAt.
@@ -140,16 +182,12 @@ fun LiveDetailScreen(
     val totalFormatted = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
     val progressFraction = (elapsedSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
 
-    // Stesso scaffold immersivo del dettaglio feed (fullscreen sopra la status bar,
-    // swipe-giù da ovunque con blur-fade lineare, cover sfocata di sfondo, niente X),
-    // ma con i CONTENUTI live: timer/progress reale, reazioni, "rispondi in live".
     com.example.ui.components.TrackDialog(coverUrl = track.coverUrl, onDismiss = onClose) {
       Box(
         modifier = Modifier
             .fillMaxSize()
             .testTag("live_detail_fullscreen")
     ) {
-        // Overlay Scrim scuro per contrasto ottimale
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -164,8 +202,6 @@ fun LiveDetailScreen(
                 )
         )
 
-
-        // ================= 2. CONTENUTO VERTICALMENTE CENTRATO =================
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -175,107 +211,119 @@ fun LiveDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. HEADER: LIVE @username
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
+            // Sezione Superiore: Header LIVE @username + Avatar Profilo con Equalizzatori Sincronizzati
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 28.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = { onOpenUserProfile(user) }
-                    )
+                    .padding(top = 16.dp)
             ) {
-                Box(
+                // Header: LIVE @username
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(primaryColor.copy(alpha = 0.25f))
-                        .border(0.8.dp, primaryColor, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "LIVE",
-                        color = primaryColor,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 0.8.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Text(
-                    text = "@${user.username.lowercase()}",
-                    color = PureWhite,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.2).sp
-                )
-            }
-
-            // 2. AVATAR PROFILO CENTRALE CIRCOLARE CON ANELLO LUMINOSO E EQUALIZZATORI GRADIENTI
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // Equalizzatore stilizzato a Sinistra (due colori dalla palette della cover)
-                LiveEqualizerSymmetrical(
-                    brush = Brush.verticalGradient(
-                        listOf(primaryColor, secondaryColor)
-                    ),
-                    maxHeight = 64.dp,
-                    barCount = 5,
-                    isReversed = true,
-                    modifier = Modifier.padding(end = 18.dp)
-                )
-
-                // Cerchio Avatar Profilo grande (~190dp) con cerchio/anello luminoso nel colore predominante
-                Box(
-                    modifier = Modifier
-                        .size(190.dp)
-                        .shadow(
-                            elevation = 24.dp,
-                            shape = CircleShape,
-                            ambientColor = primaryColor.copy(alpha = 0.45f),
-                            spotColor = primaryColor.copy(alpha = 0.75f)
-                        )
-                        .border(
-                            width = 3.dp,
-                            color = primaryColor,
-                            shape = CircleShape
-                        )
-                        .padding(4.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF141418))
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
                             onClick = { onOpenUserProfile(user) }
-                        ),
-                    contentAlignment = Alignment.Center
+                        )
                 ) {
-                    AsyncImage(
-                        model = user.avatarUrl,
-                        contentDescription = "Foto ${user.name}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(primaryColor.copy(alpha = 0.25f))
+                            .border(0.8.dp, primaryColor, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "LIVE",
+                            color = primaryColor,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Black,
+                            letterSpacing = 0.8.sp
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    Text(
+                        text = "@${user.username.lowercase()}",
+                        color = PureWhite,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.2).sp
                     )
                 }
 
-                // Equalizzatore stilizzato a Destra (due colori dalla palette della cover)
-                LiveEqualizerSymmetrical(
-                    brush = Brush.verticalGradient(
-                        listOf(secondaryColor, primaryColor)
-                    ),
-                    maxHeight = 64.dp,
-                    barCount = 5,
-                    isReversed = false,
-                    modifier = Modifier.padding(start = 18.dp)
-                )
+                Spacer(modifier = Modifier.height(18.dp))
+
+                // Avatar Profilo Circolare con Cerchio Luminoso + Equalizzatori
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Equalizzatore stilizzato a Sinistra (due colori dalla palette della copertina)
+                    LiveEqualizerSymmetrical(
+                        brush = Brush.verticalGradient(
+                            listOf(primaryColor, secondaryColor)
+                        ),
+                        maxHeight = 64.dp,
+                        barCount = 5,
+                        isReversed = true,
+                        modifier = Modifier.padding(end = 18.dp)
+                    )
+
+                    // Cerchio Avatar Profilo nitido (~190dp) con cerchio/anello luminoso nel colore predominante della copertina
+                    Box(
+                        modifier = Modifier
+                            .size(190.dp)
+                            .shadow(
+                                elevation = 24.dp,
+                                shape = CircleShape,
+                                ambientColor = primaryColor.copy(alpha = 0.45f),
+                                spotColor = primaryColor.copy(alpha = 0.75f)
+                            )
+                            .border(
+                                width = 3.dp,
+                                color = primaryColor,
+                                shape = CircleShape
+                            )
+                            .padding(4.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF141418))
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onOpenUserProfile(user) }
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(user.avatarUrl)
+                                .crossfade(true)
+                                .size(coil.size.Size.ORIGINAL)
+                                .build(),
+                            contentDescription = "Foto ${user.name}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // Equalizzatore stilizzato a Destra (due colori dalla palette della copertina)
+                    LiveEqualizerSymmetrical(
+                        brush = Brush.verticalGradient(
+                            listOf(secondaryColor, primaryColor)
+                        ),
+                        maxHeight = 64.dp,
+                        barCount = 5,
+                        isReversed = false,
+                        modifier = Modifier.padding(start = 18.dp)
+                    )
+                }
             }
 
             // 3. SEZIONE BRANO: Copertina quadrata a sinistra + Titolo e Artista a destra + Slide temporale
