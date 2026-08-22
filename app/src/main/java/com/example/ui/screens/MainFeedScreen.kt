@@ -6,9 +6,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-
-// Easing personalizzato di tipo Ease-In (accelerazione progressiva)
-private val EaseInEasing = CubicBezierEasing(0.42f, 0f, 1f, 1f)
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -18,6 +15,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+
+// Easing personalizzato di tipo Ease-In (accelerazione progressiva)
+private val EaseInEasing = CubicBezierEasing(0.42f, 0f, 1f, 1f)
+
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
