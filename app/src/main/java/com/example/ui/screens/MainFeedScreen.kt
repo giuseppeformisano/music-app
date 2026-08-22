@@ -6,6 +6,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.easeIn
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -595,7 +596,7 @@ private fun LivePageContent(
                         val slideMod = Modifier.animateItem(
                             fadeInSpec = null,
                             fadeOutSpec = null,
-                            placementSpec = tween(400, easing = FastOutSlowInEasing)
+                            placementSpec = tween(400, easing = easeIn)
                         )
                         when {
                             isDeparting -> ExitingLiveItem(
