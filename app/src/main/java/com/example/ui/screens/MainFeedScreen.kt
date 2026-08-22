@@ -15,10 +15,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-
-// Easing personalizzato di tipo Ease-In (accelerazione progressiva)
-private val EaseInEasing = CubicBezierEasing(0.42f, 0f, 1f, 1f)
-
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -113,6 +109,9 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlin.math.sin
+
+// Easing personalizzato di tipo Ease-In (accelerazione progressiva)
+private val EaseInEasing = CubicBezierEasing(0.42f, 0f, 1f, 1f)
 
 /**
  * Transizione a Veneziana Orizzontale con BLUR dinamico tra Feed e Live
