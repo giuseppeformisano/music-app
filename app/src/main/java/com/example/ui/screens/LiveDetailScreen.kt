@@ -190,7 +190,7 @@ fun LiveDetailScreen(
                 .fillMaxSize()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 28.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -199,9 +199,9 @@ fun LiveDetailScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 16.dp)
+                    .padding(top = 48.dp)
             ) {
-                // Header: LIVE @username
+                // Header: LIVE @username (posizionato sotto la status bar con spazio armonioso)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -234,13 +234,13 @@ fun LiveDetailScreen(
                     Text(
                         text = "@${user.username.lowercase()}",
                         color = PureWhite,
-                        fontSize = 16.sp,
+                        fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.2).sp
                     )
                 }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
                 // Avatar Profilo Circolare con Cerchio Luminoso + Equalizzatori
                 Row(
@@ -253,24 +253,24 @@ fun LiveDetailScreen(
                         brush = Brush.verticalGradient(
                             listOf(primaryColor, secondaryColor)
                         ),
-                        maxHeight = 64.dp,
+                        maxHeight = 60.dp,
                         barCount = 5,
                         isReversed = true,
-                        modifier = Modifier.padding(end = 18.dp)
+                        modifier = Modifier.padding(end = 16.dp)
                     )
 
-                    // Cerchio Avatar Profilo nitido (~190dp) con cerchio/anello luminoso nel colore predominante della copertina
+                    // Cerchio Avatar Profilo nitido (~175dp) con cerchio/anello luminoso nel colore predominante della copertina
                     Box(
                         modifier = Modifier
-                            .size(190.dp)
+                            .size(175.dp)
                             .shadow(
-                                elevation = 24.dp,
+                                elevation = 22.dp,
                                 shape = CircleShape,
                                 ambientColor = primaryColor.copy(alpha = 0.45f),
                                 spotColor = primaryColor.copy(alpha = 0.75f)
                             )
                             .border(
-                                width = 3.dp,
+                                width = 2.5.dp,
                                 color = primaryColor,
                                 shape = CircleShape
                             )
@@ -301,10 +301,10 @@ fun LiveDetailScreen(
                         brush = Brush.verticalGradient(
                             listOf(secondaryColor, primaryColor)
                         ),
-                        maxHeight = 64.dp,
+                        maxHeight = 60.dp,
                         barCount = 5,
                         isReversed = false,
-                        modifier = Modifier.padding(start = 18.dp)
+                        modifier = Modifier.padding(start = 16.dp)
                     )
                 }
             }
@@ -313,8 +313,8 @@ fun LiveDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                    .padding(horizontal = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Riga Copertina a sinistra + Titolo/Artista subito a destra
                 Row(
@@ -323,7 +323,7 @@ fun LiveDetailScreen(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(68.dp)
+                            .size(64.dp)
                             .shadow(
                                 elevation = 10.dp,
                                 shape = RoundedCornerShape(10.dp),
@@ -342,7 +342,7 @@ fun LiveDetailScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.width(16.dp))
+                    Spacer(modifier = Modifier.width(14.dp))
 
                     Column(
                         modifier = Modifier.weight(1f),
@@ -351,17 +351,17 @@ fun LiveDetailScreen(
                         Text(
                             text = track.title,
                             color = PureWhite,
-                            fontSize = 19.sp,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = (-0.3).sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.height(3.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = track.artist,
                             color = Zinc400,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Normal,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -377,7 +377,7 @@ fun LiveDetailScreen(
                         progress = { progressFraction },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(4.dp)
+                            .height(3.5.dp)
                             .clip(RoundedCornerShape(2.dp)),
                         color = primaryColor,
                         trackColor = PureWhite.copy(alpha = 0.15f)
@@ -409,22 +409,24 @@ fun LiveDetailScreen(
 
             // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE
             Column(
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Barra Reaction (Diamond, Soundwave, Star)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp),
+                        .padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     com.example.ui.components.detailReactions.forEach { reaction ->
                         Box(
                             modifier = Modifier
-                                .size(46.dp)
+                                .size(44.dp)
                                 .clip(CircleShape)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
@@ -444,7 +446,7 @@ fun LiveDetailScreen(
                             com.example.ui.components.CustomReactionIcon(
                                 reaction = reaction,
                                 tint = PureWhite,
-                                size = 24.dp
+                                size = 23.dp
                             )
                         }
                     }
@@ -457,7 +459,7 @@ fun LiveDetailScreen(
                         .clip(RoundedCornerShape(28.dp))
                         .background(Color(0xFF141418).copy(alpha = 0.85f))
                         .border(0.8.dp, PureWhite.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
-                        .padding(horizontal = 18.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 11.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     BasicTextField(

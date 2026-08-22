@@ -94,17 +94,17 @@ fun TrackDetailDialog(
                     .fillMaxSize()
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(horizontal = 24.dp, vertical = 20.dp),
+                    .padding(horizontal = 28.dp, vertical = 24.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // 1. HEADER: Avatar piccolo + @username sopra la copertina
+                // 1. HEADER: Avatar piccolo + @username sopra la copertina (posizionato sotto la status bar)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 24.dp)
+                        .padding(top = 48.dp)
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
@@ -122,7 +122,7 @@ fun TrackDetailDialog(
                             contentDescription = "Avatar ${user.name}",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
-                                .size(28.dp)
+                                .size(26.dp)
                                 .clip(CircleShape)
                                 .border(1.dp, PureWhite.copy(alpha = 0.4f), CircleShape)
                         )
@@ -141,9 +141,9 @@ fun TrackDetailDialog(
                 // 2. COVER ALBUM GRANDE AL CENTRO
                 Box(
                     modifier = Modifier
-                        .size(240.dp)
+                        .size(225.dp)
                         .shadow(
-                            elevation = 20.dp,
+                            elevation = 18.dp,
                             shape = RoundedCornerShape(14.dp),
                             ambientColor = Color.Black.copy(alpha = 0.6f),
                             spotColor = Color.Black.copy(alpha = 0.85f)
@@ -168,15 +168,15 @@ fun TrackDetailDialog(
                     Text(
                         text = track.title,
                         color = PureWhite,
-                        fontSize = 22.sp,
+                        fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
-                        letterSpacing = (-0.4).sp,
+                        letterSpacing = (-0.3).sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(3.dp))
 
                     val subtitle = if (track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true)) {
                         "${track.artist} · ${track.album}"
@@ -193,7 +193,7 @@ fun TrackDetailDialog(
                         overflow = TextOverflow.Ellipsis
                     )
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Pill Genere e Anno di Rilascio
                     Row(
@@ -206,7 +206,7 @@ fun TrackDetailDialog(
                                     .clip(CircleShape)
                                     .background(Color(0xFF141418).copy(alpha = 0.85f))
                                     .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
-                                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                                    .padding(horizontal = 11.dp, vertical = 4.dp)
                             ) {
                                 Text(
                                     text = track.genre,
@@ -223,7 +223,7 @@ fun TrackDetailDialog(
                                     .clip(CircleShape)
                                     .background(Color(0xFF141418).copy(alpha = 0.85f))
                                     .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
-                                    .padding(horizontal = 12.dp, vertical = 5.dp)
+                                    .padding(horizontal = 11.dp, vertical = 4.dp)
                             ) {
                                 Text(
                                     text = track.releaseYear,
@@ -238,22 +238,24 @@ fun TrackDetailDialog(
 
                 // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE COMMENTO
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     // Barra Reaction (Diamond, Soundwave, Star)
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp),
+                            .padding(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         detailReactions.forEach { reaction ->
                             Box(
                                 modifier = Modifier
-                                    .size(46.dp)
+                                    .size(44.dp)
                                     .clip(CircleShape)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
@@ -273,7 +275,7 @@ fun TrackDetailDialog(
                                 CustomReactionIcon(
                                     reaction = reaction,
                                     tint = PureWhite,
-                                    size = 24.dp
+                                    size = 23.dp
                                 )
                             }
                         }
@@ -286,7 +288,7 @@ fun TrackDetailDialog(
                             .clip(RoundedCornerShape(28.dp))
                             .background(Color(0xFF141418).copy(alpha = 0.85f))
                             .border(0.8.dp, PureWhite.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
-                            .padding(horizontal = 18.dp, vertical = 12.dp),
+                            .padding(horizontal = 16.dp, vertical = 11.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         BasicTextField(
