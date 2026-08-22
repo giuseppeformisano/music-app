@@ -30,7 +30,7 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (sbn.packageName != SPOTIFY_PACKAGE) return
-        stopPlayback()
+        checkMediaSessions()
     }
 
     private fun stopPlayback() {
@@ -51,8 +51,14 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             if (controller == null) { stopPlayback(); return }
 
             // In PAUSA resta in live (sta ancora ascoltando, è solo in pausa): mantiene
-            // il brano corrente e non aggiorna. Esce solo quando la sessione sparisce.
-            if (!isPlaying(controller)) return
+            // il brano corrente e non aggiorna. Esce solo quando la sessione sparisce o è fermata.
+            val state = controller.playbackState?.state
+            if (!isPlaying(controller)) {
+                if (state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE) {
+                    stopPlayback()
+                }
+                return
+            }
 
             val meta = controller.metadata ?: return
 

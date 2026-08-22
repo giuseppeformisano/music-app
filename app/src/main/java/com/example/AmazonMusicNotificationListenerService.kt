@@ -30,7 +30,9 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (sbn.packageName != AMAZON_MUSIC_PACKAGE) return
-        stopPlayback()
+        // Non terminare la riproduzione a priori (Amazon Music rimuove e ricrea notifiche):
+        // verifica se la MediaSession è ancora presente ed attiva
+        checkMediaSessions()
     }
 
     private fun stopPlayback() {
@@ -50,11 +52,16 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
             if (amazonMusic == null) { stopPlayback(); return }
 
             // In PAUSA resta in live (sta ancora ascoltando): mantiene il brano corrente
-            // e non aggiorna. Esce solo quando la sessione sparisce.
+            // e non aggiorna. Esce solo quando la sessione sparisce o va in STOP/NONE.
             val state = amazonMusic.playbackState?.state
             val isPlaying = state == PlaybackState.STATE_PLAYING ||
                             state == PlaybackState.STATE_BUFFERING
-            if (!isPlaying) return
+            if (!isPlaying) {
+                if (state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE) {
+                    stopPlayback()
+                }
+                return
+            }
 
             val meta = amazonMusic.metadata ?: return
 

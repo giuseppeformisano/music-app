@@ -299,8 +299,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
             // Spotify conferma che non suona nulla: azzera con debounce
             is SpotifyWebApiRepository.PlaybackResult.NotPlaying -> {
-                val hasLive = currentTrackId != null || _uiState.value.currentUser.currentTrack != null
-                if (!hasLive) { emptyPollCount = 0; return }
+                val currentTrack = _uiState.value.currentUser.currentTrack ?: _uiState.value.nowPlayingTrack
+                if (currentTrack == null) { emptyPollCount = 0; return }
+                // Se la live attiva è di un'altra piattaforma (es. Amazon Music), Spotify NON deve cancellarla
+                if (!currentTrack.source.equals("spotify", ignoreCase = true)) {
+                    emptyPollCount = 0
+                    return
+                }
                 // 2 conferme consecutive (~6s) prima di azzerare: assorbe i 204 tra brani
                 emptyPollCount++
                 if (emptyPollCount < 2) return
@@ -321,12 +326,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun applyLiveTrack(track: Track, progressMs: Long) {
         val currentTrackId = _uiState.value.nowPlayingTrack?.id
+        val liveTrack = if (track.source.isBlank()) track.copy(source = "spotify") else track
         emptyPollCount = 0
         if (_uiState.value.spotifyError != null) {
             _uiState.update { it.copy(spotifyError = null) }
         }
         val now = System.currentTimeMillis()
-        if (track.id == currentTrackId) {
+        if (liveTrack.id == currentTrackId) {
             // Stesso brano: heartbeat + riallineo la posizione reale (assorbe seek/pausa)
             if (now - lastLiveHeartbeat >= 25_000L) {
                 lastLiveHeartbeat = now
@@ -340,10 +346,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
         lastLiveHeartbeat = now
         val updatedUser = _uiState.value.currentUser.copy(
-            currentTrack = track, isLiveNow = true,
+            currentTrack = liveTrack, isLiveNow = true,
             trackProgressMs = progressMs, trackProgressAt = now
         )
-        _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
+        _uiState.update { it.copy(nowPlayingTrack = liveTrack, currentUser = updatedUser) }
         FirebaseRepository.syncCurrentUser(updatedUser)
     }
 
@@ -392,7 +398,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
         com.example.SpotifyNotificationListenerService.onPlaybackStopped = {
             if (isSpotifyFreeMode()) {
-                clearNowPlayingFromBroadcast()
+                clearNowPlayingFromBroadcast(source = "spotify")
             }
         }
     }
@@ -407,7 +413,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             if (isAmazonMode()) updateLiveProgress(positionMs, durationMs)
         }
         com.example.AmazonMusicNotificationListenerService.onPlaybackStopped = {
-            if (isAmazonMode()) clearNowPlayingFromBroadcast()
+            if (isAmazonMode()) clearNowPlayingFromBroadcast(source = "amazon_music")
         }
     }
 
@@ -477,8 +483,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         return if (v.lowercase() in contexts) "" else v
     }
 
-    fun clearNowPlayingFromBroadcast() {
-        if (_uiState.value.nowPlayingTrack == null && _uiState.value.currentUser.currentTrack == null) return
+    fun clearNowPlayingFromBroadcast(source: String = "") {
+        val currentTrack = _uiState.value.currentUser.currentTrack ?: _uiState.value.nowPlayingTrack
+        if (currentTrack == null) return
+        if (source.isNotBlank() && !currentTrack.source.equals(source, ignoreCase = true)) {
+            return
+        }
         val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
         _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
         FirebaseRepository.syncCurrentUser(updatedUser)

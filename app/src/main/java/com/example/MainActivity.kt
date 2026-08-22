@@ -65,12 +65,12 @@ class MainActivity : ComponentActivity() {
                     val artist = intent.getStringExtra("artist") ?: ""
                     val album = intent.getStringExtra("album") ?: ""
                     val trackId = intent.getStringExtra("id") ?: ""
-                    viewModel.updateNowPlayingFromBroadcast(trackId, trackName, artist, album)
+                    viewModel.updateNowPlayingFromBroadcast(trackId, trackName, artist, album, source = "spotify")
                 }
                 "com.spotify.music.playbackstatechanged" -> {
                     val playing = intent.getBooleanExtra("playing", false)
                     if (!playing) {
-                        viewModel.clearNowPlayingFromBroadcast()
+                        viewModel.clearNowPlayingFromBroadcast(source = "spotify")
                     } else {
                         // Spotify in play ma non abbiamo info brano: chiedi al Web API
                         viewModel.startSpotifyPolling()
