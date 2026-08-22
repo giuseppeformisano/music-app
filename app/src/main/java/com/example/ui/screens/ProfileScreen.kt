@@ -52,6 +52,8 @@ import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -1185,29 +1187,65 @@ private fun EditProfileDialog(
     var avatarUrlInput by remember { mutableStateOf(user.avatarUrl) }
     var coverUrlInput by remember { mutableStateOf(user.coverUrl ?: currentCoverUrl) }
 
+    val avatarPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { avatarUrlInput = it.toString() }
+    }
+
+    val coverPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { coverUrlInput = it.toString() }
+    }
+
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.92f)
+                .fillMaxHeight(0.85f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF141418))
+                .border(1.dp, PureWhite.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
+        ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.9f)
-                    .fillMaxHeight(0.85f)
+                modifier = Modifier.fillMaxSize()
             ) {
-                // Header — solo titolo, niente X
-                Text(
-                    text = "Modifica Profilo",
-                    color = PureWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
-                )
+                // Header con titolo e pulsante di chiusura
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Modifica Profilo",
+                        color = PureWhite,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Chiudi",
+                            tint = SubtitleGray,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                }
 
                 // Contenuto scrollabile
                 Column(
                     modifier = Modifier
                         .weight(1f)
                         .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 24.dp)
-                        .padding(top = 20.dp, bottom = 8.dp)
+                        .padding(horizontal = 20.dp)
+                        .padding(bottom = 16.dp)
                 ) {
                     Text("NOME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
                     Spacer(modifier = Modifier.height(6.dp))
@@ -1221,61 +1259,89 @@ private fun EditProfileDialog(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Text("IMMAGINE PROFILO (AVATAR)", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Text("IMMAGINE PROFILO", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                        AsyncImage(model = avatarUrlInput, contentDescription = "Anteprima Avatar", contentScale = ContentScale.Crop, modifier = Modifier.size(54.dp).clip(CircleShape).border(1.5.dp, PureWhite.copy(alpha = 0.6f), CircleShape))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                            items(AVATAR_PRESETS) { preset ->
-                                val isSelected = avatarUrlInput == preset
-                                Box(
-                                    modifier = Modifier.size(44.dp).clip(CircleShape)
-                                        .border(if (isSelected) 2.dp else 0.dp, if (isSelected) PureWhite else Color.Transparent, CircleShape)
-                                        .clickable { avatarUrlInput = preset },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    AsyncImage(model = preset, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                                }
-                            }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .clip(CircleShape)
+                                .border(1.5.dp, PureWhite.copy(alpha = 0.6f), CircleShape)
+                                .clickable { avatarPickerLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = avatarUrlInput,
+                                contentDescription = "Anteprima Avatar",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Button(
+                            onClick = { avatarPickerLauncher.launch("image/*") },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF26262C),
+                                contentColor = PureWhite
+                            ),
+                            modifier = Modifier.height(40.dp)
+                        ) {
+                            Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    MinimalTextInputField(value = avatarUrlInput, onValueChange = { avatarUrlInput = it }, placeholder = "Oppure incolla URL immagine...", testTag = "input_edit_avatar_url")
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    Text("IMMAGINE COPERTINA (SFONDO ATMOSFERICO)", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Text("IMMAGINE COPERTINA", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.fillMaxWidth()) {
-                        AsyncImage(model = coverUrlInput, contentDescription = "Anteprima Cover", contentScale = ContentScale.Crop, modifier = Modifier.size(width = 72.dp, height = 48.dp).clip(RoundedCornerShape(8.dp)).border(1.5.dp, PureWhite.copy(alpha = 0.6f), RoundedCornerShape(8.dp)))
-                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f)) {
-                            items(COVER_PRESETS) { preset ->
-                                val isSelected = coverUrlInput == preset
-                                Box(
-                                                    modifier = Modifier
-                                        .size(width = 56.dp, height = 44.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .border(if (isSelected) 2.dp else 0.dp, if (isSelected) PureWhite else Color.Transparent, RoundedCornerShape(8.dp))
-                                        .clickable { coverUrlInput = preset },
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    AsyncImage(model = preset, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
-                                }
-                            }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 84.dp, height = 54.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.5.dp, PureWhite.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                                .clickable { coverPickerLauncher.launch("image/*") },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = coverUrlInput,
+                                contentDescription = "Anteprima Cover",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Button(
+                            onClick = { coverPickerLauncher.launch("image/*") },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF26262C),
+                                contentColor = PureWhite
+                            ),
+                            modifier = Modifier.height(40.dp)
+                        ) {
+                            Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
                         }
                     }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    MinimalTextInputField(value = coverUrlInput, onValueChange = { coverUrlInput = it }, placeholder = "Oppure incolla URL copertina...", testTag = "input_edit_cover_url")
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
 
-                // Pulsante Salva fisso in fondo
+                // Pulsante Salva fisso in fondo ben visibile
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0xFF0A0A0A))
-                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                        .background(Color(0xFF1C1C22))
+                        .padding(horizontal = 20.dp, vertical = 16.dp)
                 ) {
                     Button(
                         onClick = {
@@ -1286,18 +1352,35 @@ private fun EditProfileDialog(
                                 coverUrlInput.trim()
                             )
                         },
-                        modifier = Modifier.fillMaxWidth().height(48.dp).testTag("btn_save_profile"),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .testTag("btn_save_profile"),
                         shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PureWhite, contentColor = BlackPitch)
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = PureWhite,
+                            contentColor = BlackPitch
+                        )
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = BlackPitch,
+                            modifier = Modifier.size(18.dp)
+                        )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Salva modifiche", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        Text(
+                            text = "Salva modifiche",
+                            color = BlackPitch,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
                     }
                 }
             }
         }
     }
+}
 
 /**
  * Campo di testo minimale con bordo soft semitrasparente
