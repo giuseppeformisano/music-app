@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -118,44 +120,47 @@ fun NotificationsDialog(
                         .fillMaxSize()
                         .padding(horizontal = 20.dp)
                 ) {
-
-            if (pendingRequests.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = null,
-                            tint = SubtitleGray.copy(alpha = 0.25f),
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "Nessuna notifica",
-                            color = SubtitleGray.copy(alpha = 0.5f),
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            } else {
-                Text(
-                    text = "Richieste di follow",
-                    color = SubtitleGray.copy(alpha = 0.6f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.3.sp
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                LazyColumn(
-                    modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(bottom = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    items(pendingRequests, key = { it.id }) { request ->
-                        FriendRequestRow(
-                            request = request,
-                            onAccept = { onAccept(request) },
-                            onReject = { onReject(request) }
-                        )
+                    if (pendingRequests.isEmpty()) {
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = null,
+                                    tint = SubtitleGray.copy(alpha = 0.25f),
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(10.dp))
+                                Text(
+                                    text = "Nessuna notifica",
+                                    color = SubtitleGray.copy(alpha = 0.5f),
+                                    fontSize = 13.sp
+                                )
+                            }
+                        }
+                    } else {
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            Text(
+                                text = "Richieste di follow",
+                                color = SubtitleGray.copy(alpha = 0.6f),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.3.sp
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            LazyColumn(
+                                modifier = Modifier.fillMaxWidth().weight(1f),
+                                contentPadding = PaddingValues(bottom = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                items(pendingRequests, key = { it.id }) { request ->
+                                    FriendRequestRow(
+                                        request = request,
+                                        onAccept = { onAccept(request) },
+                                        onReject = { onReject(request) }
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -246,7 +251,6 @@ private fun FriendRequestRow(
                     tint = Color.Black,
                     modifier = Modifier.size(14.dp)
                 )
-            }
             }
         }
     }
