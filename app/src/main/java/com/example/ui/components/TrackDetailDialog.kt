@@ -94,153 +94,161 @@ fun TrackDetailDialog(
                     .fillMaxSize()
                     .navigationBarsPadding()
                     .imePadding()
-                    .padding(horizontal = 28.dp, vertical = 24.dp),
+                    .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // 1. HEADER: Avatar piccolo + @username sopra la copertina (posizionato sotto la status bar)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
+                // Sezione Centrale Equidistanziata (Header, Cover Grande, Info Brano)
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 48.dp)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = {
-                                if (user != null) {
-                                    onOpenUserProfile(user)
-                                    onDismiss()
+                        .weight(1f)
+                        .padding(top = 36.dp, bottom = 12.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    // 1. HEADER: Avatar piccolo + @username
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    if (user != null) {
+                                        onOpenUserProfile(user)
+                                        onDismiss()
+                                    }
+                                }
+                            )
+                    ) {
+                        if (user?.avatarUrl?.isNotBlank() == true) {
+                            AsyncImage(
+                                model = user.avatarUrl,
+                                contentDescription = "Avatar ${user.name}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .border(0.8.dp, PureWhite.copy(alpha = 0.4f), CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+
+                        Text(
+                            text = "@${user?.username?.lowercase() ?: "utente"}",
+                            color = PureWhite,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.2).sp
+                        )
+                    }
+
+                    // 2. COVER ALBUM PIÙ GRANDE AL CENTRO
+                    Box(
+                        modifier = Modifier
+                            .size(265.dp)
+                            .shadow(
+                                elevation = 20.dp,
+                                shape = RoundedCornerShape(16.dp),
+                                ambientColor = Color.Black.copy(alpha = 0.6f),
+                                spotColor = Color.Black.copy(alpha = 0.85f)
+                            )
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF141418)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = track.coverUrl,
+                            contentDescription = "Cover ${track.title}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    // 3. TITOLO, ARTISTA / ALBUM E PILL GENERE / ANNO
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = track.title,
+                            color = PureWhite,
+                            fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center,
+                            letterSpacing = (-0.3).sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Spacer(modifier = Modifier.height(3.dp))
+
+                        val subtitle = if (track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true)) {
+                            "${track.artist} · ${track.album}"
+                        } else {
+                            track.artist
+                        }
+                        Text(
+                            text = subtitle,
+                            color = Zinc400,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Pill Genere e Anno di Rilascio
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (track.genre.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF141418).copy(alpha = 0.85f))
+                                    .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
+                                    .padding(horizontal = 11.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = track.genre,
+                                        color = PureWhite.copy(alpha = 0.90f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
                                 }
                             }
-                        )
-                ) {
-                    if (user?.avatarUrl?.isNotBlank() == true) {
-                        AsyncImage(
-                            model = user.avatarUrl,
-                            contentDescription = "Avatar ${user.name}",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(26.dp)
-                                .clip(CircleShape)
-                                .border(1.dp, PureWhite.copy(alpha = 0.4f), CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
 
-                    Text(
-                        text = "@${user?.username?.lowercase() ?: "utente"}",
-                        color = PureWhite,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.2).sp
-                    )
-                }
-
-                // 2. COVER ALBUM GRANDE AL CENTRO
-                Box(
-                    modifier = Modifier
-                        .size(225.dp)
-                        .shadow(
-                            elevation = 18.dp,
-                            shape = RoundedCornerShape(14.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.6f),
-                            spotColor = Color.Black.copy(alpha = 0.85f)
-                        )
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(Color(0xFF141418)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    AsyncImage(
-                        model = track.coverUrl,
-                        contentDescription = "Cover ${track.title}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                // 3. TITOLO, ARTISTA / ALBUM E PILL GENERE / ANNO
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(
-                        text = track.title,
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        letterSpacing = (-0.3).sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(3.dp))
-
-                    val subtitle = if (track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true)) {
-                        "${track.artist} · ${track.album}"
-                    } else {
-                        track.artist
-                    }
-                    Text(
-                        text = subtitle,
-                        color = Zinc400,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Pill Genere e Anno di Rilascio
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (track.genre.isNotBlank()) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF141418).copy(alpha = 0.85f))
-                                    .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
-                                    .padding(horizontal = 11.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = track.genre,
-                                    color = PureWhite.copy(alpha = 0.90f),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                            }
-                        }
-
-                        if (track.releaseYear.isNotBlank()) {
-                            Box(
-                                modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF141418).copy(alpha = 0.85f))
-                                    .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
-                                    .padding(horizontal = 11.dp, vertical = 4.dp)
-                            ) {
-                                Text(
-                                    text = track.releaseYear,
-                                    color = PureWhite.copy(alpha = 0.90f),
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                            if (track.releaseYear.isNotBlank()) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF141418).copy(alpha = 0.85f))
+                                        .border(0.75.dp, PureWhite.copy(alpha = 0.15f), CircleShape)
+                                        .padding(horizontal = 11.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = track.releaseYear,
+                                        color = PureWhite.copy(alpha = 0.90f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
                         }
                     }
                 }
 
-                // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE COMMENTO
+                // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE COMMENTO GIÙ A TUTTO
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 4.dp),
+                        .padding(bottom = 6.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
