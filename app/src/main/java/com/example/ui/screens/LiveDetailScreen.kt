@@ -190,18 +190,20 @@ fun LiveDetailScreen(
                 .fillMaxSize()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 28.dp, vertical = 24.dp),
+                .padding(horizontal = 24.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Sezione Superiore: Header LIVE @username + Avatar Profilo con Equalizzatori Sincronizzati
+            // Sezione Centrale Equidistanziata: Tag, Avatar+Equalizzatori, Player Brano
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 48.dp)
+                    .weight(1f)
+                    .padding(top = 36.dp, bottom = 12.dp),
+                verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                // Header: LIVE @username (posizionato sotto la status bar con spazio armonioso)
+                // 1. HEADER: LIVE @username
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -240,15 +242,13 @@ fun LiveDetailScreen(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Avatar Profilo Circolare con Cerchio Luminoso + Equalizzatori
+                // 2. AVATAR PROFILO CON CERCHIO LUMINOSO + EQUALIZZATORI
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    // Equalizzatore stilizzato a Sinistra (due colori dalla palette della copertina)
+                    // Equalizzatore stilizzato a Sinistra
                     LiveEqualizerSymmetrical(
                         brush = Brush.verticalGradient(
                             listOf(primaryColor, secondaryColor)
@@ -259,7 +259,7 @@ fun LiveDetailScreen(
                         modifier = Modifier.padding(end = 16.dp)
                     )
 
-                    // Cerchio Avatar Profilo nitido (~175dp) con cerchio/anello luminoso nel colore predominante della copertina
+                    // Cerchio Avatar Profilo (~175dp)
                     Box(
                         modifier = Modifier
                             .size(175.dp)
@@ -296,7 +296,7 @@ fun LiveDetailScreen(
                         )
                     }
 
-                    // Equalizzatore stilizzato a Destra (due colori dalla palette della copertina)
+                    // Equalizzatore stilizzato a Destra
                     LiveEqualizerSymmetrical(
                         brush = Brush.verticalGradient(
                             listOf(secondaryColor, primaryColor)
@@ -307,111 +307,110 @@ fun LiveDetailScreen(
                         modifier = Modifier.padding(start = 16.dp)
                     )
                 }
-            }
 
-            // 3. SEZIONE BRANO: Copertina quadrata a sinistra + Titolo e Artista a destra + Slide temporale
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Riga Copertina a sinistra + Titolo/Artista subito a destra
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .shadow(
-                                elevation = 10.dp,
-                                shape = RoundedCornerShape(10.dp),
-                                ambientColor = Color.Black.copy(alpha = 0.5f),
-                                spotColor = Color.Black.copy(alpha = 0.8f)
-                            )
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(Color(0xFF141418)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = track.coverUrl,
-                            contentDescription = "Cover ${track.title}",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = track.title,
-                            color = PureWhite,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.3).sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = track.artist,
-                            color = Zinc400,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Normal,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                // Barra Temporale con colore predominante della copertina
+                // 3. SEZIONE BRANO: Copertina + Titolo/Artista + Barra Temporale
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    LinearProgressIndicator(
-                        progress = { progressFraction },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(3.5.dp)
-                            .clip(RoundedCornerShape(2.dp)),
-                        color = primaryColor,
-                        trackColor = PureWhite.copy(alpha = 0.15f)
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text(
-                            text = elapsedFormatted,
-                            color = PureWhite,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal,
-                            letterSpacing = 0.3.sp
+                        Box(
+                            modifier = Modifier
+                                .size(64.dp)
+                                .shadow(
+                                    elevation = 10.dp,
+                                    shape = RoundedCornerShape(10.dp),
+                                    ambientColor = Color.Black.copy(alpha = 0.5f),
+                                    spotColor = Color.Black.copy(alpha = 0.8f)
+                                )
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF141418)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            AsyncImage(
+                                model = track.coverUrl,
+                                contentDescription = "Cover ${track.title}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = track.title,
+                                color = PureWhite,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.3).sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = track.artist,
+                                color = Zinc400,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Normal,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Barra Temporale
+                    Column(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        LinearProgressIndicator(
+                            progress = { progressFraction },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(3.5.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = primaryColor,
+                            trackColor = PureWhite.copy(alpha = 0.15f)
                         )
-                        Text(
-                            text = totalFormatted,
-                            color = Zinc400,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Normal,
-                            letterSpacing = 0.3.sp
-                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = elapsedFormatted,
+                                color = PureWhite,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = 0.3.sp
+                            )
+                            Text(
+                                text = totalFormatted,
+                                color = Zinc400,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Normal,
+                                letterSpacing = 0.3.sp
+                            )
+                        }
                     }
                 }
             }
 
-            // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE
+            // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE — GIÙ A TUTTO
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 4.dp),
+                    .padding(bottom = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
