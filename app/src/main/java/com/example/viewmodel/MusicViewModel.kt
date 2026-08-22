@@ -382,7 +382,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private fun registerSpotifyNotificationListenerCallbacks() {
         com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
             if (isSpotifyFreeMode()) {
-                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl)
+                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = "spotify")
             }
         }
         com.example.SpotifyNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
@@ -401,7 +401,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun registerAmazonMusicNotificationListenerCallbacks() {
         com.example.AmazonMusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
-            if (isAmazonMode()) updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl)
+            if (isAmazonMode()) updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = "amazon_music")
         }
         com.example.AmazonMusicNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
             if (isAmazonMode()) updateLiveProgress(positionMs, durationMs)
@@ -424,7 +424,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateNowPlayingFromBroadcast(
         trackId: String, trackName: String, artistName: String, albumName: String,
-        durationMs: Long = 0L, positionMs: Long = 0L, artUrl: String = ""
+        durationMs: Long = 0L, positionMs: Long = 0L, artUrl: String = "",
+        source: String = "spotify"
     ) {
         if (trackName.isBlank()) return
         val currentId = _uiState.value.nowPlayingTrack?.id
@@ -444,7 +445,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 album = cleanAlbum,
                 coverUrl = coverUrl,
                 durationText = if (durationMs > 0) formatMs(durationMs) else "3:45",
-                durationMs = durationMs
+                durationMs = durationMs,
+                source = source
             )
             val updatedUser = _uiState.value.currentUser.copy(
                 currentTrack = track, isLiveNow = true,

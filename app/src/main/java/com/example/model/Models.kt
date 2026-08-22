@@ -10,7 +10,8 @@ data class Track(
     val durationMs: Long = 0L, // Durata reale in millisecondi (0 = sconosciuta)
     val accentColorHex: Long = 0xFF1DB954, // Hex color extracted from album art
     val genre: String = "Alternative / Electronic",
-    val releaseYear: String = "2024"
+    val releaseYear: String = "2024",
+    val source: String = "spotify"
 )
 
 data class User(

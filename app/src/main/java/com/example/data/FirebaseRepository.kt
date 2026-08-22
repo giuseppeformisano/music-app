@@ -350,7 +350,8 @@ object FirebaseRepository {
             "durationMs" to track.durationMs,
             "accentColorHex" to track.accentColorHex,
             "genre" to track.genre,
-            "releaseYear" to track.releaseYear
+            "releaseYear" to track.releaseYear,
+            "source" to track.source
         )
     }
 
@@ -429,6 +430,7 @@ object FirebaseRepository {
         val accentColorHex = (map["accentColorHex"] as? Number)?.toLong() ?: 0xFF1DB954
         val genre = map["genre"] as? String ?: "Musica"
         val releaseYear = map["releaseYear"] as? String ?: "2024"
+        val source = map["source"] as? String ?: "spotify"
 
         return Track(
             id = map["id"] as? String ?: (title + artist).hashCode().toString(),
@@ -440,7 +442,8 @@ object FirebaseRepository {
             durationMs = durationMs,
             accentColorHex = accentColorHex,
             genre = genre,
-            releaseYear = releaseYear
+            releaseYear = releaseYear,
+            source = source
         )
     }
 }

@@ -924,6 +924,89 @@ private fun CdGlowCircularCover(
 }
 
 /**
+ * Micro-Badge Piattaforma Musicale (Spotify / Amazon Music):
+ * - Posizionato nell'angolo in alto a sinistra del disco che gira.
+ * - Design moderno, catchy, compatto e discreto (15dp).
+ * - Sfondo brandizzato con micro-vettore ad alta precisione e finitura riflettente.
+ */
+@Composable
+private fun LivePlatformBadge(
+    source: String,
+    modifier: Modifier = Modifier
+) {
+    val isAmazon = source.contains("amazon", ignoreCase = true)
+
+    Box(
+        modifier = modifier
+            .size(15.dp)
+            .shadow(
+                elevation = 3.dp,
+                shape = CircleShape,
+                ambientColor = Color.Black.copy(alpha = 0.6f),
+                spotColor = Color.Black.copy(alpha = 0.9f)
+            )
+            .background(
+                color = if (isAmazon) Color(0xFF00A8E1) else Color(0xFF1DB954),
+                shape = CircleShape
+            )
+            .border(
+                width = 0.85.dp,
+                color = PureWhite.copy(alpha = 0.45f),
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(9.dp)) {
+            val w = size.width
+            val h = size.height
+            if (isAmazon) {
+                // Sorriso Amazon stilizzato con freccia
+                val smilePath = Path().apply {
+                    moveTo(w * 0.14f, h * 0.56f)
+                    cubicTo(w * 0.38f, h * 0.86f, w * 0.64f, h * 0.86f, w * 0.86f, h * 0.52f)
+                }
+                drawPath(
+                    path = smilePath,
+                    color = Color.White,
+                    style = Stroke(width = 1.15.dp.toPx(), cap = StrokeCap.Round)
+                )
+                val arrowPath = Path().apply {
+                    moveTo(w * 0.70f, h * 0.46f)
+                    lineTo(w * 0.88f, h * 0.52f)
+                    lineTo(w * 0.82f, h * 0.70f)
+                }
+                drawPath(
+                    path = arrowPath,
+                    color = Color.White,
+                    style = Stroke(width = 0.95.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+                )
+            } else {
+                // 3 Onde audio iconiche Spotify
+                val stroke1 = Stroke(width = 1.15.dp.toPx(), cap = StrokeCap.Round)
+                val stroke2 = Stroke(width = 1.0.dp.toPx(), cap = StrokeCap.Round)
+                val stroke3 = Stroke(width = 0.85.dp.toPx(), cap = StrokeCap.Round)
+
+                val p1 = Path().apply {
+                    moveTo(w * 0.15f, h * 0.34f)
+                    cubicTo(w * 0.40f, h * 0.18f, w * 0.65f, h * 0.20f, w * 0.85f, h * 0.36f)
+                }
+                val p2 = Path().apply {
+                    moveTo(w * 0.22f, h * 0.54f)
+                    cubicTo(w * 0.44f, h * 0.42f, w * 0.62f, h * 0.44f, w * 0.78f, h * 0.56f)
+                }
+                val p3 = Path().apply {
+                    moveTo(w * 0.28f, h * 0.74f)
+                    cubicTo(w * 0.46f, h * 0.66f, w * 0.58f, h * 0.68f, w * 0.72f, h * 0.76f)
+                }
+                drawPath(p1, color = Color.Black.copy(alpha = 0.92f), style = stroke1)
+                drawPath(p2, color = Color.Black.copy(alpha = 0.92f), style = stroke2)
+                drawPath(p3, color = Color.Black.copy(alpha = 0.92f), style = stroke3)
+            }
+        }
+    }
+}
+
+/**
  * Estrazione dinamica in tempo reale della palette cromatica per il glow pulsante del vinile:
  * - Estrae il colore base dalla palette della copertina/traccia (accentColorHex).
  * - Genera una sfumatura secondaria ricca ed elegante per un alone tridimensionale e mai monocromatico.
@@ -1614,6 +1697,14 @@ private fun LiveUserMinimalItem(
                         primaryColor = primaryColor,
                         secondaryColor = secondaryColor
                     )
+
+                    LivePlatformBadge(
+                        source = currentDisplayTrack.source,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = 1.dp, y = 1.dp)
+                            .zIndex(15f)
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(14.dp))
@@ -1932,20 +2023,39 @@ private fun SupernovaEntranceItem(
                         .zIndex(8f)
                         .graphicsLayer {
                             translationX = (1f - cdProgress) * travelDistance
-                            rotationZ = (1f - cdProgress) * -1200f
                             scaleX = cdScale
                             scaleY = cdScale
                         }
                         .size(58.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CdGlowCircularCover(
-                        coverUrl = track.coverUrl,
-                        title = track.title,
-                        trackId = track.id,
-                        primaryColor = primaryColor,
-                        secondaryColor = secondaryColor
-                    )
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                rotationZ = (1f - cdProgress) * -1200f
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CdGlowCircularCover(
+                            coverUrl = track.coverUrl,
+                            title = track.title,
+                            trackId = track.id,
+                            primaryColor = primaryColor,
+                            secondaryColor = secondaryColor
+                        )
+                    }
+
+                    if (dataAlpha > 0.05f) {
+                        LivePlatformBadge(
+                            source = track.source,
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .offset(x = 1.dp, y = 1.dp)
+                                .graphicsLayer { alpha = dataAlpha }
+                                .zIndex(15f)
+                        )
+                    }
                 }
             }
         }
