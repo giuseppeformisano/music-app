@@ -554,18 +554,21 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                     knownFriendRequestIds = newIds
 
                     _uiState.update { current ->
+                        val updatedCurrentUser = current.currentUser.copy(
+                            name = fresh.name.ifBlank { current.currentUser.name },
+                            username = fresh.username.ifBlank { current.currentUser.username },
+                            avatarUrl = fresh.avatarUrl.ifBlank { current.currentUser.avatarUrl },
+                            coverUrl = fresh.coverUrl ?: current.currentUser.coverUrl,
+                            bio = fresh.bio,
+                            sharedTracks = fresh.sharedTracks,
+                            stats = fresh.stats,
+                            followerIds = fresh.followerIds,
+                            followingIds = fresh.followingIds
+                            // isLiveNow e currentTrack restano gestiti localmente da Spotify
+                        )
                         current.copy(
-                            currentUser = current.currentUser.copy(
-                                name = fresh.name.ifBlank { current.currentUser.name },
-                                username = fresh.username.ifBlank { current.currentUser.username },
-                                avatarUrl = fresh.avatarUrl.ifBlank { current.currentUser.avatarUrl },
-                                coverUrl = fresh.coverUrl ?: current.currentUser.coverUrl,
-                                sharedTracks = fresh.sharedTracks,
-                                stats = fresh.stats,
-                                followerIds = fresh.followerIds,
-                                followingIds = fresh.followingIds
-                                // isLiveNow e currentTrack restano gestiti localmente da Spotify
-                            ),
+                            currentUser = updatedCurrentUser,
+                            activeProfileUser = if (current.activeProfileUser?.id == updatedCurrentUser.id) updatedCurrentUser else current.activeProfileUser,
                             pendingFriendRequests = fresh.pendingRequests,
                             sentRequestIds = fresh.sentRequestIds.toSet()
                         )
@@ -734,23 +737,39 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun updateProfile(name: String, username: String, avatarUrl: String, coverUrl: String? = null, bio: String = "") {
-        val cleanUsername = username.trim().removePrefix("@")
-        val updatedUser = _uiState.value.currentUser.copy(
-            name = name.trim().ifBlank { _uiState.value.currentUser.name },
-            username = cleanUsername.ifBlank { _uiState.value.currentUser.username },
-            avatarUrl = avatarUrl.trim().ifBlank { _uiState.value.currentUser.avatarUrl },
-            coverUrl = if (!coverUrl.isNullOrBlank()) coverUrl.trim() else _uiState.value.currentUser.coverUrl,
-            bio = bio.trim()
-        )
-        saveUserLocalPrefs(updatedUser)
-        _uiState.update {
-            it.copy(
-                currentUser = updatedUser,
-                activeProfileUser = if (it.activeProfileUser?.id == updatedUser.id) updatedUser else it.activeProfileUser,
-                feedbackToast = "Profilo aggiornato: @${updatedUser.username}"
+        viewModelScope.launch(Dispatchers.IO) {
+            val processedAvatar = if (avatarUrl.startsWith("content://") || avatarUrl.startsWith("file://")) {
+                com.example.data.ImageUtils.processImageUri(appContext, avatarUrl, maxDimension = 320, quality = 80)
+            } else {
+                avatarUrl
+            }
+
+            val processedCover = if (coverUrl != null && (coverUrl.startsWith("content://") || coverUrl.startsWith("file://"))) {
+                com.example.data.ImageUtils.processImageUri(appContext, coverUrl, maxDimension = 720, quality = 80)
+            } else {
+                coverUrl
+            }
+
+            val cleanUsername = username.trim().removePrefix("@")
+            val updatedUser = _uiState.value.currentUser.copy(
+                name = name.trim().ifBlank { _uiState.value.currentUser.name },
+                username = cleanUsername.ifBlank { _uiState.value.currentUser.username },
+                avatarUrl = processedAvatar.trim().ifBlank { _uiState.value.currentUser.avatarUrl },
+                coverUrl = if (!processedCover.isNullOrBlank()) processedCover.trim() else _uiState.value.currentUser.coverUrl,
+                bio = bio.trim()
             )
+            saveUserLocalPrefs(updatedUser)
+            withContext(Dispatchers.Main) {
+                _uiState.update {
+                    it.copy(
+                        currentUser = updatedUser,
+                        activeProfileUser = if (it.activeProfileUser?.id == updatedUser.id) updatedUser else it.activeProfileUser,
+                        feedbackToast = "Profilo aggiornato: @${updatedUser.username}"
+                    )
+                }
+            }
+            FirebaseRepository.syncCurrentUser(updatedUser)
         }
-        FirebaseRepository.syncCurrentUser(updatedUser)
     }
 
     // ===================== NAVIGATION =====================

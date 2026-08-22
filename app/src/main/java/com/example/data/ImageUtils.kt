@@ -1,0 +1,76 @@
+package com.example.data
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.net.Uri
+import android.util.Base64
+import android.util.Log
+import java.io.ByteArrayOutputStream
+
+object ImageUtils {
+    private const val TAG = "ImageUtils"
+
+    fun processImageUri(context: Context, uriString: String, maxDimension: Int = 512, quality: Int = 80): String {
+        if (!uriString.startsWith("content://") && !uriString.startsWith("file://")) {
+            return uriString
+        }
+        return try {
+            val uri = Uri.parse(uriString)
+            val resolver = context.contentResolver
+
+            // Decodifica prima le sole dimensioni
+            val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            resolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, boundsOptions)
+            } ?: return uriString
+
+            val origWidth = boundsOptions.outWidth
+            val origHeight = boundsOptions.outHeight
+            if (origWidth <= 0 || origHeight <= 0) return uriString
+
+            var inSampleSize = 1
+            if (origHeight > maxDimension || origWidth > maxDimension) {
+                val halfHeight = origHeight / 2
+                val halfWidth = origWidth / 2
+                while ((halfHeight / inSampleSize) >= maxDimension && (halfWidth / inSampleSize) >= maxDimension) {
+                    inSampleSize *= 2
+                }
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+            }
+
+            val decodedBitmap = resolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream, null, decodeOptions)
+            } ?: return uriString
+
+            val width = decodedBitmap.width
+            val height = decodedBitmap.height
+            val maxSide = maxOf(width, height)
+            val scale = (maxDimension.toFloat() / maxSide).coerceAtMost(1f)
+
+            val scaledBitmap = if (scale < 1f) {
+                val targetW = (width * scale).toInt().coerceAtLeast(1)
+                val targetH = (height * scale).toInt().coerceAtLeast(1)
+                Bitmap.createScaledBitmap(decodedBitmap, targetW, targetH, true).also {
+                    if (it != decodedBitmap) decodedBitmap.recycle()
+                }
+            } else {
+                decodedBitmap
+            }
+
+            val outputStream = ByteArrayOutputStream()
+            scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, outputStream)
+            val byteArray = outputStream.toByteArray()
+            scaledBitmap.recycle()
+
+            val base64 = Base64.encodeToString(byteArray, Base64.NO_WRAP)
+            "data:image/jpeg;base64,$base64"
+        } catch (e: Exception) {
+            Log.e(TAG, "Errore conversione immagine in Base64: ${e.message}")
+            uriString
+        }
+    }
+}
