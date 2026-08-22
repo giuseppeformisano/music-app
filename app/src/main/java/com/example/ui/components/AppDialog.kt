@@ -25,7 +25,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
@@ -72,7 +72,7 @@ private fun ImmersiveScaffold(
         // Fullscreen nativo edge-to-edge dietro la barra di stato sin dal frame zero
         val view = LocalView.current
         val window = (view.parent as? DialogWindowProvider)?.window
-        SideEffect {
+        LaunchedEffect(window) {
             window?.let { w ->
                 WindowCompat.setDecorFitsSystemWindows(w, false)
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {

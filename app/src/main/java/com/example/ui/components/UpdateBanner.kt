@@ -77,59 +77,71 @@ fun UpdateBanner(
 
             Spacer(modifier = Modifier.height(22.dp))
 
-            if (downloadProgress != null) {
-                Text(
-                    text = "$downloadProgress%",
-                    color = PureWhite.copy(alpha = 0.70f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-                LinearProgressIndicator(
-                    progress = { downloadProgress / 100f },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(3.dp)
-                        .clip(RoundedCornerShape(2.dp)),
-                    color = PureWhite,
-                    trackColor = CharcoalBorder
-                )
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(CircleShape)
-                            .background(Color(0xFF1A1A1A))
-                            .clickable { onDismiss() }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                if (downloadProgress != null) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "Dopo",
-                            color = SubtitleGray,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Medium
+                            text = "$downloadProgress%",
+                            color = PureWhite.copy(alpha = 0.70f),
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        LinearProgressIndicator(
+                            progress = { downloadProgress / 100f },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(4.dp)
+                                .clip(RoundedCornerShape(2.dp)),
+                            color = PureWhite,
+                            trackColor = CharcoalBorder
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(CircleShape)
-                            .background(PureWhite)
-                            .clickable { onInstall() }
-                            .padding(vertical = 14.dp),
-                        contentAlignment = Alignment.Center
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "Installa",
-                            color = Color.Black,
-                            fontSize = 15.sp,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1A1A1A))
+                                .clickable { onDismiss() }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Dopo",
+                                color = SubtitleGray,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(CircleShape)
+                                .background(PureWhite)
+                                .clickable { onInstall() }
+                                .padding(vertical = 14.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Installa",
+                                color = Color.Black,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     }
                 }
             }
