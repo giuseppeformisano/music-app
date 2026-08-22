@@ -158,12 +158,8 @@ fun MainFeedScreen(
     // Utenti live degli amici: SEMPRE con dati freschi da `stories` (niente copie statiche)
     val liveFriends = stories.filter { it.currentTrack != null && !it.isCurrentUser }
     // Animazione d'ingresso pilotata dagli ID (dati sempre aggiornati). Ogni utente non
-    // ancora "visto" anima l'entrata; poi diventa item normale.
+    // ancora "visto" anima l'entrata completa (2s); poi diventa item normale.
     val seenLiveIds = remember { mutableStateListOf<String>() }
-    // Momento di apertura della schermata: gli utenti che compaiono ENTRO ~1.5s da qui
-    // sono il "batch iniziale" (entrata veloce 0.7s); chi entra DOPO (login mentre sei in
-    // app) usa l'entrata piena (2s). Legato al tempo, non al "primo che appare".
-    val screenOpenAt = remember { System.currentTimeMillis() }
 
     // Ultimo stato noto di ogni amico live (per animare l'uscita con i suoi dati) e
     // ordine di apparizione (nuovi IN FONDO). L'uscita è decisa in modo SINCRONO in
@@ -243,7 +239,6 @@ fun MainFeedScreen(
                             currentUser = currentUser,
                             displayLive = displayLive,
                             seenIds = seenLiveIds,
-                            screenOpenAtMs = screenOpenAt,
                             onUserSeen = { id -> if (id !in seenLiveIds) seenLiveIds.add(id) },
                             onExitComplete = { id ->
                                 liveOrder.remove(id)
@@ -533,7 +528,6 @@ private fun LivePageContent(
     currentUser: User,
     displayLive: List<Pair<User, Boolean>> = emptyList(),
     seenIds: List<String> = emptyList(),
-    screenOpenAtMs: Long = 0L,
     onUserSeen: (String) -> Unit = {},
     onExitComplete: (String) -> Unit = {},
     onSelectLiveUser: (User) -> Unit,
@@ -620,8 +614,6 @@ private fun LivePageContent(
                                 onClick = { onSelectLiveUser(user) },
                                 onProfileClick = { onOpenProfile(user) },
                                 onComplete = { onUserSeen(user.id) },
-                                // batch iniziale (entro ~1.5s dall'apertura) = 0.7s; login in app = 2s
-                                fast = (System.currentTimeMillis() - screenOpenAtMs) < 1500L,
                                 modifier = slideMod
                             )
                         }
@@ -1805,7 +1797,6 @@ private fun SupernovaEntranceItem(
     onClick: () -> Unit,
     onProfileClick: () -> Unit,
     onComplete: () -> Unit,
-    fast: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -1815,7 +1806,7 @@ private fun SupernovaEntranceItem(
     }
     LaunchedEffect(user.id) {
         entrance.snapTo(0f)
-        entrance.animateTo(1f, tween(if (fast) 700 else 2000, easing = FastOutSlowInEasing))
+        entrance.animateTo(1f, tween(2000, easing = LinearEasing))
         onComplete()
     }
     val e = entrance.value
@@ -1982,7 +1973,7 @@ private fun ExitingLiveItem(
     }
     LaunchedEffect(user.id) {
         exit.snapTo(0f)
-        exit.animateTo(1f, tween(2000, easing = FastOutSlowInEasing))
+        exit.animateTo(1f, tween(2000, easing = LinearEasing))
         onComplete()
     }
     val q = exit.value
