@@ -30,6 +30,7 @@ import com.example.ui.theme.PureWhite
 @Composable
 fun LiveEqualizerSymmetrical(
     color: Color = PureWhite,
+    brush: androidx.compose.ui.graphics.Brush? = null,
     maxHeight: Dp = 32.dp,
     barCount: Int = 5,
     isReversed: Boolean = false,
@@ -83,22 +84,33 @@ fun LiveEqualizerSymmetrical(
         label = "bar5"
     )
 
+    // Base profile: taller near inner side (towards the cover), shorter towards outer edge
+    val shapeFactors = if (isReversed) {
+        listOf(0.40f, 0.60f, 0.80f, 0.92f, 1.0f)
+    } else {
+        listOf(1.0f, 0.92f, 0.80f, 0.60f, 0.40f)
+    }
+
     val rawWeights = listOf(anim1, anim2, anim3, anim4, anim5)
     val weights = if (isReversed) rawWeights.reversed() else rawWeights
 
     Row(
         modifier = modifier.height(maxHeight),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(3.5.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        weights.take(barCount).forEach { fraction ->
-            val barHeight = (maxHeight * fraction).coerceAtLeast(4.dp)
+        weights.take(barCount).forEachIndexed { idx, fraction ->
+            val factor = shapeFactors.getOrElse(idx) { 0.7f }
+            val barHeight = (maxHeight * factor * (0.35f + 0.65f * fraction)).coerceAtLeast(6.dp)
             Box(
                 modifier = Modifier
-                    .width(3.dp)
+                    .width(3.5.dp)
                     .height(barHeight)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(color)
+                    .clip(RoundedCornerShape(2.5.dp))
+                    .then(
+                        if (brush != null) Modifier.background(brush)
+                        else Modifier.background(color)
+                    )
             )
         }
     }

@@ -179,90 +179,88 @@ fun LiveDetailScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
                 .imePadding()
-                .padding(horizontal = 24.dp, vertical = 20.dp),
+                .padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // PROFILO UTENTE COMPATTO CON VIBRAZIONE LIVE
+            // 1. HEADER: In ascolto da / @username
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    // Equalizzatore stilizzato a Sinistra
-                    LiveEqualizerSymmetrical(
-                        color = PureWhite,
-                        maxHeight = 32.dp,
-                        barCount = 5,
-                        isReversed = true,
-                        modifier = Modifier.padding(end = 16.dp)
+                Text(
+                    text = "In ascolto da",
+                    color = PureWhite.copy(alpha = 0.70f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "@${user.username.lowercase()}",
+                    color = PureWhite,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { onOpenUserProfile(user) }
                     )
-
-                    // Avatar profilo
-                    Box(
-                        modifier = Modifier
-                            .size(92.dp)
-                            .scale(pulseScale)
-                            .clip(CircleShape)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { onOpenUserProfile(user) }
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = user.avatarUrl,
-                            contentDescription = "Foto ${user.name}",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    // Equalizzatore stilizzato a Destra
-                    LiveEqualizerSymmetrical(
-                        color = PureWhite,
-                        maxHeight = 32.dp,
-                        barCount = 5,
-                        isReversed = false,
-                        modifier = Modifier.padding(start = 16.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Nome Utente e @nickname pulito, fuso con lo sfondo nero #000000
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = user.name.lowercase(),
-                        color = PureWhite,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.2.sp
-                    )
-
-                    Spacer(modifier = Modifier.width(6.dp))
-
-                    Text(
-                        text = "@${user.username.lowercase()}",
-                        color = PureWhite.copy(alpha = 0.65f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Normal,
-                        letterSpacing = 0.1.sp
-                    )
-                }
+                )
             }
 
-            Spacer(modifier = Modifier.height(34.dp))
+            // 2. COVER ALBUM CENTRALE FIANCATA DA EQUALIZZATORI GRADIENTI GLOW
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Equalizzatore stilizzato a Sinistra (Cyan/Blue neon glow)
+                LiveEqualizerSymmetrical(
+                    brush = Brush.verticalGradient(
+                        listOf(Color(0xFF00E5FF), Color(0xFF0084FF))
+                    ),
+                    maxHeight = 60.dp,
+                    barCount = 5,
+                    isReversed = true,
+                    modifier = Modifier.padding(end = 10.dp)
+                )
 
-            // DATI DI RIPRODUZIONE DEL BRANO
+                // Cover album centrale quadrata con angoli arrotondati
+                Box(
+                    modifier = Modifier
+                        .size(240.dp)
+                        .scale(pulseScale)
+                        .shadow(
+                            elevation = 20.dp,
+                            shape = RoundedCornerShape(14.dp),
+                            ambientColor = Color.Black.copy(alpha = 0.6f),
+                            spotColor = Color.Black.copy(alpha = 0.85f)
+                        )
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(Color(0xFF141418)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = track.coverUrl,
+                        contentDescription = "Cover ${track.title}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                // Equalizzatore stilizzato a Destra (Magenta/Pink/Sunset neon glow)
+                LiveEqualizerSymmetrical(
+                    brush = Brush.verticalGradient(
+                        listOf(Color(0xFFFF007A), Color(0xFFFF5252), Color(0xFFFFBE0B))
+                    ),
+                    maxHeight = 60.dp,
+                    barCount = 5,
+                    isReversed = false,
+                    modifier = Modifier.padding(start = 10.dp)
+                )
+            }
+
+            // 3. DATI DI RIPRODUZIONE DEL BRANO
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
@@ -270,29 +268,32 @@ fun LiveDetailScreen(
                 Text(
                     text = track.title,
                     color = PureWhite,
-                    fontSize = 28.sp,
-                    fontWeight = FontWeight.Black,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
-                    letterSpacing = (-0.6).sp,
+                    letterSpacing = (-0.4).sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
+                val subtitle = if (track.album.isNotBlank() && !track.album.equals(track.title, ignoreCase = true)) {
+                    "${track.artist} · ${track.album}"
+                } else {
+                    track.artist
+                }
                 Text(
-                    text = track.artist.uppercase(),
+                    text = subtitle,
                     color = Zinc400,
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.SansSerif,
-                    letterSpacing = 1.8.sp,
+                    fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
 
-                Spacer(modifier = Modifier.height(28.dp))
+                Spacer(modifier = Modifier.height(18.dp))
 
                 // Barra Temporale con minutaggio monospace
                 Column(
@@ -304,13 +305,13 @@ fun LiveDetailScreen(
                         progress = { progressFraction },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(4.dp)
+                            .height(3.5.dp)
                             .clip(RoundedCornerShape(2.dp)),
                         color = PureWhite,
-                        trackColor = PureWhite.copy(alpha = 0.15f)
+                        trackColor = PureWhite.copy(alpha = 0.20f)
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(6.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -320,44 +321,38 @@ fun LiveDetailScreen(
                             text = elapsedFormatted,
                             color = PureWhite,
                             fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp
+                            fontWeight = FontWeight.Normal,
+                            letterSpacing = 0.3.sp
                         )
                         Text(
                             text = totalFormatted,
                             color = Zinc400,
                             fontSize = 12.sp,
-                            fontFamily = FontFamily.Monospace,
                             fontWeight = FontWeight.Normal,
-                            letterSpacing = 0.5.sp
+                            letterSpacing = 0.3.sp
                         )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(34.dp))
-
-            // REACTION CUSTOM E INPUT TESTUALE
+            // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Barra Reaction Borderless
+                // Barra Reaction (Diamond, Soundwave, Star)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(26.dp))
-                        .background(PureWhite.copy(alpha = 0.08f))
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    allCustomReactions.forEach { reaction ->
+                    com.example.ui.components.detailReactions.forEach { reaction ->
                         Box(
                             modifier = Modifier
-                                .size(42.dp)
+                                .size(46.dp)
                                 .clip(CircleShape)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
@@ -374,10 +369,10 @@ fun LiveDetailScreen(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
-                            CustomReactionIcon(
+                            com.example.ui.components.CustomReactionIcon(
                                 reaction = reaction,
                                 tint = PureWhite,
-                                size = 22.dp
+                                size = 24.dp
                             )
                         }
                     }
@@ -388,7 +383,8 @@ fun LiveDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(28.dp))
-                        .background(PureWhite.copy(alpha = 0.08f))
+                        .background(Color(0xFF141418).copy(alpha = 0.85f))
+                        .border(0.8.dp, PureWhite.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
                         .padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -442,16 +438,13 @@ fun LiveDetailScreen(
                             }
                         },
                         enabled = replyMessage.isNotBlank(),
-                        modifier = Modifier
-                            .size(34.dp)
-                            .clip(CircleShape)
-                            .background(if (replyMessage.isNotBlank()) PureWhite else Color.Transparent)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Send,
                             contentDescription = "Invia",
-                            tint = if (replyMessage.isNotBlank()) BlackPitch else SubtitleGray,
-                            modifier = Modifier.size(16.dp)
+                            tint = if (replyMessage.isNotBlank()) PureWhite else SubtitleGray.copy(alpha = 0.5f),
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

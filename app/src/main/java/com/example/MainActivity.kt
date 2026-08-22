@@ -368,6 +368,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                 user = owner,
                 onDismiss = { viewModel.closeTrackInspector() },
                 onSendMessage = { user, trk -> viewModel.openChat(user, trk) },
+                onSendTextMessage = { user, text, trk -> viewModel.sendMessage(user.id, text, trk) },
+                onOpenUserProfile = { user -> viewModel.openProfile(user) },
                 onShareToMyFeed = { trk -> viewModel.shareTrack(trk) }
             )
         }

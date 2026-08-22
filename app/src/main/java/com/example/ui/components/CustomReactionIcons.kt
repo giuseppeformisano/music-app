@@ -15,16 +15,26 @@ import androidx.compose.ui.unit.dp
 import com.example.ui.theme.PureWhite
 
 sealed class CustomReaction(val id: String, val label: String) {
-    object Flame : CustomReaction("flame", "Fire")
+    object Diamond : CustomReaction("diamond", "Diamond")
     object Soundwave : CustomReaction("soundwave", "Vibe")
+    object Star : CustomReaction("star", "Star")
+    object Flame : CustomReaction("flame", "Fire")
     object Vinyl : CustomReaction("vinyl", "Vinyl")
     object HeartPulse : CustomReaction("heart_pulse", "Pulse")
     object Spark : CustomReaction("spark", "Energy")
 }
 
-val allCustomReactions = listOf(
-    CustomReaction.Flame,
+val detailReactions = listOf(
+    CustomReaction.Diamond,
     CustomReaction.Soundwave,
+    CustomReaction.Star
+)
+
+val allCustomReactions = listOf(
+    CustomReaction.Diamond,
+    CustomReaction.Soundwave,
+    CustomReaction.Star,
+    CustomReaction.Flame,
     CustomReaction.Vinyl,
     CustomReaction.HeartPulse,
     CustomReaction.Spark
@@ -38,8 +48,10 @@ fun CustomReactionIcon(
     modifier: Modifier = Modifier
 ) {
     when (reaction) {
-        is CustomReaction.Flame -> FlameIcon(tint = tint, size = size, modifier = modifier)
+        is CustomReaction.Diamond -> DiamondIcon(tint = tint, size = size, modifier = modifier)
         is CustomReaction.Soundwave -> SoundwaveIcon(tint = tint, size = size, modifier = modifier)
+        is CustomReaction.Star -> StarIcon(tint = tint, size = size, modifier = modifier)
+        is CustomReaction.Flame -> FlameIcon(tint = tint, size = size, modifier = modifier)
         is CustomReaction.Vinyl -> VinylIcon(tint = tint, size = size, modifier = modifier)
         is CustomReaction.HeartPulse -> HeartPulseIcon(tint = tint, size = size, modifier = modifier)
         is CustomReaction.Spark -> SparkIcon(tint = tint, size = size, modifier = modifier)
@@ -166,5 +178,87 @@ fun SparkIcon(tint: Color = PureWhite, size: Dp = 22.dp, modifier: Modifier = Mo
             close()
         }
         drawPath(path = star, color = tint)
+    }
+}
+
+@Composable
+fun DiamondIcon(tint: Color = PureWhite, size: Dp = 24.dp, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val strokeW = 1.6.dp.toPx()
+
+        // Contorno diamante
+        val topY = h * 0.22f
+        val botY = h * 0.86f
+        val midLeftX = w * 0.12f
+        val midRightX = w * 0.88f
+        val topLeftX = w * 0.28f
+        val topRightX = w * 0.72f
+        val tipX = w * 0.50f
+        val midY = h * 0.44f
+
+        val outline = Path().apply {
+            moveTo(topLeftX, topY)
+            lineTo(topRightX, topY)
+            lineTo(midRightX, midY)
+            lineTo(tipX, botY)
+            lineTo(midLeftX, midY)
+            close()
+        }
+        drawPath(
+            path = outline,
+            color = tint,
+            style = Stroke(width = strokeW, cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+
+        // Linee sfaccettature interne
+        val innerLines = Path().apply {
+            // Cintura orizzontale
+            moveTo(midLeftX, midY)
+            lineTo(midRightX, midY)
+
+            // Sfaccettatura superiore sinistra
+            moveTo(topLeftX, topY)
+            lineTo(w * 0.38f, midY)
+            lineTo(tipX, botY)
+
+            // Sfaccettatura superiore destra
+            moveTo(topRightX, topY)
+            lineTo(w * 0.62f, midY)
+            lineTo(tipX, botY)
+
+            // Triangolo centrale superiore
+            moveTo(topLeftX, topY)
+            lineTo(tipX, midY)
+            lineTo(topRightX, topY)
+        }
+        drawPath(
+            path = innerLines,
+            color = tint.copy(alpha = 0.85f),
+            style = Stroke(width = 1.2.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round)
+        )
+    }
+}
+
+@Composable
+fun StarIcon(tint: Color = PureWhite, size: Dp = 24.dp, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.size(size)) {
+        val w = this.size.width
+        val h = this.size.height
+        val cx = w / 2f
+        val cy = h / 2f
+        val outerR = (w / 2f) * 0.90f
+        val innerR = outerR * 0.42f
+        val starPath = Path()
+        for (i in 0 until 10) {
+            val r = if (i % 2 == 0) outerR else innerR
+            val angle = Math.toRadians((i * 36.0 - 90.0))
+            val x = cx + (r * kotlin.math.cos(angle)).toFloat()
+            val y = cy + (r * kotlin.math.sin(angle)).toFloat()
+            if (i == 0) starPath.moveTo(x, y) else starPath.lineTo(x, y)
+        }
+        starPath.close()
+        drawPath(path = starPath, color = tint)
     }
 }
