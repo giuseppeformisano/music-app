@@ -1,12 +1,13 @@
+```
 # Compiled and build artifacts
 *.class
 *.o
 *.obj
-*.out
+*.exe
 *.dll
 *.so
 *.a
-*.exe
+*.out
 
 # Dependencies
 node_modules/
@@ -31,19 +32,17 @@ target/
 # Editors
 .vscode/
 .idea/
-*.swp
-*.swo
 
 # System files
 .DS_Store
 Thumbs.db
 
-# Coverage
+# Coverage reports
 coverage/
 htmlcov/
 .coverage
 
-# Archives
+# Compressed files
 *.zip
 *.gz
 *.tar
@@ -66,3 +65,4 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+```
