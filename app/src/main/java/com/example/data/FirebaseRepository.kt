@@ -97,6 +97,7 @@ object FirebaseRepository {
                 "username" to user.username,
                 "avatarUrl" to user.avatarUrl,
                 "coverUrl" to user.coverUrl,
+                "bio" to user.bio,
                 "isOnline" to user.isOnline,
                 "isLiveNow" to user.isLiveNow,
                 "currentTrack" to user.currentTrack?.let { trackToMap(it) },
@@ -362,6 +363,7 @@ object FirebaseRepository {
         val username = data["username"] as? String ?: id
         val avatarUrl = data["avatarUrl"] as? String ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
         val coverUrl = data["coverUrl"] as? String
+        val bio = data["bio"] as? String ?: ""
         val isOnline = data["isOnline"] as? Boolean ?: false
         val isLiveNow = data["isLiveNow"] as? Boolean ?: false
         val trackProgressMs = (data["trackProgressMs"] as? Number)?.toLong() ?: 0L
@@ -401,6 +403,7 @@ object FirebaseRepository {
             username = username,
             avatarUrl = avatarUrl,
             coverUrl = coverUrl,
+            bio = bio,
             isOnline = isOnline,
             isLiveNow = isLiveNow,
             currentTrack = currentTrack,

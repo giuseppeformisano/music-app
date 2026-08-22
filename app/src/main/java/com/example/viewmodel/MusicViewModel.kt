@@ -109,7 +109,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val existingUser = AuthRepository.currentFirebaseUser
         if (existingUser != null) {
             viewModelScope.launch {
-                val user = existingUser.toAppUser()
+                val rawUser = existingUser.toAppUser()
+                val user = applyUserLocalPrefs(rawUser)
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
                 val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
                 _uiState.update {
@@ -690,14 +691,58 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // ===================== PROFILE =====================
 
-    fun updateProfile(name: String, username: String, avatarUrl: String, coverUrl: String? = null) {
+    private fun saveUserLocalPrefs(user: User) {
+        try {
+            val prefKey = if (user.id.isNotBlank()) "user_profile_prefs_${user.id}" else "user_profile_prefs_default"
+            val prefs = appContext.getSharedPreferences(prefKey, Context.MODE_PRIVATE)
+            prefs.edit()
+                .putString("name", user.name)
+                .putString("username", user.username)
+                .putString("avatarUrl", user.avatarUrl)
+                .putString("coverUrl", user.coverUrl ?: "")
+                .putString("bio", user.bio)
+                .apply()
+        } catch (e: Exception) {
+            android.util.Log.e("MusicViewModel", "Errore salvataggio locale profilo: ${e.message}")
+        }
+    }
+
+    private fun applyUserLocalPrefs(user: User): User {
+        try {
+            val prefKey = if (user.id.isNotBlank()) "user_profile_prefs_${user.id}" else "user_profile_prefs_default"
+            val prefs = appContext.getSharedPreferences(prefKey, Context.MODE_PRIVATE)
+            val savedName = prefs.getString("name", null)
+            val savedUsername = prefs.getString("username", null)
+            val savedAvatarUrl = prefs.getString("avatarUrl", null)
+            val savedCoverUrl = prefs.getString("coverUrl", null)
+            val savedBio = prefs.getString("bio", null)
+
+            if (savedName == null && savedUsername == null && savedAvatarUrl == null && savedCoverUrl == null && savedBio == null) {
+                return user
+            }
+
+            return user.copy(
+                name = savedName?.ifBlank { user.name } ?: user.name,
+                username = savedUsername?.ifBlank { user.username } ?: user.username,
+                avatarUrl = savedAvatarUrl?.ifBlank { user.avatarUrl } ?: user.avatarUrl,
+                coverUrl = if (!savedCoverUrl.isNullOrBlank()) savedCoverUrl else user.coverUrl,
+                bio = savedBio ?: user.bio
+            )
+        } catch (e: Exception) {
+            return user
+        }
+    }
+
+    fun updateProfile(name: String, username: String, avatarUrl: String, coverUrl: String? = null, bio: String = "") {
         val cleanUsername = username.trim().removePrefix("@")
         val updatedUser = _uiState.value.currentUser.copy(
             name = name.trim().ifBlank { _uiState.value.currentUser.name },
             username = cleanUsername.ifBlank { _uiState.value.currentUser.username },
             avatarUrl = avatarUrl.trim().ifBlank { _uiState.value.currentUser.avatarUrl },
-            coverUrl = if (!coverUrl.isNullOrBlank()) coverUrl.trim() else _uiState.value.currentUser.coverUrl
+            coverUrl = if (!coverUrl.isNullOrBlank()) coverUrl.trim() else _uiState.value.currentUser.coverUrl,
+            bio = bio.trim()
         )
+        saveUserLocalPrefs(updatedUser)
         _uiState.update {
             it.copy(
                 currentUser = updatedUser,

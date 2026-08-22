@@ -266,8 +266,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onToggleService = { viewModel.toggleConnectedService(it) },
                     onConnectSpotify = { _ -> viewModel.launchSpotifyAuth() },
                     onDisconnectSpotify = { viewModel.disconnectSpotify() },
-                    onUpdateProfile = { name, username, avatarUrl, coverUrl ->
-                        viewModel.updateProfile(name, username, avatarUrl, coverUrl)
+                    onUpdateProfile = { name, username, avatarUrl, coverUrl, bio ->
+                        viewModel.updateProfile(name, username, avatarUrl, coverUrl, bio)
                     },
                     onBack = { viewModel.closeProfile() },
                     onOpenNotifications = { viewModel.openNotifications() },

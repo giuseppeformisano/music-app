@@ -45,6 +45,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
@@ -137,7 +138,7 @@ fun ProfileScreen(
     spotifyError: String? = null,
     onConnectSpotify: (android.content.Context) -> Unit = {},
     onDisconnectSpotify: () -> Unit = {},
-    onUpdateProfile: (name: String, username: String, avatarUrl: String, coverUrl: String?) -> Unit = { _, _, _, _ -> },
+    onUpdateProfile: (name: String, username: String, avatarUrl: String, coverUrl: String?, bio: String) -> Unit = { _, _, _, _, _ -> },
     onBack: () -> Unit,
     onOpenNotifications: () -> Unit = {},
     notificationCount: Int = 0,
@@ -285,8 +286,8 @@ fun ProfileScreen(
                 user = user,
                 currentCoverUrl = atmosphericCoverUrl,
                 onDismiss = { showEditProfileSheet = false },
-                onSave = { newName, newUsername, newAvatar, newCover ->
-                    onUpdateProfile(newName, newUsername, newAvatar, newCover)
+                onSave = { newName, newUsername, newAvatar, newCover, newBio ->
+                    onUpdateProfile(newName, newUsername, newAvatar, newCover, newBio)
                     showEditProfileSheet = false
                 }
             )
@@ -513,6 +514,19 @@ private fun UserIdentityBlock(
                     letterSpacing = 0.1.sp,
                     textAlign = TextAlign.Center
                 )
+                if (user.bio.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = user.bio,
+                        color = PureWhite.copy(alpha = 0.85f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 0.1.sp,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             // Separatore verticale
@@ -1182,12 +1196,13 @@ private fun EditProfileDialog(
     user: User,
     currentCoverUrl: String,
     onDismiss: () -> Unit,
-    onSave: (newName: String, newUsername: String, newAvatar: String, newCover: String) -> Unit
+    onSave: (newName: String, newUsername: String, newAvatar: String, newCover: String, newBio: String) -> Unit
 ) {
     var nameInput by remember { mutableStateOf(user.name) }
     var usernameInput by remember { mutableStateOf(user.username.removePrefix("@")) }
     var avatarUrlInput by remember { mutableStateOf(user.avatarUrl) }
     var coverUrlInput by remember { mutableStateOf(user.coverUrl ?: currentCoverUrl) }
+    var bioInput by remember { mutableStateOf(user.bio) }
 
     val avatarPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -1237,93 +1252,213 @@ private fun EditProfileDialog(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 16.dp)
             ) {
-                Text("NOME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                MinimalTextInputField(value = nameInput, onValueChange = { nameInput = it }, placeholder = "Il tuo nome", testTag = "input_edit_name")
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Text("NICKNAME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                Spacer(modifier = Modifier.height(6.dp))
-                MinimalTextInputField(value = usernameInput, onValueChange = { usernameInput = it.removePrefix("@").trim() }, placeholder = "username (es. marco_rossi)", prefix = "@", testTag = "input_edit_username")
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text("IMMAGINE PROFILO", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxWidth()
+                // ================= COPERTINA E IMMAGINE PROFILO SOVRAPPOSTE (ESATTAMENTE COME IN FOTO) =================
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp),
+                    contentAlignment = Alignment.TopCenter
                 ) {
+                    // Copertina (card rettangolare arrotondata in alto)
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
-                            .clip(CircleShape)
-                            .border(1.5.dp, PureWhite.copy(alpha = 0.6f), CircleShape)
-                            .clickable { avatarPickerLauncher.launch("image/*") },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = avatarUrlInput,
-                            contentDescription = "Anteprima Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-
-                    Button(
-                        onClick = { avatarPickerLauncher.launch("image/*") },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF26262C),
-                            contentColor = PureWhite
-                        ),
-                        modifier = Modifier.height(40.dp)
-                    ) {
-                        Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Text("IMMAGINE COPERTINA", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(width = 84.dp, height = 54.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(1.5.dp, PureWhite.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                            .fillMaxWidth()
+                            .height(145.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF1E1E24))
                             .clickable { coverPickerLauncher.launch("image/*") },
                         contentAlignment = Alignment.Center
                     ) {
                         AsyncImage(
                             model = coverUrlInput,
-                            contentDescription = "Anteprima Cover",
+                            contentDescription = "Copertina",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
+                        // Overlay scuro traslucido con fotocamera + "Cambia Copertina"
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.45f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Cambia Copertina",
+                                    tint = PureWhite,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Cambia Copertina",
+                                    color = PureWhite,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
 
-                    Button(
-                        onClick = { coverPickerLauncher.launch("image/*") },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF26262C),
-                            contentColor = PureWhite
-                        ),
-                        modifier = Modifier.height(40.dp)
+                    // Foto profilo circolare sovrapposta al bordo inferiore della copertina
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .size(96.dp)
+                            .clip(CircleShape)
+                            .border(3.dp, BlackPitch, CircleShape)
+                            .background(Color(0xFF141418))
+                            .clickable { avatarPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        AsyncImage(
+                            model = avatarUrlInput,
+                            contentDescription = "Foto Profilo",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        // Overlay circolare traslucido con fotocamera + "Cambia Foto"
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.50f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CameraAlt,
+                                    contentDescription = "Cambia Foto",
+                                    tint = PureWhite,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Cambia Foto",
+                                    color = PureWhite,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // ================= CAMPI TESTO INSERIMENTO (NOME UTENTE, NOME VISUALIZZATO, BIO) =================
+                // 1. Nome Utente (@nickname)
+                Text(
+                    text = "Nome Utente",
+                    color = SubtitleGray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "@",
+                        color = PureWhite,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(end = 2.dp)
+                    )
+                    BasicTextField(
+                        value = usernameInput,
+                        onValueChange = { usernameInput = it.removePrefix("@").trim() },
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = PureWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Normal
+                        ),
+                        cursorBrush = androidx.compose.ui.graphics.SolidColor(PureWhite),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("input_edit_username")
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(PureWhite.copy(alpha = 0.12f))
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 2. Nome Visualizzato (name)
+                Text(
+                    text = "Nome Visualizzato",
+                    color = SubtitleGray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicTextField(
+                    value = nameInput,
+                    onValueChange = { nameInput = it },
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = PureWhite,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(PureWhite),
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth().testTag("input_edit_name")
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(PureWhite.copy(alpha = 0.12f))
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // 3. Bio
+                Text(
+                    text = "Bio",
+                    color = SubtitleGray,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                BasicTextField(
+                    value = bioInput,
+                    onValueChange = { bioInput = it },
+                    textStyle = androidx.compose.ui.text.TextStyle(
+                        color = PureWhite,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(PureWhite),
+                    minLines = 1,
+                    maxLines = 4,
+                    decorationBox = { innerTextField ->
+                        if (bioInput.isEmpty()) {
+                            Text(
+                                text = "Aggiungi una breve biografia...",
+                                color = SubtitleGray.copy(alpha = 0.5f),
+                                fontSize = 14.sp
+                            )
+                        }
+                        innerTextField()
+                    },
+                    modifier = Modifier.fillMaxWidth().testTag("input_edit_bio")
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(PureWhite.copy(alpha = 0.12f))
+                )
             }
 
             // Pulsante Salva fisso in fondo
@@ -1333,7 +1468,8 @@ private fun EditProfileDialog(
                         nameInput.trim().ifBlank { user.name },
                         usernameInput.trim().ifBlank { user.username },
                         avatarUrlInput.trim().ifBlank { user.avatarUrl },
-                        coverUrlInput.trim()
+                        coverUrlInput.trim(),
+                        bioInput.trim()
                     )
                 },
                 modifier = Modifier

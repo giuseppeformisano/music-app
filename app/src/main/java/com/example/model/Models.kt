@@ -20,6 +20,7 @@ data class User(
     val username: String,
     val avatarUrl: String,
     val coverUrl: String? = null,
+    val bio: String = "",
     val email: String = "",
     val isCurrentUser: Boolean = false,
     val isOnline: Boolean = false,       // sta usando l'app (connesso), non necessariamente in ascolto
