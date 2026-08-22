@@ -110,17 +110,9 @@ fun LiveDetailScreen(
     var replyMessage by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingReaction>() }
 
-    // Pulsazione audio dinamica
-    val infiniteTransition = rememberInfiniteTransition(label = "live_pulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.99f,
-        targetValue = 1.02f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(900, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "pulse_scale"
-    )
+    val (primaryColor, secondaryColor) = remember(track.id, track.accentColorHex) {
+        extractDynamicTrackGlowColors(track)
+    }
 
     // Minutaggio REALE: durata dal brano; posizione estrapolata dalla posizione
     // catturata (trackProgressMs) + tempo trascorso da trackProgressAt.
@@ -210,28 +202,27 @@ fun LiveDetailScreen(
                 )
             }
 
-            // 2. COVER ALBUM CENTRALE FIANCATA DA EQUALIZZATORI GRADIENTI GLOW
+            // 2. COVER ALBUM CENTRALE FIANCATA DA EQUALIZZATORI GRADIENTI DINAMICI
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Equalizzatore stilizzato a Sinistra (Cyan/Blue neon glow)
+                // Equalizzatore stilizzato a Sinistra (gradiente dinamico dalla palette della cover)
                 LiveEqualizerSymmetrical(
                     brush = Brush.verticalGradient(
-                        listOf(Color(0xFF00E5FF), Color(0xFF0084FF))
+                        listOf(primaryColor, secondaryColor)
                     ),
-                    maxHeight = 60.dp,
+                    maxHeight = 56.dp,
                     barCount = 5,
                     isReversed = true,
-                    modifier = Modifier.padding(end = 10.dp)
+                    modifier = Modifier.padding(end = 18.dp)
                 )
 
-                // Cover album centrale quadrata con angoli arrotondati
+                // Cover album centrale quadrata fissa (senza rimbalzo) con angoli arrotondati
                 Box(
                     modifier = Modifier
-                        .size(240.dp)
-                        .scale(pulseScale)
+                        .size(220.dp)
                         .shadow(
                             elevation = 20.dp,
                             shape = RoundedCornerShape(14.dp),
@@ -250,15 +241,15 @@ fun LiveDetailScreen(
                     )
                 }
 
-                // Equalizzatore stilizzato a Destra (Magenta/Pink/Sunset neon glow)
+                // Equalizzatore stilizzato a Destra (gradiente dinamico dalla palette della cover)
                 LiveEqualizerSymmetrical(
                     brush = Brush.verticalGradient(
-                        listOf(Color(0xFFFF007A), Color(0xFFFF5252), Color(0xFFFFBE0B))
+                        listOf(secondaryColor, primaryColor)
                     ),
-                    maxHeight = 60.dp,
+                    maxHeight = 56.dp,
                     barCount = 5,
                     isReversed = false,
-                    modifier = Modifier.padding(start = 10.dp)
+                    modifier = Modifier.padding(start = 18.dp)
                 )
             }
 
@@ -502,4 +493,61 @@ private fun FloatingReactionEffect(
             )
         }
     }
+}
+
+/**
+ * Estrazione dinamica in tempo reale della palette cromatica per gli equalizzatori live:
+ * - Estrae il colore base dalla palette della copertina/traccia (accentColorHex).
+ * - Genera una sfumatura secondaria ricca ed elegante per un alone tridimensionale.
+ */
+private fun extractDynamicTrackGlowColors(track: Track): Pair<Color, Color> {
+    val baseHex = track.accentColorHex
+    val primary = if (baseHex != 0L && baseHex != 0xFF1DB954) {
+        Color(baseHex)
+    } else {
+        when (track.genre.lowercase()) {
+            "progressive rock", "rock" -> Color(0xFFE040FB)
+            "ambient", "synthwave" -> Color(0xFF00E5FF)
+            "r&b", "soul" -> Color(0xFFFF9100)
+            "dream pop / synthpop" -> Color(0xFF7928CA)
+            "r&b / experimental" -> Color(0xFF00DF89)
+            "french house" -> Color(0xFF0070F3)
+            "darkwave / synthpop" -> Color(0xFFE000FF)
+            "electro house" -> Color(0xFFFFBE0B)
+            "psychedelic rock", "indie" -> Color(0xFFFF5252)
+            else -> {
+                val hash = kotlin.math.abs((track.title + track.artist + track.id).hashCode())
+                when (hash % 8) {
+                    0 -> Color(0xFFFF0055)
+                    1 -> Color(0xFF7928CA)
+                    2 -> Color(0xFF00E5FF)
+                    3 -> Color(0xFFFF9900)
+                    4 -> Color(0xFF0070F3)
+                    5 -> Color(0xFFE000FF)
+                    6 -> Color(0xFFFFBE0B)
+                    else -> Color(0xFF00E676)
+                }
+            }
+        }
+    }
+
+    val secondary = when (primary) {
+        Color(0xFFFF0055) -> Color(0xFF9333EA)
+        Color(0xFF7928CA) -> Color(0xFF00E5FF)
+        Color(0xFF00E5FF) -> Color(0xFF0070F3)
+        Color(0xFFFF9100) -> Color(0xFFFF3366)
+        Color(0xFF0070F3) -> Color(0xFF00E5FF)
+        Color(0xFFE000FF) -> Color(0xFF4F46E5)
+        Color(0xFFFFBE0B) -> Color(0xFFF97316)
+        Color(0xFF00DF89) -> Color(0xFF10B981)
+        Color(0xFFFF5252) -> Color(0xFF9C27B0)
+        else -> {
+            val r = (primary.red * 0.75f + primary.blue * 0.25f).coerceIn(0f, 1f)
+            val g = (primary.green * 0.45f + primary.red * 0.55f).coerceIn(0f, 1f)
+            val b = (primary.blue * 0.85f + primary.green * 0.15f).coerceIn(0f, 1f)
+            Color(r, g, b, 1f)
+        }
+    }
+
+    return Pair(primary, secondary)
 }
