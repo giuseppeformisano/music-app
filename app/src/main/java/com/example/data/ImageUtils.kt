@@ -6,7 +6,43 @@ import android.graphics.BitmapFactory
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
+import coil.ImageLoader
+import coil.decode.DataSource
+import coil.decode.ImageSource
+import coil.fetch.FetchResult
+import coil.fetch.Fetcher
+import coil.fetch.SourceResult
+import coil.request.Options
+import okio.Buffer
 import java.io.ByteArrayOutputStream
+
+class Base64Fetcher(
+    private val data: String,
+    private val options: Options
+) : Fetcher {
+    override suspend fun fetch(): FetchResult {
+        val base64Clean = if (data.contains(",")) data.substringAfter(",") else data
+        val bytes = Base64.decode(base64Clean.trim(), Base64.DEFAULT)
+        val buffer = Buffer().write(bytes)
+        return SourceResult(
+            source = ImageSource(buffer, options.context),
+            mimeType = "image/jpeg",
+            dataSource = DataSource.MEMORY
+        )
+    }
+
+    class Factory : Fetcher.Factory<String> {
+        override fun create(data: String, options: Options, imageLoader: ImageLoader): Fetcher? {
+            val trimmed = data.trim()
+            if (trimmed.startsWith("data:image", ignoreCase = true) ||
+                (trimmed.length > 200 && !trimmed.startsWith("http", ignoreCase = true) && !trimmed.startsWith("file:", ignoreCase = true) && !trimmed.startsWith("content:", ignoreCase = true))
+            ) {
+                return Base64Fetcher(trimmed, options)
+            }
+            return null
+        }
+    }
+}
 
 object ImageUtils {
     private const val TAG = "ImageUtils"

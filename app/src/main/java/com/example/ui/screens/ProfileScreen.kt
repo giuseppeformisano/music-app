@@ -1204,16 +1204,24 @@ private fun EditProfileDialog(
     var coverUrlInput by remember { mutableStateOf(user.coverUrl ?: currentCoverUrl) }
     var bioInput by remember { mutableStateOf(user.bio) }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+
     val avatarPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { avatarUrlInput = it.toString() }
+        uri?.let {
+            val processed = com.example.data.ImageUtils.processImageUri(context, it.toString(), maxDimension = 320, quality = 80)
+            avatarUrlInput = processed
+        }
     }
 
     val coverPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
-        uri?.let { coverUrlInput = it.toString() }
+        uri?.let {
+            val processed = com.example.data.ImageUtils.processImageUri(context, it.toString(), maxDimension = 720, quality = 80)
+            coverUrlInput = processed
+        }
     }
 
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {

@@ -121,6 +121,15 @@ class MainActivity : ComponentActivity() {
         handleSpotifyCallback(intent)
         handleNotificationIntent(intent)
 
+        // Configura Coil con supporto nativo per immagini Base64 (data:image/jpeg;base64,...)
+        val imageLoader = coil.ImageLoader.Builder(this)
+            .components {
+                add(com.example.data.Base64Fetcher.Factory())
+            }
+            .crossfade(true)
+            .build()
+        coil.Coil.setImageLoader(imageLoader)
+
         setContent {
             MyApplicationTheme {
                 MusicApp(viewModel = viewModel)
