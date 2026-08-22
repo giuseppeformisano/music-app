@@ -1200,183 +1200,173 @@ private fun EditProfileDialog(
     }
 
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .fillMaxHeight(0.85f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF141418))
-                .border(1.dp, PureWhite.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp, vertical = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Column(
-                modifier = Modifier.fillMaxSize()
+            // Header standardizzato in alto a sinistra
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Header standardizzato in alto a sinistra
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Text(
+                    text = "Modifica Profilo",
+                    color = PureWhite,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.4).sp
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    Text(
-                        text = "Modifica Profilo",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Chiudi",
+                        tint = SubtitleGray,
+                        modifier = Modifier.size(20.dp)
                     )
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Chiudi",
-                            tint = SubtitleGray,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
                 }
+            }
 
-                // Contenuto scrollabile
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 20.dp)
-                        .padding(bottom = 16.dp)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Contenuto scrollabile
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(bottom = 16.dp)
+            ) {
+                Text("NOME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                MinimalTextInputField(value = nameInput, onValueChange = { nameInput = it }, placeholder = "Il tuo nome", testTag = "input_edit_name")
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text("NICKNAME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(6.dp))
+                MinimalTextInputField(value = usernameInput, onValueChange = { usernameInput = it.removePrefix("@").trim() }, placeholder = "username (es. marco_rossi)", prefix = "@", testTag = "input_edit_username")
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text("IMMAGINE PROFILO", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("NOME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    MinimalTextInputField(value = nameInput, onValueChange = { nameInput = it }, placeholder = "Il tuo nome", testTag = "input_edit_name")
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text("NICKNAME", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    MinimalTextInputField(value = usernameInput, onValueChange = { usernameInput = it.removePrefix("@").trim() }, placeholder = "username (es. marco_rossi)", prefix = "@", testTag = "input_edit_username")
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Text("IMMAGINE PROFILO", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(CircleShape)
-                                .border(1.5.dp, PureWhite.copy(alpha = 0.6f), CircleShape)
-                                .clickable { avatarPickerLauncher.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(
-                                model = avatarUrlInput,
-                                contentDescription = "Anteprima Avatar",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-
-                        Button(
-                            onClick = { avatarPickerLauncher.launch("image/*") },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF26262C),
-                                contentColor = PureWhite
-                            ),
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    Text("IMMAGINE COPERTINA", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(width = 84.dp, height = 54.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .border(1.5.dp, PureWhite.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
-                                .clickable { coverPickerLauncher.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(
-                                model = coverUrlInput,
-                                contentDescription = "Anteprima Cover",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-
-                        Button(
-                            onClick = { coverPickerLauncher.launch("image/*") },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF26262C),
-                                contentColor = PureWhite
-                            ),
-                            modifier = Modifier.height(40.dp)
-                        ) {
-                            Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // Pulsante Salva fisso in fondo ben visibile
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0xFF1C1C22))
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Button(
-                        onClick = {
-                            onSave(
-                                nameInput.trim().ifBlank { user.name },
-                                usernameInput.trim().ifBlank { user.username },
-                                avatarUrlInput.trim().ifBlank { user.avatarUrl },
-                                coverUrlInput.trim()
-                            )
-                        },
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .height(48.dp)
-                            .testTag("btn_save_profile"),
-                        shape = RoundedCornerShape(24.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = PureWhite,
-                            contentColor = BlackPitch
-                        )
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .border(1.5.dp, PureWhite.copy(alpha = 0.6f), CircleShape)
+                            .clickable { avatarPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
-                            tint = BlackPitch,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Salva modifiche",
-                            color = BlackPitch,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
+                        AsyncImage(
+                            model = avatarUrlInput,
+                            contentDescription = "Anteprima Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
                         )
                     }
+
+                    Button(
+                        onClick = { avatarPickerLauncher.launch("image/*") },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF26262C),
+                            contentColor = PureWhite
+                        ),
+                        modifier = Modifier.height(40.dp)
+                    ) {
+                        Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Text("IMMAGINE COPERTINA", color = SubtitleGray, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(width = 84.dp, height = 54.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .border(1.5.dp, PureWhite.copy(alpha = 0.6f), RoundedCornerShape(10.dp))
+                            .clickable { coverPickerLauncher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = coverUrlInput,
+                            contentDescription = "Anteprima Cover",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    Button(
+                        onClick = { coverPickerLauncher.launch("image/*") },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF26262C),
+                            contentColor = PureWhite
+                        ),
+                        modifier = Modifier.height(40.dp)
+                    ) {
+                        Text("Scegli dalla galleria", fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+            }
+
+            // Pulsante Salva fisso in fondo
+            Button(
+                onClick = {
+                    onSave(
+                        nameInput.trim().ifBlank { user.name },
+                        usernameInput.trim().ifBlank { user.username },
+                        avatarUrlInput.trim().ifBlank { user.avatarUrl },
+                        coverUrlInput.trim()
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .testTag("btn_save_profile"),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PureWhite,
+                    contentColor = BlackPitch
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = BlackPitch,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "Salva modifiche",
+                    color = BlackPitch,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
             }
         }
     }
@@ -1449,116 +1439,103 @@ private fun ConnectAccountsDialog(
     onDismiss: () -> Unit
 ) {
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
-        Box(
+        Column(
             modifier = Modifier
-                .fillMaxWidth(0.92f)
-                .clip(RoundedCornerShape(24.dp))
-                .background(Color(0xFF141418))
-                .border(1.dp, PureWhite.copy(alpha = 0.12f), RoundedCornerShape(24.dp))
-                .padding(bottom = 20.dp)
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp, vertical = 20.dp)
         ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
+            // Header standardizzato in alto a sinistra
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Header standardizzato in alto a sinistra
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Collega Account",
-                            color = PureWhite,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.4).sp
-                        )
-                        Text(
-                            text = "Scegli i tuoi servizi di streaming",
-                            color = SubtitleGray,
-                            fontSize = 13.sp,
-                            letterSpacing = 0.2.sp
-                        )
-                    }
-                    IconButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.size(32.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Chiudi",
-                            tint = SubtitleGray,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
+                Column {
+                    Text(
+                        text = "Collega Account",
+                        color = PureWhite,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp
+                    )
+                    Text(
+                        text = "Scegli i tuoi servizi di streaming",
+                        color = SubtitleGray,
+                        fontSize = 13.sp,
+                        letterSpacing = 0.2.sp
+                    )
                 }
-
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp)
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
                 ) {
-                    // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
-                    // l'altro viene oscurato e reso non cliccabile.
-                    val premiumConnected = connectedServices["spotify"] == true
-                    val freeConnected = connectedServices["spotify_free"] == true
-
-                    StreamingAccountItem(
-                        serviceName = "Spotify Premium",
-                        serviceDesc = "Collega l'account: dati in tempo reale via API",
-                        isConnected = premiumConnected,
-                        enabled = !freeConnected,
-                        brandColor = Color(0xFF1DB954),
-                        iconComposable = { SpotifyBrandLogo() },
-                        onToggle = {
-                            if (premiumConnected) onDisconnectSpotify()
-                            else onConnectSpotify()
-                        },
-                        testTag = "service_spotify_premium"
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Chiudi",
+                        tint = SubtitleGray,
+                        modifier = Modifier.size(20.dp)
                     )
-
-                    if (spotifyError != null) {
-                        Text(
-                            text = "Errore: $spotifyError",
-                            color = Color(0xFFFF6B6B),
-                            fontSize = 11.sp,
-                            modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
-                    // funzionalmente dipende dalle notifiche.
-                    StreamingAccountItem(
-                        serviceName = "Spotify Free",
-                        serviceDesc = "Rileva l'ascolto dalle notifiche",
-                        isConnected = freeConnected,
-                        enabled = !premiumConnected,
-                        brandColor = Color(0xFF1DB954),
-                        iconComposable = { SpotifyBrandLogo() },
-                        onToggle = { onToggleService("spotify_free") },
-                        testTag = "service_spotify_free"
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    StreamingAccountItem(
-                        serviceName = "Amazon Music",
-                        serviceDesc = "Rileva l'ascolto dalle notifiche",
-                        isConnected = connectedServices["amazon_music"] == true,
-                        brandColor = Color(0xFF00A8E1),
-                        iconComposable = { AmazonMusicBrandLogo() },
-                        onToggle = { onToggleService("amazon_music") },
-                        testTag = "service_amazon_music"
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
                 }
             }
+
+            // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
+            // l'altro viene oscurato e reso non cliccabile.
+            val premiumConnected = connectedServices["spotify"] == true
+            val freeConnected = connectedServices["spotify_free"] == true
+
+            StreamingAccountItem(
+                serviceName = "Spotify Premium",
+                serviceDesc = "Collega l'account: dati in tempo reale via API",
+                isConnected = premiumConnected,
+                enabled = !freeConnected,
+                brandColor = Color(0xFF1DB954),
+                iconComposable = { SpotifyBrandLogo() },
+                onToggle = {
+                    if (premiumConnected) onDisconnectSpotify()
+                    else onConnectSpotify()
+                },
+                testTag = "service_spotify_premium"
+            )
+
+            if (spotifyError != null) {
+                Text(
+                    text = "Errore: $spotifyError",
+                    color = Color(0xFFFF6B6B),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
+            // funzionalmente dipende dalle notifiche.
+            StreamingAccountItem(
+                serviceName = "Spotify Free",
+                serviceDesc = "Rileva l'ascolto dalle notifiche",
+                isConnected = freeConnected,
+                enabled = !premiumConnected,
+                brandColor = Color(0xFF1DB954),
+                iconComposable = { SpotifyBrandLogo() },
+                onToggle = { onToggleService("spotify_free") },
+                testTag = "service_spotify_free"
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            StreamingAccountItem(
+                serviceName = "Amazon Music",
+                serviceDesc = "Rileva l'ascolto dalle notifiche",
+                isConnected = connectedServices["amazon_music"] == true,
+                brandColor = Color(0xFF00A8E1),
+                iconComposable = { AmazonMusicBrandLogo() },
+                onToggle = { onToggleService("amazon_music") },
+                testTag = "service_amazon_music"
+            )
         }
     }
 }
