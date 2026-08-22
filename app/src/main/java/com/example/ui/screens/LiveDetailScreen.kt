@@ -130,29 +130,7 @@ fun LiveDetailScreen(
             if (result is SuccessResult) {
                 val bitmap = (result.drawable as? BitmapDrawable)?.bitmap
                 if (bitmap != null) {
-                    val palette = androidx.palette.graphics.Palette.from(bitmap).generate()
-                    val domInt = palette.getVibrantColor(
-                        palette.getDominantColor(
-                            palette.getLightVibrantColor(
-                                palette.getDarkVibrantColor(0)
-                            )
-                        )
-                    )
-                    if (domInt != 0) {
-                        val prim = Color(domInt)
-                        val secInt = palette.getLightVibrantColor(
-                            palette.getMutedColor(
-                                palette.getDarkVibrantColor(0)
-                            )
-                        )
-                        val sec = if (secInt != 0 && secInt != domInt) Color(secInt) else {
-                            val r = (prim.red * 0.75f + prim.blue * 0.25f).coerceIn(0f, 1f)
-                            val g = (prim.green * 0.45f + prim.red * 0.55f).coerceIn(0f, 1f)
-                            val b = (prim.blue * 0.85f + prim.green * 0.15f).coerceIn(0f, 1f)
-                            Color(r, g, b, 1f)
-                        }
-                        dynamicColors = Pair(prim, sec)
-                    }
+                    dynamicColors = extractBitmapDominantColors(bitmap)
                 }
             }
         }
@@ -651,4 +629,63 @@ private fun extractDynamicTrackGlowColors(track: Track): Pair<Color, Color> {
     }
 
     return Pair(primary, secondary)
+}
+
+/**
+ * Estrae i colori predominanti e vibranti direttamente dai pixel del bitmap della copertina del brano:
+ * - Algoritmo rapido e privo di dipendenze esterne
+ * - Seleziona i pixel cromatici più saturi e bilanciati
+ */
+private fun extractBitmapDominantColors(bitmap: android.graphics.Bitmap): Pair<Color, Color> {
+    val w = bitmap.width
+    val h = bitmap.height
+    val stepX = (w / 14).coerceAtLeast(1)
+    val stepY = (h / 14).coerceAtLeast(1)
+
+    var bestColor1 = 0
+    var maxScore1 = -1f
+    var bestColor2 = 0
+    var maxScore2 = -1f
+
+    val hsv = FloatArray(3)
+
+    for (x in 0 until w step stepX) {
+        for (y in 0 until h step stepY) {
+            val pixel = bitmap.getPixel(x, y)
+            val alpha = (pixel ushr 24) and 0xFF
+            if (alpha < 128) continue
+
+            val r = (pixel ushr 16) and 0xFF
+            val g = (pixel ushr 8) and 0xFF
+            val b = pixel and 0xFF
+
+            android.graphics.Color.RGBToHSV(r, g, b, hsv)
+            val sat = hsv[1]
+            val value = hsv[2]
+
+            // Filtra neri assoluti e bianchi puri
+            if (value in 0.18f..0.95f && sat >= 0.15f) {
+                val score = sat * 0.75f + (1f - kotlin.math.abs(value - 0.6f)) * 0.25f
+                if (score > maxScore1) {
+                    maxScore2 = maxScore1
+                    bestColor2 = bestColor1
+                    maxScore1 = score
+                    bestColor1 = pixel
+                } else if (score > maxScore2 && pixel != bestColor1) {
+                    maxScore2 = score
+                    bestColor2 = pixel
+                }
+            }
+        }
+    }
+
+    val prim = if (bestColor1 != 0) Color(bestColor1) else Color(0xFF00E5FF)
+    val sec = if (bestColor2 != 0 && bestColor2 != bestColor1) Color(bestColor2) else {
+        val r = (prim.red * 0.75f + prim.blue * 0.25f).coerceIn(0f, 1f)
+        val g = (prim.green * 0.45f + prim.red * 0.55f).coerceIn(0f, 1f)
+        val b = (prim.blue * 0.85f + prim.green * 0.15f).coerceIn(0f, 1f)
+        Color(r, g, b, 1f)
+    }
+
+    return Pair(prim, sec)
 }
