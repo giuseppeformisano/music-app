@@ -1806,24 +1806,23 @@ private fun SupernovaEntranceItem(
     }
     LaunchedEffect(user.id) {
         entrance.snapTo(0f)
-        entrance.animateTo(1f, tween(2000, easing = LinearEasing))
+        entrance.animateTo(1f, tween(2000, easing = FastOutSlowInEasing))
         onComplete()
     }
     val e = entrance.value
 
-    val heightFactor = (e / 0.15f).coerceIn(0f, 1f)
     val caseAlpha = when {
-        e < 0.05f -> 0f
-        e < 0.20f -> ((e - 0.05f) / 0.15f)
-        e < 0.68f -> 1f
-        e < 0.92f -> (1f - (e - 0.68f) / 0.24f)
+        e < 0.02f -> 0f
+        e < 0.15f -> ((e - 0.02f) / 0.13f)
+        e < 0.65f -> 1f
+        e < 0.95f -> (1f - (e - 0.65f) / 0.30f)
         else -> 0f
     }.coerceIn(0f, 1f)
-    val openAmount = ((e - 0.10f) / 0.25f).coerceIn(0f, 1f)
-    val cdProgress = ((e - 0.30f) / 0.50f).coerceIn(0f, 1f)
-    val cdVisible = e >= 0.28f
+    val openAmount = ((e - 0.06f) / 0.26f).coerceIn(0f, 1f)
+    val cdProgress = ((e - 0.18f) / 0.74f).coerceIn(0f, 1f)
+    val cdVisible = e >= 0.16f
     val cdScale = 0.74f + 0.26f * cdProgress
-    val dataAlpha = ((e - 0.45f) / 0.40f).coerceIn(0f, 1f)
+    val dataAlpha = ((e - 0.35f) / 0.50f).coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
@@ -1841,7 +1840,7 @@ private fun SupernovaEntranceItem(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(62.dp * heightFactor)
+                .height(62.dp)
                 .clipToBounds(),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -1913,8 +1912,8 @@ private fun SupernovaEntranceItem(
                 val trailLen = cdProgress * travelDistance + (cdSizePx / 2f)
                 val trailAlphaE = when {
                     cdProgress < 0.10f -> cdProgress / 0.10f
-                    cdProgress < 0.72f -> 1f
-                    else -> (1f - (cdProgress - 0.72f) / 0.24f).coerceIn(0f, 1f)
+                    cdProgress < 0.78f -> 1f
+                    else -> (1f - (cdProgress - 0.78f) / 0.20f).coerceIn(0f, 1f)
                 }
                 OrganicBlurredCdTrail(
                     currentHeadX = trailLen,
