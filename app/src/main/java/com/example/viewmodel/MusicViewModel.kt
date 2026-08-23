@@ -367,18 +367,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onAppStopped() {
         setOnline(false)
-        val isPremium = _uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
-        if (!isPremium) {
-            clearNowPlayingFromBroadcast(source = "spotify")
-        }
     }
 
     fun onAppDestroyed() {
         setOnline(false)
-        val isPremium = _uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
-        if (!isPremium) {
-            clearNowPlayingFromBroadcast(source = "spotify")
-        }
     }
 
     fun checkNotificationListenerEnabled() {

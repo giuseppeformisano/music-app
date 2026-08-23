@@ -70,9 +70,7 @@ class MainActivity : ComponentActivity() {
                 }
                 "com.spotify.music.playbackstatechanged" -> {
                     val playing = intent.getBooleanExtra("playing", false)
-                    if (!playing) {
-                        viewModel.clearNowPlayingFromBroadcast(source = "spotify")
-                    } else {
+                    if (playing) {
                         // Spotify in play ma non abbiamo info brano: chiedi al Web API
                         viewModel.startSpotifyPolling()
                     }

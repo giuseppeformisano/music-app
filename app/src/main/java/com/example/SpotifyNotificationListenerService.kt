@@ -47,14 +47,13 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             )
             // SOLO Spotify: non deve MAI leggere la sessione di altre app (es. Amazon)
             val controller = controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE }
-            // Sessione assente o riproduzione terminata/in pausa -> esce dalla live
+            // Sessione assente = app musicale chiusa -> esce dalla live
             if (controller == null) { stopPlayback(); return }
 
             val state = controller.playbackState?.state
-            if (!isPlaying(controller)) {
-                if (state == PlaybackState.STATE_PAUSED || state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE) {
-                    stopPlayback()
-                }
+            // Riproduzione terminata/chiusa esplicitamente
+            if (state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE) {
+                stopPlayback()
                 return
             }
 
