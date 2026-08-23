@@ -97,6 +97,9 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
 
         val imageLoader = ImageLoader.Builder(this)
+            .components {
+                add(com.example.data.Base64Fetcher.Factory())
+            }
             .crossfade(true)
             .allowHardware(false)
             .memoryCache {
@@ -120,15 +123,6 @@ class MainActivity : ComponentActivity() {
 
         handleSpotifyCallback(intent)
         handleNotificationIntent(intent)
-
-        // Configura Coil con supporto nativo per immagini Base64 (data:image/jpeg;base64,...)
-        val imageLoader = coil.ImageLoader.Builder(this)
-            .components {
-                add(com.example.data.Base64Fetcher.Factory())
-            }
-            .crossfade(true)
-            .build()
-        coil.Coil.setImageLoader(imageLoader)
 
         setContent {
             MyApplicationTheme {
