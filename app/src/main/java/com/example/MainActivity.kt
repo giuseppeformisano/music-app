@@ -145,6 +145,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        viewModel.onAppForeground()
         viewModel.setOnline(true)
         viewModel.checkNotificationListenerEnabled()
         viewModel.startSpotifyPolling()

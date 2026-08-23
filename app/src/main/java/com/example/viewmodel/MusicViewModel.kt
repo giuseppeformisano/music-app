@@ -325,6 +325,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun applyLiveTrack(track: Track, progressMs: Long) {
+        if (!appInForeground) return // in background non pubblichiamo la live
         val currentTrackId = _uiState.value.nowPlayingTrack?.id
         val liveTrack = if (track.source.isBlank()) track.copy(source = "spotify") else track
         emptyPollCount = 0
@@ -365,12 +366,34 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         FirebaseRepository.setOnline(id, online)
     }
 
+    // L'app è in primo piano? Mentre NON lo è, non pubblichiamo la live (esci dalla lista).
+    @Volatile private var appInForeground = true
+
+    fun onAppForeground() {
+        appInForeground = true
+    }
+
     fun onAppStopped() {
+        appInForeground = false
         setOnline(false)
+        stopSpotifyPolling()
+        // Chiudendo/lasciando l'app si esce dalla live (gli altri smettono di vederti)
+        clearLiveOnLeave()
     }
 
     fun onAppDestroyed() {
+        appInForeground = false
         setOnline(false)
+        stopSpotifyPolling()
+        clearLiveOnLeave()
+    }
+
+    private fun clearLiveOnLeave() {
+        val u = _uiState.value.currentUser
+        if (u.currentTrack == null && !u.isLiveNow) return
+        val updated = u.copy(currentTrack = null, isLiveNow = false)
+        _uiState.update { it.copy(currentUser = updated, nowPlayingTrack = null) }
+        FirebaseRepository.syncCurrentUser(updated)
     }
 
     fun checkNotificationListenerEnabled() {
@@ -427,6 +450,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // Riallinea la posizione reale del brano corrente (Free), con heartbeat ~25s
     private fun updateLiveProgress(positionMs: Long, durationMs: Long) {
+        if (!appInForeground) return
         if (_uiState.value.currentUser.currentTrack == null) return
         val now = System.currentTimeMillis()
         if (now - lastLiveHeartbeat < 25_000L) return
@@ -441,6 +465,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         durationMs: Long = 0L, positionMs: Long = 0L, artUrl: String = "",
         source: String = "spotify"
     ) {
+        if (!appInForeground) return // in background non pubblichiamo la live
         if (trackName.isBlank()) return
         val currentId = _uiState.value.nowPlayingTrack?.id
         if (trackId.isNotBlank() && trackId == currentId) return
