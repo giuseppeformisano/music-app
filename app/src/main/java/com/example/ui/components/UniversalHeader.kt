@@ -136,7 +136,7 @@ fun UniversalHeader(
             }
         }
 
-        // Estrema Destra: Avatar Profilo
+        // Estrema Destra: Avatar Profilo (Sempre visibile con fallback)
         Box(
             modifier = Modifier
                 .size(44.dp)
@@ -149,22 +149,29 @@ fun UniversalHeader(
                 .testTag("header_profile_button"),
             contentAlignment = Alignment.Center
         ) {
-            if (currentUser.avatarUrl.isNotBlank()) {
-                AsyncImage(
-                    model = currentUser.avatarUrl,
-                    contentDescription = "Profilo di ${currentUser.name}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                )
-            } else {
+            Box(
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF222228)),
+                contentAlignment = Alignment.Center
+            ) {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Profilo Utente",
-                    tint = PureWhite,
-                    modifier = Modifier.size(22.dp)
+                    tint = PureWhite.copy(alpha = 0.85f),
+                    modifier = Modifier.size(20.dp)
                 )
+                if (currentUser.avatarUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = currentUser.avatarUrl,
+                        contentDescription = "Profilo di ${currentUser.name}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                    )
+                }
             }
         }
     }

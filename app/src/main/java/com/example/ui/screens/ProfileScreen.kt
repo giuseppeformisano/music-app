@@ -480,15 +480,29 @@ private fun UserIdentityBlock(
         ) {
             // Sinistra: Avatar + Nome + @username
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box {
-                    AsyncImage(
-                        model = user.avatarUrl,
-                        contentDescription = "Avatar ${user.name}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(86.dp)
-                            .clip(CircleShape)
+                Box(
+                    modifier = Modifier
+                        .size(86.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF222228)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = "Avatar",
+                        tint = PureWhite.copy(alpha = 0.8f),
+                        modifier = Modifier.size(44.dp)
                     )
+                    if (user.avatarUrl.isNotBlank()) {
+                        AsyncImage(
+                            model = user.avatarUrl,
+                            contentDescription = "Avatar ${user.name}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                        )
+                    }
                     com.example.ui.components.PresenceDot(
                         isOnline = user.isOnline,
                         isLive = user.currentTrack != null,
