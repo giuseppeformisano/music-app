@@ -65,12 +65,14 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastTrack = ""
             lastSource = ""
             pendingTrack = null
-            onPlaybackStopped?.invoke(source)
-
-            // Sveglia in background: aggiorna direttamente a DB anche ad app chiusa
-            val userId = FirebaseAuth.getInstance().currentUser?.uid
-            if (userId != null) {
-                FirebaseRepository.clearLiveTrack(userId)
+            if (onPlaybackStopped != null) {
+                onPlaybackStopped?.invoke(source)
+            } else {
+                // Sveglia in background: aggiorna direttamente a DB se l'app è chiusa
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                if (userId != null) {
+                    FirebaseRepository.clearLiveTrack(userId)
+                }
             }
         }
     }
@@ -128,12 +130,13 @@ class MusicNotificationListenerService : NotificationListenerService() {
             } ?: ""
 
             if (title == lastTrack && source == lastSource) {
-                onProgressChanged?.invoke(positionMs, durationMs, source)
-                
-                // Aggiorna progress di DB in background se necessario
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
-                if (userId != null) {
-                    FirebaseRepository.touchLive(userId, positionMs)
+                if (onProgressChanged != null) {
+                    onProgressChanged?.invoke(positionMs, durationMs, source)
+                } else {
+                    val userId = FirebaseAuth.getInstance().currentUser?.uid
+                    if (userId != null) {
+                        FirebaseRepository.touchLive(userId, positionMs)
+                    }
                 }
                 return
             }
@@ -141,12 +144,15 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastTrack = title
             lastSource = source
             pendingTrack = Pending(title, artist, durationMs, positionMs, artUrl, source)
-            onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl, source)
 
-            // Sveglia in background: aggiorna direttamente a DB anche ad app chiusa
-            val userId = FirebaseAuth.getInstance().currentUser?.uid
-            if (userId != null) {
-                FirebaseRepository.updateLiveTrack(userId, title, artist, durationMs, positionMs, artUrl, source)
+            if (onTrackChanged != null) {
+                onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl, source)
+            } else {
+                // Sveglia in background: aggiorna direttamente a DB solo se la UI dell'app è chiusa
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                if (userId != null) {
+                    FirebaseRepository.updateLiveTrack(userId, title, artist, durationMs, positionMs, artUrl, source)
+                }
             }
         } catch (_: Exception) {}
     }

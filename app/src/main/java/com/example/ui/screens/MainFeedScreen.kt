@@ -1540,15 +1540,17 @@ private fun LiveUserMinimalItem(
     val previousTrack = previousTrackState.value
     val isTransitioning = isTransitioningState.value
 
-    // Gestione unificata e atomica della transizione: ZERO-LAG E ZERO SCATTI INIZIALI (2.8s Accelerated Timeline)
-    LaunchedEffect(track.id) {
-        if (track.id != currentDisplayTrackState.value.id) {
+    val trackKey = "${track.artist.trim().lowercase()} - ${track.title.trim().lowercase()}"
+    // Gestione unificata e atomica della transizione: scatta SOLO quando cambia effettivamente brano (artista/titolo)
+    LaunchedEffect(trackKey) {
+        val currentDisplayKey = "${currentDisplayTrackState.value.artist.trim().lowercase()} - ${currentDisplayTrackState.value.title.trim().lowercase()}"
+        if (trackKey != currentDisplayKey && track.title.isNotBlank()) {
             previousTrackState.value = currentDisplayTrackState.value
             currentDisplayTrackState.value = track
             // Reset immediato del progresso prima di attivare lo stato di transizione
             transitionProgress.snapTo(0f)
             isTransitioningState.value = true
-            // Animazione cinematografica accelerata a 2.8s con flusso continuo senza sobbalzi
+            // Animazione cinematografica fluida di 2.0s
             transitionProgress.animateTo(
                 targetValue = 1f,
                 animationSpec = tween(
@@ -1558,6 +1560,9 @@ private fun LiveUserMinimalItem(
             )
             isTransitioningState.value = false
             previousTrackState.value = null
+        } else {
+            // Stesso brano: aggiorna semplicemente i metadati (copertina / id) senza ripetere l'animazione
+            currentDisplayTrackState.value = track
         }
     }
 
