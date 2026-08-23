@@ -121,7 +121,6 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         connectedServices = services
                     )
                 }
-                FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
                 saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
@@ -171,7 +170,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoggingIn = true, loginError = null) }
             val result = AuthRepository.signInWithGoogle(context)
-            result.onSuccess { user ->
+            result.onSuccess { rawUser ->
+                val user = applyUserLocalPrefs(rawUser)
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
                 val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
                 _uiState.update {
@@ -184,7 +184,6 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         connectedServices = services
                     )
                 }
-                FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
                 saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
@@ -566,6 +565,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                             followingIds = fresh.followingIds
                             // isLiveNow e currentTrack restano gestiti localmente da Spotify
                         )
+                        saveUserLocalPrefs(updatedCurrentUser)
                         current.copy(
                             currentUser = updatedCurrentUser,
                             activeProfileUser = if (current.activeProfileUser?.id == updatedCurrentUser.id) updatedCurrentUser else current.activeProfileUser,

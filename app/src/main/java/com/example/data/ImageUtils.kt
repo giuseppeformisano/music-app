@@ -55,11 +55,13 @@ object ImageUtils {
             val uri = Uri.parse(uriString)
             val resolver = context.contentResolver
 
+            // Leggi tutti i byte dello stream in un unico passaggio sicuro
+            val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return uriString
+            if (bytes.isEmpty()) return uriString
+
             // Decodifica prima le sole dimensioni
             val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-            resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, boundsOptions)
-            } ?: return uriString
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
 
             val origWidth = boundsOptions.outWidth
             val origHeight = boundsOptions.outHeight
@@ -78,9 +80,8 @@ object ImageUtils {
                 this.inSampleSize = inSampleSize
             }
 
-            val decodedBitmap = resolver.openInputStream(uri)?.use { stream ->
-                BitmapFactory.decodeStream(stream, null, decodeOptions)
-            } ?: return uriString
+            val decodedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions)
+                ?: return uriString
 
             val width = decodedBitmap.width
             val height = decodedBitmap.height
