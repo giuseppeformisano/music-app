@@ -108,14 +108,14 @@ object ImageUtils {
 
             val safeId = userId.ifBlank { "current_user" }.replace("/", "_").replace(":", "_")
             val targetDir = File(context.filesDir, "profiles").apply { if (!exists()) mkdirs() }
-            val targetFile = File(targetDir, "${prefix}_${safeId}.jpg")
+            val targetFile = File(targetDir, "${prefix}_${safeId}_${System.currentTimeMillis()}.jpg")
 
             FileOutputStream(targetFile).use { out ->
                 scaledBitmap.compress(Bitmap.CompressFormat.JPEG, quality, out)
             }
             scaledBitmap.recycle()
 
-            targetFile.toURI().toString()
+            "file://${targetFile.absolutePath}"
         } catch (e: Exception) {
             Log.e(TAG, "Errore saveImageLocally: ${e.message}", e)
             null
@@ -131,11 +131,14 @@ object ImageUtils {
             return fileUriOrPath
         }
         return try {
-            val file = if (fileUriOrPath.startsWith("file:", ignoreCase = true)) {
-                File(Uri.parse(fileUriOrPath).path ?: fileUriOrPath.removePrefix("file://"))
+            val cleanPath = if (fileUriOrPath.startsWith("file://", ignoreCase = true)) {
+                fileUriOrPath.removePrefix("file://")
+            } else if (fileUriOrPath.startsWith("file:/", ignoreCase = true)) {
+                fileUriOrPath.removePrefix("file:")
             } else {
-                File(fileUriOrPath)
+                fileUriOrPath
             }
+            val file = File(cleanPath)
             if (!file.exists()) return fileUriOrPath
             val bytes = file.readBytes()
             val base64 = Base64.encodeToString(bytes, Base64.NO_WRAP)
@@ -154,7 +157,8 @@ object ImageUtils {
         if (base64OrUrl.isNullOrBlank()) return null
         if (base64OrUrl.startsWith("http://", ignoreCase = true) ||
             base64OrUrl.startsWith("https://", ignoreCase = true) ||
-            base64OrUrl.startsWith("file://", ignoreCase = true)
+            base64OrUrl.startsWith("file://", ignoreCase = true) ||
+            base64OrUrl.startsWith("file:/", ignoreCase = true)
         ) {
             return base64OrUrl
         }
@@ -168,7 +172,7 @@ object ImageUtils {
             val targetFile = File(targetDir, "${prefix}_${safeId}.jpg")
 
             targetFile.writeBytes(bytes)
-            targetFile.toURI().toString()
+            "file://${targetFile.absolutePath}"
         } catch (e: Exception) {
             Log.e(TAG, "Errore base64ToLocalFile: ${e.message}")
             base64OrUrl
