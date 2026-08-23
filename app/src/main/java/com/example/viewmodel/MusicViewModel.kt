@@ -553,11 +553,47 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                     knownFriendRequestIds = newIds
 
                     _uiState.update { current ->
+                        // Se fresh contiene un'immagine in base64, convertila in un file locale di cache
+                        val localAvatar = if (fresh.avatarUrl.startsWith("data:image", ignoreCase = true) ||
+                            (fresh.avatarUrl.length > 200 && !fresh.avatarUrl.startsWith("http", ignoreCase = true) && !fresh.avatarUrl.startsWith("file:", ignoreCase = true))
+                        ) {
+                            com.example.data.ImageUtils.base64ToLocalFile(appContext, fresh.avatarUrl, "avatar", userId) ?: fresh.avatarUrl
+                        } else {
+                            fresh.avatarUrl
+                        }
+
+                        val localCover = if (!fresh.coverUrl.isNullOrBlank() && (fresh.coverUrl.startsWith("data:image", ignoreCase = true) ||
+                            (fresh.coverUrl.length > 200 && !fresh.coverUrl.startsWith("http", ignoreCase = true) && !fresh.coverUrl.startsWith("file:", ignoreCase = true)))
+                        ) {
+                            com.example.data.ImageUtils.base64ToLocalFile(appContext, fresh.coverUrl, "cover", userId) ?: fresh.coverUrl
+                        } else {
+                            fresh.coverUrl
+                        }
+
+                        // Preserva il file locale se già esistente su disco per evitare flash o sovrascritture stantie
+                        val curAvatar = current.currentUser.avatarUrl
+                        val finalAvatar = if (curAvatar.startsWith("file://") && File(curAvatar.removePrefix("file://")).exists()) {
+                            curAvatar
+                        } else if (localAvatar.isNotBlank()) {
+                            localAvatar
+                        } else {
+                            curAvatar
+                        }
+
+                        val curCover = current.currentUser.coverUrl
+                        val finalCover = if (!curCover.isNullOrBlank() && curCover.startsWith("file://") && File(curCover.removePrefix("file://")).exists()) {
+                            curCover
+                        } else if (!localCover.isNullOrBlank()) {
+                            localCover
+                        } else {
+                            curCover
+                        }
+
                         val updatedCurrentUser = current.currentUser.copy(
                             name = fresh.name.ifBlank { current.currentUser.name },
                             username = fresh.username.ifBlank { current.currentUser.username },
-                            avatarUrl = fresh.avatarUrl.ifBlank { current.currentUser.avatarUrl },
-                            coverUrl = fresh.coverUrl ?: current.currentUser.coverUrl,
+                            avatarUrl = finalAvatar,
+                            coverUrl = finalCover,
                             bio = fresh.bio,
                             sharedTracks = fresh.sharedTracks,
                             stats = fresh.stats,
@@ -568,7 +604,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         saveUserLocalPrefs(updatedCurrentUser)
                         current.copy(
                             currentUser = updatedCurrentUser,
-                            activeProfileUser = if (current.activeProfileUser?.id == updatedCurrentUser.id) updatedCurrentUser else current.activeProfileUser,
+                            activeProfileUser = if (current.activeProfileUser?.isCurrentUser == true || current.activeProfileUser?.id == updatedCurrentUser.id) updatedCurrentUser else current.activeProfileUser,
                             pendingFriendRequests = fresh.pendingRequests,
                             sentRequestIds = fresh.sentRequestIds.toSet()
                         )
@@ -724,11 +760,19 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 return user
             }
 
+            val validAvatar = savedAvatarUrl?.takeIf {
+                if (it.startsWith("file://")) File(it.removePrefix("file://")).exists() else it.isNotBlank()
+            } ?: user.avatarUrl
+
+            val validCover = savedCoverUrl?.takeIf {
+                if (it.startsWith("file://")) File(it.removePrefix("file://")).exists() else it.isNotBlank()
+            } ?: user.coverUrl
+
             return user.copy(
                 name = savedName?.ifBlank { user.name } ?: user.name,
                 username = savedUsername?.ifBlank { user.username } ?: user.username,
-                avatarUrl = savedAvatarUrl?.ifBlank { user.avatarUrl } ?: user.avatarUrl,
-                coverUrl = if (!savedCoverUrl.isNullOrBlank()) savedCoverUrl else user.coverUrl,
+                avatarUrl = validAvatar,
+                coverUrl = validCover,
                 bio = savedBio ?: user.bio
             )
         } catch (e: Exception) {

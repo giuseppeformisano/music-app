@@ -1215,11 +1215,11 @@ private fun EditProfileDialog(
     onDismiss: () -> Unit,
     onSave: (newName: String, newUsername: String, newAvatar: String, newCover: String, newBio: String) -> Unit
 ) {
-    var nameInput by remember { mutableStateOf(user.name) }
-    var usernameInput by remember { mutableStateOf(user.username.removePrefix("@")) }
-    var avatarUrlInput by remember { mutableStateOf(user.avatarUrl) }
-    var coverUrlInput by remember { mutableStateOf(user.coverUrl ?: currentCoverUrl) }
-    var bioInput by remember { mutableStateOf(user.bio) }
+    var nameInput by remember(user.name) { mutableStateOf(user.name) }
+    var usernameInput by remember(user.username) { mutableStateOf(user.username.removePrefix("@")) }
+    var avatarUrlInput by remember(user.avatarUrl) { mutableStateOf(user.avatarUrl) }
+    var coverUrlInput by remember(user.coverUrl, currentCoverUrl) { mutableStateOf(user.coverUrl?.takeIf { it.isNotBlank() } ?: currentCoverUrl) }
+    var bioInput by remember(user.bio) { mutableStateOf(user.bio) }
 
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -1238,7 +1238,7 @@ private fun EditProfileDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "cover", user.id, maxDimension = 720, quality = 80)
+            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "cover", user.id, maxDimension = 640, quality = 75)
             if (localPath != null) {
                 coverUrlInput = localPath
             }

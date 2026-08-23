@@ -137,30 +137,20 @@ fun UniversalHeader(
             }
         }
 
-        // Estrema Destra: Avatar / Icona Profilo (senza riquadro o sfondi grigi)
+        // Estrema Destra: Icona Profilo Utente (solo icona bianca borderless senza riquadro o sfondi)
         IconButton(
             onClick = onProfileClick,
             modifier = Modifier
                 .size(44.dp)
+                .clip(CircleShape)
                 .testTag("header_profile_button")
         ) {
-            if (currentUser.avatarUrl.isNotBlank()) {
-                AsyncImage(
-                    model = currentUser.avatarUrl,
-                    contentDescription = "Profilo di ${currentUser.name}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Default.Person,
-                    contentDescription = "Profilo Utente",
-                    tint = PureWhite,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
+            Icon(
+                imageVector = Icons.Default.Person,
+                contentDescription = "Profilo Utente",
+                tint = PureWhite,
+                modifier = Modifier.size(22.dp)
+            )
         }
     }
 }
