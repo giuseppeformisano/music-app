@@ -3,7 +3,9 @@ package com.example.data
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
 import android.graphics.drawable.BitmapDrawable
+import android.media.ExifInterface
 import android.net.Uri
 import android.util.Base64
 import android.util.Log
@@ -13,6 +15,7 @@ import coil.fetch.DrawableResult
 import coil.fetch.FetchResult
 import coil.fetch.Fetcher
 import coil.request.Options
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -52,6 +55,7 @@ object ImageUtils {
 
     /**
      * Salva un'immagine selezionata da URI di sistema direttamente nello storage interno privato dell'app.
+     * Corregge automaticamente la rotazione EXIF originale della foto (es. foto scattate in verticale con smartphone).
      * Ridimensiona e comprime in JPEG per ottimizzare lo spazio e la velocità di caricamento.
      * Restituisce la URI file:/// del file salvato localmente, immediatamente visualizzabile da Coil.
      */
@@ -67,6 +71,34 @@ object ImageUtils {
             val resolver = context.contentResolver
             val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
             if (bytes.isEmpty()) return null
+
+            // Leggi orientamento EXIF originale della foto
+            val exif = try {
+                ExifInterface(ByteArrayInputStream(bytes))
+            } catch (e: Exception) {
+                null
+            }
+            val orientation = exif?.getAttributeInt(
+                ExifInterface.TAG_ORIENTATION,
+                ExifInterface.ORIENTATION_NORMAL
+            ) ?: ExifInterface.ORIENTATION_NORMAL
+
+            val matrix = Matrix()
+            when (orientation) {
+                ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+                ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+                ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+                ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+                ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+                ExifInterface.ORIENTATION_TRANSPOSE -> {
+                    matrix.postRotate(90f)
+                    matrix.postScale(-1f, 1f)
+                }
+                ExifInterface.ORIENTATION_TRANSVERSE -> {
+                    matrix.postRotate(270f)
+                    matrix.postScale(-1f, 1f)
+                }
+            }
 
             // Decodifica dimensioni
             val boundsOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
@@ -91,19 +123,28 @@ object ImageUtils {
 
             val decodedBitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions) ?: return null
 
-            val width = decodedBitmap.width
-            val height = decodedBitmap.height
+            // Applica l'orientamento originale della foto (evita che le foto verticali appaiano ruotate di 90 gradi)
+            val orientedBitmap = if (!matrix.isIdentity) {
+                Bitmap.createBitmap(decodedBitmap, 0, 0, decodedBitmap.width, decodedBitmap.height, matrix, true).also {
+                    if (it != decodedBitmap) decodedBitmap.recycle()
+                }
+            } else {
+                decodedBitmap
+            }
+
+            val width = orientedBitmap.width
+            val height = orientedBitmap.height
             val maxSide = maxOf(width, height)
             val scale = (maxDimension.toFloat() / maxSide).coerceAtMost(1f)
 
             val scaledBitmap = if (scale < 1f) {
                 val targetW = (width * scale).toInt().coerceAtLeast(1)
                 val targetH = (height * scale).toInt().coerceAtLeast(1)
-                Bitmap.createScaledBitmap(decodedBitmap, targetW, targetH, true).also {
-                    if (it != decodedBitmap) decodedBitmap.recycle()
+                Bitmap.createScaledBitmap(orientedBitmap, targetW, targetH, true).also {
+                    if (it != orientedBitmap) orientedBitmap.recycle()
                 }
             } else {
-                decodedBitmap
+                orientedBitmap
             }
 
             val safeId = userId.ifBlank { "current_user" }.replace("/", "_").replace(":", "_")
