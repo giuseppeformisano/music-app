@@ -165,20 +165,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onStop() {
         super.onStop()
-        viewModel.setOnline(false)
-        val isPremium = viewModel.uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
-        if (!isPremium) {
-            viewModel.clearNowPlayingFromBroadcast(source = "spotify")
-        }
+        viewModel.onAppStopped()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        viewModel.setOnline(false)
-        val isPremium = viewModel.uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
-        if (!isPremium) {
-            viewModel.clearNowPlayingFromBroadcast(source = "spotify")
-        }
+        viewModel.onAppDestroyed()
     }
 
     private fun createNotificationChannel() {
