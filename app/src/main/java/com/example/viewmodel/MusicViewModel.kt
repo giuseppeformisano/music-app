@@ -520,6 +520,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // ===================== FIREBASE =====================
 
+    private fun processUserImages(user: User): User {
+        val localAvatar = if (user.avatarUrl.startsWith("data:image", ignoreCase = true) ||
+            (user.avatarUrl.length > 200 && !user.avatarUrl.startsWith("http", ignoreCase = true) && !user.avatarUrl.startsWith("file:", ignoreCase = true))
+        ) {
+            com.example.data.ImageUtils.base64ToLocalFile(appContext, user.avatarUrl, "avatar", user.id) ?: user.avatarUrl
+        } else {
+            user.avatarUrl
+        }
+
+        val localCover = if (!user.coverUrl.isNullOrBlank() && (user.coverUrl!!.startsWith("data:image", ignoreCase = true) ||
+            (user.coverUrl!!.length > 200 && !user.coverUrl!!.startsWith("http", ignoreCase = true) && !user.coverUrl!!.startsWith("file:", ignoreCase = true)))
+        ) {
+            com.example.data.ImageUtils.base64ToLocalFile(appContext, user.coverUrl, "cover", user.id) ?: user.coverUrl
+        } else {
+            user.coverUrl
+        }
+
+        return user.copy(avatarUrl = localAvatar, coverUrl = localCover)
+    }
+
     private fun startFirebaseListener() {
         val userId = _uiState.value.currentUser.id
         firebaseObserverJob?.cancel()
@@ -527,10 +547,19 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             FirebaseRepository.observeOtherUsers(userId)
                 .catch { }
                 .collect { remoteUsers ->
+                    val processed = withContext(Dispatchers.IO) {
+                        remoteUsers.map { processUserImages(it) }
+                    }
                     _uiState.update { current ->
-                        val merged = (remoteUsers + current.feedUsers).distinctBy { it.id }
+                        val merged = (processed + current.feedUsers).distinctBy { it.id }
+                        val updatedActiveProfile = if (current.activeProfileUser != null && !current.activeProfileUser.isCurrentUser) {
+                            processed.find { it.id == current.activeProfileUser.id } ?: current.activeProfileUser
+                        } else {
+                            current.activeProfileUser
+                        }
                         current.copy(
                             feedUsers = merged,
+                            activeProfileUser = updatedActiveProfile,
                             userSearchResults = if (current.userSearchQuery.isBlank()) merged else current.userSearchResults
                         )
                     }
@@ -984,11 +1013,33 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun openProfile(user: User) {
         val isMe = user.isCurrentUser || (user.id.isNotBlank() && user.id == _uiState.value.currentUser.id)
-        val target = if (isMe) _uiState.value.currentUser.copy(isCurrentUser = true) else user
+        val target = if (isMe) _uiState.value.currentUser.copy(isCurrentUser = true) else processUserImages(user)
         _uiState.update { it.copy(activeProfileUser = target) }
         if (isMe) {
             // Usa sempre i dati freschi dallo stato (non l'oggetto passato che potrebbe essere stale)
             loadSocialDetails(_uiState.value.currentUser)
+        } else {
+            loadSocialDetails(target)
+            loadFriendProfile(target.id)
+        }
+    }
+
+    private fun loadFriendProfile(userId: String) {
+        if (userId.isBlank()) return
+        FirebaseRepository.getUsersByIds(listOf(userId)) { users ->
+            val freshUser = users.firstOrNull() ?: return@getUsersByIds
+            viewModelScope.launch(Dispatchers.IO) {
+                val processed = processUserImages(freshUser)
+                withContext(Dispatchers.Main) {
+                    _uiState.update { state ->
+                        val updatedFeed = (listOf(processed) + state.feedUsers).distinctBy { it.id }
+                        state.copy(
+                            activeProfileUser = if (state.activeProfileUser?.id == processed.id) processed else state.activeProfileUser,
+                            feedUsers = updatedFeed
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -996,13 +1047,18 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val ids = (user.followerIds + user.followingIds).distinct()
         if (ids.isEmpty()) return
         FirebaseRepository.getUsersByIds(ids) { allUsers ->
-            val followerSet = user.followerIds.toSet()
-            val followingSet = user.followingIds.toSet()
-            _uiState.update { state ->
-                state.copy(
-                    followerDetails = allUsers.filter { it.id in followerSet },
-                    followingDetails = allUsers.filter { it.id in followingSet }
-                )
+            viewModelScope.launch(Dispatchers.IO) {
+                val processed = allUsers.map { processUserImages(it) }
+                withContext(Dispatchers.Main) {
+                    val followerSet = user.followerIds.toSet()
+                    val followingSet = user.followingIds.toSet()
+                    _uiState.update { state ->
+                        state.copy(
+                            followerDetails = processed.filter { it.id in followerSet },
+                            followingDetails = processed.filter { it.id in followingSet }
+                        )
+                    }
+                }
             }
         }
     }

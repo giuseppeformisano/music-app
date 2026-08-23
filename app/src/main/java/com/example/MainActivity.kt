@@ -125,8 +125,10 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
 
         setContent {
-            MyApplicationTheme {
-                MusicApp(viewModel = viewModel)
+            androidx.compose.runtime.CompositionLocalProvider(coil.compose.LocalImageLoader provides imageLoader) {
+                MyApplicationTheme {
+                    MusicApp(viewModel = viewModel)
+                }
             }
         }
     }
