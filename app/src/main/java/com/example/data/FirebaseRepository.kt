@@ -70,6 +70,43 @@ object FirebaseRepository {
             .addOnFailureListener { /* documento non ancora presente: ignora */ }
     }
 
+    fun updateLiveTrack(userId: String, title: String, artist: String, durationMs: Long, positionMs: Long, artUrl: String, source: String) {
+        val db = firestore ?: return
+        val trackMap = mapOf(
+            "id" to "${title}_${artist}",
+            "title" to title,
+            "artist" to artist,
+            "album" to "",
+            "coverUrl" to artUrl,
+            "durationMs" to durationMs,
+            "source" to source
+        )
+        db.collection(USERS_COLLECTION).document(userId)
+            .update(
+                mapOf(
+                    "currentTrack" to trackMap,
+                    "isLiveNow" to true,
+                    "trackProgressMs" to positionMs,
+                    "trackProgressAt" to System.currentTimeMillis(),
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            )
+            .addOnFailureListener { }
+    }
+
+    fun clearLiveTrack(userId: String) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(userId)
+            .update(
+                mapOf(
+                    "currentTrack" to null,
+                    "isLiveNow" to false,
+                    "updatedAt" to System.currentTimeMillis()
+                )
+            )
+            .addOnFailureListener { }
+    }
+
     /** Aggiorna solo lo stato di presenza (app aperta/connessa). */
     fun setOnline(userId: String, online: Boolean) {
         val db = firestore ?: return

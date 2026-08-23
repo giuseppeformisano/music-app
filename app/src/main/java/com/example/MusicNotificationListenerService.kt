@@ -11,6 +11,8 @@ import android.os.Looper
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import com.google.firebase.auth.FirebaseAuth
+import com.example.data.FirebaseRepository
 
 class MusicNotificationListenerService : NotificationListenerService() {
 
@@ -18,6 +20,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
     private var lastSource = ""
     private val handler = Handler(Looper.getMainLooper())
     private val recheck = Runnable { checkMediaSessions() }
+
+    override fun onCreate() {
+        super.onCreate()
+        loadPreferences()
+    }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -44,6 +51,12 @@ class MusicNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    private fun loadPreferences() {
+        val prefs = getSharedPreferences("connected_services", Context.MODE_PRIVATE)
+        isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", false)
+        isAmazonMusicEnabled = prefs.getBoolean("amazon_music", false)
+    }
+
     private fun hasActiveNotification(packageName: String): Boolean = try {
         activeNotifications?.any { it.packageName == packageName } ?: false
     } catch (_: Exception) { true }
@@ -54,11 +67,18 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastSource = ""
             pendingTrack = null
             onPlaybackStopped?.invoke(source)
+
+            // Sveglia in background: aggiorna direttamente a DB anche ad app chiusa
+            val userId = FirebaseAuth.getInstance().currentUser?.uid
+            if (userId != null) {
+                FirebaseRepository.clearLiveTrack(userId)
+            }
         }
     }
 
     fun checkMediaSessions() {
         try {
+            loadPreferences()
             val manager = getSystemService(MEDIA_SESSION_SERVICE) as MediaSessionManager
             val controllers = manager.getActiveSessions(
                 ComponentName(this, MusicNotificationListenerService::class.java)
@@ -110,6 +130,12 @@ class MusicNotificationListenerService : NotificationListenerService() {
 
             if (title == lastTrack && source == lastSource) {
                 onProgressChanged?.invoke(positionMs, durationMs, source)
+                
+                // Aggiorna progress di DB in background se necessario (limita le scritture con un timestamp locale se vuoi)
+                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                if (userId != null) {
+                    FirebaseRepository.touchLive(userId, positionMs)
+                }
                 return
             }
 
@@ -117,6 +143,12 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastSource = source
             pendingTrack = Pending(title, artist, durationMs, positionMs, artUrl, source)
             onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl, source)
+
+            // Sveglia in background: aggiorna direttamente a DB anche ad app chiusa
+            val userId = FirebaseAuth.getInstance().currentUser?.uid
+            if (userId != null) {
+                FirebaseRepository.updateLiveTrack(userId, title, artist, durationMs, positionMs, artUrl, source)
+            }
         } catch (_: Exception) {}
     }
 
