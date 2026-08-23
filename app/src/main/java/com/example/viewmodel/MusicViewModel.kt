@@ -385,11 +385,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(isNotificationListenerEnabled = enabled) }
         registerMusicNotificationListenerCallbacks()
         syncNotificationListenerServiceFlags()
+        if (enabled) {
+            com.example.MusicNotificationListenerService.startListening(appContext)
+        }
     }
 
     private fun syncNotificationListenerServiceFlags() {
-        com.example.MusicNotificationListenerService.isSpotifyFreeEnabled = _uiState.value.connectedServices["spotify_free"] == true
-        com.example.MusicNotificationListenerService.isAmazonMusicEnabled = _uiState.value.connectedServices["amazon_music"] == true
+        com.example.MusicNotificationListenerService.isSpotifyFreeEnabled = _uiState.value.connectedServices["spotify_free"] ?: true
+        com.example.MusicNotificationListenerService.isAmazonMusicEnabled = _uiState.value.connectedServices["amazon_music"] ?: true
     }
 
     fun openNotificationListenerSettings(context: Context) {
@@ -401,24 +404,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun registerMusicNotificationListenerCallbacks() {
         com.example.MusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl, source ->
-            val isSourceEnabled = when (source) {
-                "spotify" -> _uiState.value.connectedServices["spotify_free"] == true
-                "amazon_music" -> _uiState.value.connectedServices["amazon_music"] == true
-                else -> true
-            }
-            if (isSourceEnabled) {
-                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = source)
-            }
+            updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = source)
         }
         com.example.MusicNotificationListenerService.onProgressChanged = { positionMs, durationMs, source ->
-            val isSourceEnabled = when (source) {
-                "spotify" -> _uiState.value.connectedServices["spotify_free"] == true
-                "amazon_music" -> _uiState.value.connectedServices["amazon_music"] == true
-                else -> true
-            }
-            if (isSourceEnabled) {
-                updateLiveProgress(positionMs, durationMs)
-            }
+            updateLiveProgress(positionMs, durationMs)
         }
         com.example.MusicNotificationListenerService.onPlaybackStopped = { source ->
             clearNowPlayingFromBroadcast(source = source)

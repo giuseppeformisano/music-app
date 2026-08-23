@@ -52,14 +52,13 @@ class MusicNotificationListenerService : NotificationListenerService() {
     }
 
     private fun loadPreferences() {
-        val prefs = getSharedPreferences("connected_services", Context.MODE_PRIVATE)
-        isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", false)
-        isAmazonMusicEnabled = prefs.getBoolean("amazon_music", false)
+        try {
+            val prefs = getSharedPreferences("connected_services", Context.MODE_PRIVATE)
+            // Se non specificato, di default sono abilitati se l'utente ha concesso l'accesso alle notifiche
+            isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", true)
+            isAmazonMusicEnabled = prefs.getBoolean("amazon_music", true)
+        } catch (_: Exception) {}
     }
-
-    private fun hasActiveNotification(packageName: String): Boolean = try {
-        activeNotifications?.any { it.packageName == packageName } ?: false
-    } catch (_: Exception) { true }
 
     private fun stopPlayback(source: String = "") {
         if (source.isEmpty() || lastSource == source) {
@@ -89,10 +88,10 @@ class MusicNotificationListenerService : NotificationListenerService() {
 
             // Priorità all'app che sta effettivamente suonando (STATE_PLAYING o STATE_BUFFERING)
             val activeController: Pair<MediaController, String>? = when {
-                spotifyController != null && isPlaying(spotifyController) && hasActiveNotification(SPOTIFY_PACKAGE) -> spotifyController to "spotify"
-                amazonController != null && isPlaying(amazonController) && hasActiveNotification(AMAZON_MUSIC_PACKAGE) -> amazonController to "amazon_music"
-                spotifyController != null && hasActiveNotification(SPOTIFY_PACKAGE) -> spotifyController to "spotify"
-                amazonController != null && hasActiveNotification(AMAZON_MUSIC_PACKAGE) -> amazonController to "amazon_music"
+                spotifyController != null && isPlaying(spotifyController) -> spotifyController to "spotify"
+                amazonController != null && isPlaying(amazonController) -> amazonController to "amazon_music"
+                spotifyController != null && isPausedOrActive(spotifyController) -> spotifyController to "spotify"
+                amazonController != null && isPausedOrActive(amazonController) -> amazonController to "amazon_music"
                 else -> null
             }
 
@@ -131,7 +130,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
             if (title == lastTrack && source == lastSource) {
                 onProgressChanged?.invoke(positionMs, durationMs, source)
                 
-                // Aggiorna progress di DB in background se necessario (limita le scritture con un timestamp locale se vuoi)
+                // Aggiorna progress di DB in background se necessario
                 val userId = FirebaseAuth.getInstance().currentUser?.uid
                 if (userId != null) {
                     FirebaseRepository.touchLive(userId, positionMs)
