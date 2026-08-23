@@ -201,7 +201,9 @@ class MusicNotificationListenerService : NotificationListenerService() {
 
         fun startListening(context: Context) {
             try {
-                instance?.requestRebind(ComponentName(context, MusicNotificationListenerService::class.java))
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                    NotificationListenerService.requestRebind(ComponentName(context, MusicNotificationListenerService::class.java))
+                }
             } catch (_: Exception) {}
             instance?.checkMediaSessions()
         }
