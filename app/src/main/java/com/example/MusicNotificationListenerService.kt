@@ -156,6 +156,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
         return state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
     }
 
+    private fun isPausedOrActive(controller: MediaController): Boolean {
+        val state = controller.playbackState?.state
+        return state == PlaybackState.STATE_PAUSED || state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING || state == PlaybackState.STATE_CONNECTING
+    }
+
     private fun isAdvertisement(meta: MediaMetadata): Boolean {
         try {
             if (meta.getLong("android.media.metadata.ADVERTISEMENT") == 1L) return true
