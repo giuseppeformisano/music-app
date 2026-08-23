@@ -12,6 +12,8 @@ import android.service.notification.StatusBarNotification
 class SpotifyNotificationListenerService : NotificationListenerService() {
 
     private var lastTrack = ""
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val recheck = Runnable { checkMediaSessions() }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -25,13 +27,25 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName == SPOTIFY_PACKAGE) checkMediaSessions()
+        if (sbn.packageName != SPOTIFY_PACKAGE) return
+        handler.removeCallbacks(recheck) // c'è una notifica: annulla un eventuale re-check pendente
+        checkMediaSessions()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (sbn.packageName != SPOTIFY_PACKAGE) return
-        checkMediaSessions()
+        // Rimozione: potrebbe essere una chiusura (notifica sparita) o un cambio traccia
+        // (rimozione + subito repost). Ricontrolla dopo un attimo: se non c'è più la
+        // notifica media di Spotify, l'app è stata chiusa → esci dalla live.
+        handler.removeCallbacks(recheck)
+        handler.postDelayed(recheck, 900)
     }
+
+    // C'è una notifica media attiva dell'app? In PAUSA resta (app aperta); alla CHIUSURA
+    // sparisce. È il discriminatore affidabile tra pausa e chiusura.
+    private fun hasActiveNotification(): Boolean = try {
+        activeNotifications?.any { it.packageName == SPOTIFY_PACKAGE } ?: false
+    } catch (_: Exception) { true }
 
     private fun stopPlayback() {
         lastTrack = ""
@@ -47,8 +61,9 @@ class SpotifyNotificationListenerService : NotificationListenerService() {
             )
             // SOLO Spotify: non deve MAI leggere la sessione di altre app (es. Amazon)
             val controller = controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE }
-            // Sessione assente = app musicale chiusa -> esce dalla live
-            if (controller == null) { stopPlayback(); return }
+            // App chiusa se: sessione assente OPPURE nessuna notifica media (in pausa la
+            // notifica resta, alla chiusura sparisce) → esce dalla live.
+            if (controller == null || !hasActiveNotification()) { stopPlayback(); return }
 
             val state = controller.playbackState?.state
             // Riproduzione terminata/chiusa esplicitamente

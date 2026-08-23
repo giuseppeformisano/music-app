@@ -12,6 +12,8 @@ import android.service.notification.StatusBarNotification
 class AmazonMusicNotificationListenerService : NotificationListenerService() {
 
     private var lastTrack = ""
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val recheck = Runnable { checkMediaSessions() }
 
     override fun onListenerConnected() {
         super.onListenerConnected()
@@ -25,15 +27,22 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if (sbn.packageName == AMAZON_MUSIC_PACKAGE) checkMediaSessions()
+        if (sbn.packageName != AMAZON_MUSIC_PACKAGE) return
+        handler.removeCallbacks(recheck)
+        checkMediaSessions()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         if (sbn.packageName != AMAZON_MUSIC_PACKAGE) return
-        // Non terminare la riproduzione a priori (Amazon Music rimuove e ricrea notifiche):
-        // verifica se la MediaSession è ancora presente ed attiva
-        checkMediaSessions()
+        // Rimozione = possibile chiusura o cambio traccia (rimozione+repost). Ricontrolla
+        // dopo un attimo: se non c'è più la notifica media di Amazon → app chiusa → esci.
+        handler.removeCallbacks(recheck)
+        handler.postDelayed(recheck, 900)
     }
+
+    private fun hasActiveNotification(): Boolean = try {
+        activeNotifications?.any { it.packageName == AMAZON_MUSIC_PACKAGE } ?: false
+    } catch (_: Exception) { true }
 
     private fun stopPlayback() {
         lastTrack = ""
@@ -48,8 +57,9 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
                 ComponentName(this, AmazonMusicNotificationListenerService::class.java)
             )
             val amazonMusic = controllers.firstOrNull { it.packageName == AMAZON_MUSIC_PACKAGE }
-            // Sessione assente = app musicale chiusa -> esce dalla live
-            if (amazonMusic == null) { stopPlayback(); return }
+            // App chiusa se: sessione assente OPPURE nessuna notifica media (in pausa resta,
+            // alla chiusura sparisce) → esce dalla live.
+            if (amazonMusic == null || !hasActiveNotification()) { stopPlayback(); return }
 
             val state = amazonMusic.playbackState?.state
             // Riproduzione terminata/chiusa esplicitamente
