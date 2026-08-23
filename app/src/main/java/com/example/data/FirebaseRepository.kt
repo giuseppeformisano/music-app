@@ -91,12 +91,28 @@ object FirebaseRepository {
     fun syncCurrentUser(user: User) {
         val db = firestore ?: return
         try {
+            // Converte SEMPRE i percorsi file:/// locali in Base64 prima di scrivere su Firestore.
+            // In questo modo nessun altro dispositivo riceverà percorsi file:/// inesistenti nel proprio sandbox.
+            val cleanAvatar = when {
+                user.avatarUrl.startsWith("file:", ignoreCase = true) || user.avatarUrl.startsWith("/") -> {
+                    ImageUtils.fileUriToBase64(user.avatarUrl)
+                }
+                user.avatarUrl.isNotBlank() -> user.avatarUrl
+                else -> null
+            }
+
+            val cleanCover = when {
+                !user.coverUrl.isNullOrBlank() && (user.coverUrl!!.startsWith("file:", ignoreCase = true) || user.coverUrl!!.startsWith("/")) -> {
+                    ImageUtils.fileUriToBase64(user.coverUrl)
+                }
+                !user.coverUrl.isNullOrBlank() -> user.coverUrl
+                else -> null
+            }
+
             val userMap = hashMapOf<String, Any?>(
                 "id" to user.id,
                 "name" to user.name,
                 "username" to user.username,
-                "avatarUrl" to user.avatarUrl,
-                "coverUrl" to user.coverUrl,
                 "bio" to user.bio,
                 "isOnline" to user.isOnline,
                 "isLiveNow" to user.isLiveNow,
@@ -109,6 +125,13 @@ object FirebaseRepository {
                 "updatedAt" to System.currentTimeMillis()
                 // followerIds/followingIds sono gestiti solo da acceptFollowRequest con arrayUnion — non sovrascrivere qui
             )
+
+            if (cleanAvatar != null) {
+                userMap["avatarUrl"] = cleanAvatar
+            }
+            if (cleanCover != null) {
+                userMap["coverUrl"] = cleanCover
+            }
 
             db.collection(USERS_COLLECTION)
                 .document(user.id)
@@ -200,28 +223,34 @@ object FirebaseRepository {
         val db = firestore ?: return
         try {
             val requestId = "${from.id}_${to.id}"
+            val fromAvatar = if (from.avatarUrl.startsWith("file:", ignoreCase = true)) {
+                ImageUtils.fileUriToBase64(from.avatarUrl) ?: from.avatarUrl
+            } else {
+                from.avatarUrl
+            }
             val requestData = mapOf(
                 "id" to requestId,
                 "fromUserId" to from.id,
                 "fromUserName" to from.name,
                 "fromUserUsername" to from.username,
-                "fromUserAvatarUrl" to from.avatarUrl,
+                "fromUserAvatarUrl" to fromAvatar,
                 "timestamp" to System.currentTimeMillis()
             )
             // 1 batch atomico: richiesta incorporata nel doc del destinatario (mappa
             // pendingRequests.<fromId>) + id nell'array sentRequestIds del mittente.
-            db.batch().apply {
-                set(
-                    db.collection(USERS_COLLECTION).document(to.id),
-                    mapOf("pendingRequests" to mapOf(from.id to requestData)),
-                    SetOptions.merge()
-                )
-                set(
-                    db.collection(USERS_COLLECTION).document(from.id),
-                    mapOf("sentRequestIds" to FieldValue.arrayUnion(to.id)),
-                    SetOptions.merge()
-                )
-            }.commit()
+            val batch = db.batch()
+            batch.update(
+                db.collection(USERS_COLLECTION).document(to.id),
+                "pendingRequests.${from.id}", requestData,
+                "updatedAt", System.currentTimeMillis()
+            )
+            batch.update(
+                db.collection(USERS_COLLECTION).document(from.id),
+                "sentRequestIds", FieldValue.arrayUnion(to.id)
+            )
+            batch.commit()
+                .addOnSuccessListener { Log.d(TAG, "Richiesta inviata con successo a ${to.name}") }
+                .addOnFailureListener { e -> Log.w(TAG, "Errore invio richiesta: ${e.message}") }
         } catch (e: Exception) {
             Log.e(TAG, "sendFollowRequest error: ${e.message}")
         }
@@ -361,8 +390,28 @@ object FirebaseRepository {
         if (data == null) return null
         val name = data["name"] as? String ?: "Utente"
         val username = data["username"] as? String ?: id
-        val avatarUrl = data["avatarUrl"] as? String ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
-        val coverUrl = data["coverUrl"] as? String
+        val rawAvatar = data["avatarUrl"] as? String
+        val rawCover = data["coverUrl"] as? String
+
+        val cleanAvatar = when {
+            rawAvatar.isNullOrBlank() -> "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
+            rawAvatar.startsWith("file:", ignoreCase = true) -> {
+                val path = rawAvatar.removePrefix("file://").removePrefix("file:")
+                if (File(path).exists()) rawAvatar
+                else "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400"
+            }
+            else -> rawAvatar
+        }
+
+        val cleanCover = when {
+            rawCover.isNullOrBlank() -> null
+            rawCover.startsWith("file:", ignoreCase = true) -> {
+                val path = rawCover.removePrefix("file://").removePrefix("file:")
+                if (File(path).exists()) rawCover else null
+            }
+            else -> rawCover
+        }
+
         val bio = data["bio"] as? String ?: ""
         val isOnline = data["isOnline"] as? Boolean ?: false
         val isLiveNow = data["isLiveNow"] as? Boolean ?: false
@@ -401,8 +450,8 @@ object FirebaseRepository {
             id = id,
             name = name,
             username = username,
-            avatarUrl = avatarUrl,
-            coverUrl = coverUrl,
+            avatarUrl = cleanAvatar,
+            coverUrl = cleanCover,
             bio = bio,
             isOnline = isOnline,
             isLiveNow = isLiveNow,
