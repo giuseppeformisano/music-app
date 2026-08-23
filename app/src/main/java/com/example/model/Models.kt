@@ -36,7 +36,22 @@ data class User(
     // pendingRequests = ricevute (in attesa); sentRequestIds = inviate da me
     val pendingRequests: List<FriendRequest> = emptyList(),
     val sentRequestIds: List<String> = emptyList()
-)
+) {
+    val isActuallyLive: Boolean
+        get() {
+            if (!isLiveNow || currentTrack == null) return false
+            if (isCurrentUser) return true
+            val now = System.currentTimeMillis()
+            if (trackProgressAt > 0L) {
+                val trackDuration = if (currentTrack.durationMs > 0L) currentTrack.durationMs else 240_000L
+                val remainingMs = (trackDuration - trackProgressMs).coerceAtLeast(30_000L)
+                if (now - trackProgressAt > remainingMs + 45_000L) {
+                    return false
+                }
+            }
+            return true
+        }
+}
 
 data class UserStats(
     val sharedCount: Int = 142,

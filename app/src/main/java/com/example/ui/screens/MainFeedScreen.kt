@@ -155,7 +155,7 @@ fun MainFeedScreen(
     val coroutineScope = rememberCoroutineScope()
     
     // Utenti live degli amici: SEMPRE con dati freschi da `stories` (niente copie statiche)
-    val liveFriends = stories.filter { it.currentTrack != null && !it.isCurrentUser }
+    val liveFriends = stories.filter { it.isActuallyLive && !it.isCurrentUser }
     // Animazione d'ingresso pilotata dagli ID (dati sempre aggiornati). Ogni utente non
     // ancora "visto" anima l'entrata completa (2s); poi diventa item normale.
     val seenLiveIds = remember { mutableStateListOf<String>() }

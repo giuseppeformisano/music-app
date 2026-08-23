@@ -48,16 +48,14 @@ class AmazonMusicNotificationListenerService : NotificationListenerService() {
                 ComponentName(this, AmazonMusicNotificationListenerService::class.java)
             )
             val amazonMusic = controllers.firstOrNull { it.packageName == AMAZON_MUSIC_PACKAGE }
-            // Sessione assente = app chiusa / stop → esce dalla live
+            // Sessione assente o riproduzione terminata/in pausa -> esce dalla live
             if (amazonMusic == null) { stopPlayback(); return }
 
-            // In PAUSA resta in live (sta ancora ascoltando): mantiene il brano corrente
-            // e non aggiorna. Esce solo quando la sessione sparisce o va in STOP/NONE.
             val state = amazonMusic.playbackState?.state
             val isPlaying = state == PlaybackState.STATE_PLAYING ||
                             state == PlaybackState.STATE_BUFFERING
             if (!isPlaying) {
-                if (state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE) {
+                if (state == PlaybackState.STATE_PAUSED || state == PlaybackState.STATE_STOPPED || state == PlaybackState.STATE_NONE) {
                     stopPlayback()
                 }
                 return

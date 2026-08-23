@@ -160,9 +160,25 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         viewModel.setOnline(false)
-        // NON fermiamo il polling: un utente Premium che esce dall'app ma continua ad
-        // ascoltare deve restare live per gli altri (il polling gira finché il processo vive)
         try { unregisterReceiver(spotifyReceiver) } catch (e: Exception) { /* receiver was not registered */ }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        viewModel.setOnline(false)
+        val isPremium = viewModel.uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
+        if (!isPremium) {
+            viewModel.clearNowPlayingFromBroadcast(source = "spotify")
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        viewModel.setOnline(false)
+        val isPremium = viewModel.uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
+        if (!isPremium) {
+            viewModel.clearNowPlayingFromBroadcast(source = "spotify")
+        }
     }
 
     private fun createNotificationChannel() {
