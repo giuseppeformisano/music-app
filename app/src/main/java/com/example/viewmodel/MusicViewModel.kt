@@ -381,12 +381,15 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun checkNotificationListenerEnabled() {
-        val spotifyEnabled = com.example.SpotifyNotificationListenerService.isEnabled(appContext)
-        val amazonEnabled = com.example.AmazonMusicNotificationListenerService.isEnabled(appContext)
-        val enabled = spotifyEnabled || amazonEnabled
+        val enabled = com.example.MusicNotificationListenerService.isEnabled(appContext)
         _uiState.update { it.copy(isNotificationListenerEnabled = enabled) }
-        if (spotifyEnabled) registerSpotifyNotificationListenerCallbacks()
-        if (amazonEnabled) registerAmazonMusicNotificationListenerCallbacks()
+        registerMusicNotificationListenerCallbacks()
+        syncNotificationListenerServiceFlags()
+    }
+
+    private fun syncNotificationListenerServiceFlags() {
+        com.example.MusicNotificationListenerService.isSpotifyFreeEnabled = _uiState.value.connectedServices["spotify_free"] == true
+        com.example.MusicNotificationListenerService.isAmazonMusicEnabled = _uiState.value.connectedServices["amazon_music"] == true
     }
 
     fun openNotificationListenerSettings(context: Context) {
@@ -396,39 +399,29 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    // La sorgente segue la SCELTA: le notifiche Spotify alimentano la live SOLO in
-    // modalità Free (anche se sono presenti token Premium, non vengono usati).
-    private fun isSpotifyFreeMode() = _uiState.value.connectedServices["spotify_free"] == true
-
-    private fun registerSpotifyNotificationListenerCallbacks() {
-        com.example.SpotifyNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
-            if (isSpotifyFreeMode()) {
-                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = "spotify")
+    private fun registerMusicNotificationListenerCallbacks() {
+        com.example.MusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl, source ->
+            val isSourceEnabled = when (source) {
+                "spotify" -> _uiState.value.connectedServices["spotify_free"] == true
+                "amazon_music" -> _uiState.value.connectedServices["amazon_music"] == true
+                else -> true
+            }
+            if (isSourceEnabled) {
+                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = source)
             }
         }
-        com.example.SpotifyNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
-            if (isSpotifyFreeMode()) {
+        com.example.MusicNotificationListenerService.onProgressChanged = { positionMs, durationMs, source ->
+            val isSourceEnabled = when (source) {
+                "spotify" -> _uiState.value.connectedServices["spotify_free"] == true
+                "amazon_music" -> _uiState.value.connectedServices["amazon_music"] == true
+                else -> true
+            }
+            if (isSourceEnabled) {
                 updateLiveProgress(positionMs, durationMs)
             }
         }
-        com.example.SpotifyNotificationListenerService.onPlaybackStopped = {
-            if (isSpotifyFreeMode()) {
-                clearNowPlayingFromBroadcast(source = "spotify")
-            }
-        }
-    }
-
-    private fun isAmazonMode() = _uiState.value.connectedServices["amazon_music"] == true
-
-    private fun registerAmazonMusicNotificationListenerCallbacks() {
-        com.example.AmazonMusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl ->
-            if (isAmazonMode()) updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = "amazon_music")
-        }
-        com.example.AmazonMusicNotificationListenerService.onProgressChanged = { positionMs, durationMs ->
-            if (isAmazonMode()) updateLiveProgress(positionMs, durationMs)
-        }
-        com.example.AmazonMusicNotificationListenerService.onPlaybackStopped = {
-            if (isAmazonMode()) clearNowPlayingFromBroadcast(source = "amazon_music")
+        com.example.MusicNotificationListenerService.onPlaybackStopped = { source ->
+            clearNowPlayingFromBroadcast(source = source)
         }
     }
 
@@ -684,24 +677,25 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         currentServices[serviceKey] = newState
         persistServiceState(serviceKey, newState)
 
-        // Aggancio/sgancio del listener notifiche del servizio giusto.
+        syncNotificationListenerServiceFlags()
+
         when (serviceKey) {
             "spotify_free" -> {
                 if (newState) {
-                    com.example.SpotifyNotificationListenerService.startListening(appContext)
+                    com.example.MusicNotificationListenerService.startListening(appContext)
                     stopSpotifyPolling() // sorgente = notifiche, non API
-                } else {
-                    com.example.SpotifyNotificationListenerService.stopListening()
                 }
             }
             "amazon_music" -> {
-                if (newState) com.example.AmazonMusicNotificationListenerService.startListening(appContext)
-                else com.example.AmazonMusicNotificationListenerService.stopListening()
+                if (newState) {
+                    com.example.MusicNotificationListenerService.startListening(appContext)
+                }
             }
         }
-        // Disconnessione di un servizio a notifiche → la live si spegne subito
+        // Disconnessione di un servizio a notifiche -> la live si spegne subito
         if (!newState && (serviceKey == "spotify_free" || serviceKey == "amazon_music")) {
-            clearNowPlayingFromBroadcast()
+            val src = if (serviceKey == "spotify_free") "spotify" else "amazon_music"
+            clearNowPlayingFromBroadcast(source = src)
         }
 
         val serviceName = when (serviceKey) {
@@ -710,13 +704,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             else -> serviceKey.replaceFirstChar { it.uppercase() }
         }
 
-        // Al collegamento (di un servizio basato su notifiche) guida verso il permesso
-        // del listener SPECIFICO di quel servizio.
-        val listenerEnabled = when (serviceKey) {
-            "amazon_music" -> com.example.AmazonMusicNotificationListenerService.isEnabled(appContext)
-            else -> com.example.SpotifyNotificationListenerService.isEnabled(appContext)
-        }
-        if (newState && !listenerEnabled) {
+        val listenerEnabled = com.example.MusicNotificationListenerService.isEnabled(appContext)
+        val isNotificationService = (serviceKey == "spotify_free" || serviceKey == "amazon_music")
+        if (newState && isNotificationService && !listenerEnabled) {
             openNotificationListenerSettings(appContext)
             _uiState.update {
                 it.copy(
