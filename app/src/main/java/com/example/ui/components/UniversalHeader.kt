@@ -137,42 +137,29 @@ fun UniversalHeader(
             }
         }
 
-        // Estrema Destra: Avatar Profilo (Sempre visibile con fallback)
-        Box(
+        // Estrema Destra: Avatar / Icona Profilo (senza riquadro o sfondi grigi)
+        IconButton(
+            onClick = onProfileClick,
             modifier = Modifier
                 .size(44.dp)
-                .clip(CircleShape)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = onProfileClick
-                )
-                .testTag("header_profile_button"),
-            contentAlignment = Alignment.Center
+                .testTag("header_profile_button")
         ) {
-            Box(
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF222228)),
-                contentAlignment = Alignment.Center
-            ) {
+            if (currentUser.avatarUrl.isNotBlank()) {
+                AsyncImage(
+                    model = currentUser.avatarUrl,
+                    contentDescription = "Profilo di ${currentUser.name}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                )
+            } else {
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Profilo Utente",
-                    tint = PureWhite.copy(alpha = 0.85f),
-                    modifier = Modifier.size(20.dp)
+                    tint = PureWhite,
+                    modifier = Modifier.size(24.dp)
                 )
-                if (currentUser.avatarUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = currentUser.avatarUrl,
-                        contentDescription = "Profilo di ${currentUser.name}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(CircleShape)
-                    )
-                }
             }
         }
     }

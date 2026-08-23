@@ -739,19 +739,22 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun updateProfile(name: String, username: String, avatarUrl: String, coverUrl: String? = null, bio: String = "") {
         viewModelScope.launch(Dispatchers.IO) {
             val cleanUsername = username.trim().removePrefix("@")
+            val cleanAvatar = avatarUrl.trim()
+            val cleanCover = coverUrl?.trim()
             val updatedUser = _uiState.value.currentUser.copy(
                 name = name.trim().ifBlank { _uiState.value.currentUser.name },
                 username = cleanUsername.ifBlank { _uiState.value.currentUser.username },
-                avatarUrl = avatarUrl.trim().ifBlank { _uiState.value.currentUser.avatarUrl },
-                coverUrl = if (!coverUrl.isNullOrBlank()) coverUrl.trim() else _uiState.value.currentUser.coverUrl,
-                bio = bio.trim()
+                avatarUrl = if (cleanAvatar.isNotBlank()) cleanAvatar else _uiState.value.currentUser.avatarUrl,
+                coverUrl = if (!cleanCover.isNullOrBlank()) cleanCover else _uiState.value.currentUser.coverUrl,
+                bio = bio.trim(),
+                isCurrentUser = true
             )
             saveUserLocalPrefs(updatedUser)
             withContext(Dispatchers.Main) {
                 _uiState.update {
                     it.copy(
                         currentUser = updatedUser,
-                        activeProfileUser = if (it.activeProfileUser?.id == updatedUser.id) updatedUser else it.activeProfileUser,
+                        activeProfileUser = updatedUser,
                         feedbackToast = "Profilo aggiornato: @${updatedUser.username}"
                     )
                 }
@@ -936,8 +939,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun closeStory() { _uiState.update { it.copy(activeStoryUserIndex = null) } }
 
     fun openProfile(user: User) {
-        _uiState.update { it.copy(activeProfileUser = user) }
-        if (user.isCurrentUser) {
+        val isMe = user.isCurrentUser || (user.id.isNotBlank() && user.id == _uiState.value.currentUser.id)
+        val target = if (isMe) _uiState.value.currentUser.copy(isCurrentUser = true) else user
+        _uiState.update { it.copy(activeProfileUser = target) }
+        if (isMe) {
             // Usa sempre i dati freschi dallo stato (non l'oggetto passato che potrebbe essere stale)
             loadSocialDetails(_uiState.value.currentUser)
         }

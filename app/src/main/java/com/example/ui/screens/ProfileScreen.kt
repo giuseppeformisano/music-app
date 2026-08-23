@@ -164,9 +164,9 @@ fun ProfileScreen(
     var showFollowingDialog by remember { mutableStateOf(false) }
 
     // Copertina di sfondo atmosferico: custom cover > track in riproduzione > prima condivisione > default
-    val atmosphericCoverUrl = user.coverUrl
-        ?: user.currentTrack?.coverUrl
-        ?: user.sharedTracks.firstOrNull()?.coverUrl
+    val atmosphericCoverUrl = user.coverUrl?.takeIf { it.isNotBlank() }
+        ?: user.currentTrack?.coverUrl?.takeIf { it.isNotBlank() }
+        ?: user.sharedTracks.firstOrNull()?.coverUrl?.takeIf { it.isNotBlank() }
         ?: "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&auto=format&fit=crop&q=80"
 
     Box(
@@ -481,27 +481,30 @@ private fun UserIdentityBlock(
             // Sinistra: Avatar + Nome + @username
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
-                    modifier = Modifier
-                        .size(86.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF222228)),
+                    modifier = Modifier.size(86.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Person,
-                        contentDescription = "Avatar",
-                        tint = PureWhite.copy(alpha = 0.8f),
-                        modifier = Modifier.size(44.dp)
-                    )
-                    if (user.avatarUrl.isNotBlank()) {
-                        AsyncImage(
-                            model = user.avatarUrl,
-                            contentDescription = "Avatar ${user.name}",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(CircleShape)
+                            .background(Color(0xFF1E1E24)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Person,
+                            contentDescription = "Avatar",
+                            tint = PureWhite.copy(alpha = 0.8f),
+                            modifier = Modifier.size(44.dp)
                         )
+                        if (user.avatarUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = user.avatarUrl,
+                                contentDescription = "Avatar ${user.name}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
                     }
                     com.example.ui.components.PresenceDot(
                         isOnline = user.isOnline,

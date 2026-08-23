@@ -255,13 +255,14 @@ fun MusicApp(viewModel: MusicViewModel) {
             exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
         ) {
             uiState.activeProfileUser?.let { activeUser ->
-                val displayUser = if (activeUser.isCurrentUser) uiState.currentUser else activeUser
-                if (displayUser.isCurrentUser) {
+                val isMe = activeUser.isCurrentUser || (uiState.currentUser.id.isNotBlank() && activeUser.id == uiState.currentUser.id)
+                val displayUser = if (isMe) uiState.currentUser.copy(isCurrentUser = true) else activeUser
+                if (isMe) {
                     LaunchedEffect(displayUser.id) { viewModel.loadSocialDetails(displayUser) }
                 }
                 ProfileScreen(
                     user = displayUser,
-                    isCurrentUser = displayUser.isCurrentUser,
+                    isCurrentUser = isMe,
                     isFollowing = uiState.currentUser.followingIds.contains(displayUser.id),
                     isSpotifyConnected = uiState.isSpotifyConnected,
                     connectedServices = uiState.connectedServices,
