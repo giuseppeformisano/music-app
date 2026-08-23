@@ -1210,8 +1210,10 @@ private fun EditProfileDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val processed = com.example.data.ImageUtils.processImageUri(context, it.toString(), maxDimension = 320, quality = 80)
-            avatarUrlInput = processed
+            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "avatar", user.id, maxDimension = 320, quality = 80)
+            if (localPath != null) {
+                avatarUrlInput = localPath
+            }
         }
     }
 
@@ -1219,8 +1221,10 @@ private fun EditProfileDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val processed = com.example.data.ImageUtils.processImageUri(context, it.toString(), maxDimension = 720, quality = 80)
-            coverUrlInput = processed
+            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "cover", user.id, maxDimension = 720, quality = 80)
+            if (localPath != null) {
+                coverUrlInput = localPath
+            }
         }
     }
 

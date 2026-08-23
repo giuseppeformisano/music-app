@@ -738,24 +738,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateProfile(name: String, username: String, avatarUrl: String, coverUrl: String? = null, bio: String = "") {
         viewModelScope.launch(Dispatchers.IO) {
-            val processedAvatar = if (avatarUrl.startsWith("content://") || avatarUrl.startsWith("file://")) {
-                com.example.data.ImageUtils.processImageUri(appContext, avatarUrl, maxDimension = 320, quality = 80)
-            } else {
-                avatarUrl
-            }
-
-            val processedCover = if (coverUrl != null && (coverUrl.startsWith("content://") || coverUrl.startsWith("file://"))) {
-                com.example.data.ImageUtils.processImageUri(appContext, coverUrl, maxDimension = 720, quality = 80)
-            } else {
-                coverUrl
-            }
-
             val cleanUsername = username.trim().removePrefix("@")
             val updatedUser = _uiState.value.currentUser.copy(
                 name = name.trim().ifBlank { _uiState.value.currentUser.name },
                 username = cleanUsername.ifBlank { _uiState.value.currentUser.username },
-                avatarUrl = processedAvatar.trim().ifBlank { _uiState.value.currentUser.avatarUrl },
-                coverUrl = if (!processedCover.isNullOrBlank()) processedCover.trim() else _uiState.value.currentUser.coverUrl,
+                avatarUrl = avatarUrl.trim().ifBlank { _uiState.value.currentUser.avatarUrl },
+                coverUrl = if (!coverUrl.isNullOrBlank()) coverUrl.trim() else _uiState.value.currentUser.coverUrl,
                 bio = bio.trim()
             )
             saveUserLocalPrefs(updatedUser)
@@ -768,7 +756,11 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
             }
-            FirebaseRepository.syncCurrentUser(updatedUser)
+            // Per Firestore, se l'immagine è un file locale, convertila in Base64 per inviarla al cloud
+            val firestoreAvatar = com.example.data.ImageUtils.fileUriToBase64(updatedUser.avatarUrl) ?: updatedUser.avatarUrl
+            val firestoreCover = com.example.data.ImageUtils.fileUriToBase64(updatedUser.coverUrl) ?: updatedUser.coverUrl
+            val firestoreUser = updatedUser.copy(avatarUrl = firestoreAvatar, coverUrl = firestoreCover)
+            FirebaseRepository.syncCurrentUser(firestoreUser)
         }
     }
 
