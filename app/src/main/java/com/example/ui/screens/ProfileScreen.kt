@@ -1108,26 +1108,39 @@ private fun FollowersFollowingDialog(
     }
 
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .fillMaxHeight(0.78f)
-            ) {
-                // Header — solo titolo, niente X
-                Text(
-                    text = title,
-                    color = PureWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp,
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 14.dp)
-                )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp)
+                .padding(top = 36.dp, bottom = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                // Header standardizzato in alto a sinistra
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = title,
+                        color = PureWhite,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp
+                    )
+                }
 
                 // Campo di ricerca
                 Row(
                     modifier = Modifier
-                        .padding(bottom = 12.dp)
                         .fillMaxWidth()
+                        .padding(bottom = 14.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(PureWhite.copy(alpha = 0.06f))
                         .padding(horizontal = 14.dp, vertical = 10.dp),
@@ -1153,14 +1166,7 @@ private fun FollowersFollowingDialog(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(PureWhite.copy(alpha = 0.06f))
-                )
-
-                // Lista utenti o empty state
+                // Lista utenti o empty state (senza riquadri grigi di sfondo)
                 if (filtered.isEmpty()) {
                     Box(
                         modifier = Modifier
@@ -1169,8 +1175,8 @@ private fun FollowersFollowingDialog(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "nessun utente ancora",
-                            color = SubtitleGray,
+                            text = "Nessun utente",
+                            color = SubtitleGray.copy(alpha = 0.6f),
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
                         )
@@ -1180,17 +1186,18 @@ private fun FollowersFollowingDialog(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 24.dp, vertical = 8.dp)
+                        contentPadding = PaddingValues(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(filtered) { u ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 8.dp)
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
-                                    ) { onOpenProfile(u) },
+                                    ) { onOpenProfile(u) }
+                                    .padding(vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 AsyncImage(
@@ -1243,8 +1250,31 @@ private fun FollowersFollowingDialog(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Pulsante Chiudi
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PureWhite,
+                    contentColor = BlackPitch
+                )
+            ) {
+                Text(
+                    text = "Chiudi",
+                    color = BlackPitch,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
         }
     }
+}
 
 @Composable
 private fun EditProfileDialog(
@@ -1641,86 +1671,112 @@ private fun ConnectAccountsDialog(
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp)
+                .padding(top = 36.dp, bottom = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header standardizzato in alto a sinistra
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
+            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                // Header standardizzato in alto a sinistra
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            text = "Collega Account",
+                            color = PureWhite,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.4).sp
+                        )
+                        Text(
+                            text = "Scegli i tuoi servizi di streaming",
+                            color = SubtitleGray,
+                            fontSize = 13.sp,
+                            letterSpacing = 0.2.sp
+                        )
+                    }
+                }
+
+                // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
+                // l'altro viene oscurato e reso non cliccabile.
+                val premiumConnected = connectedServices["spotify"] == true
+                val freeConnected = connectedServices["spotify_free"] == true
+
+                StreamingAccountItem(
+                    serviceName = "Spotify Premium",
+                    serviceDesc = "Collega l'account: dati in tempo reale via API",
+                    isConnected = premiumConnected,
+                    enabled = !freeConnected,
+                    brandColor = Color(0xFF1DB954),
+                    iconComposable = { SpotifyBrandLogo() },
+                    onToggle = {
+                        if (premiumConnected) onDisconnectSpotify()
+                        else onConnectSpotify()
+                    },
+                    testTag = "service_spotify_premium"
+                )
+
+                if (spotifyError != null) {
                     Text(
-                        text = "Collega Account",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
-                    )
-                    Text(
-                        text = "Scegli i tuoi servizi di streaming",
-                        color = SubtitleGray,
-                        fontSize = 13.sp,
-                        letterSpacing = 0.2.sp
+                        text = "Errore: $spotifyError",
+                        color = Color(0xFFFF6B6B),
+                        fontSize = 11.sp,
+                        modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
                     )
                 }
-            }
 
-            // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
-            // l'altro viene oscurato e reso non cliccabile.
-            val premiumConnected = connectedServices["spotify"] == true
-            val freeConnected = connectedServices["spotify_free"] == true
+                Spacer(modifier = Modifier.height(12.dp))
 
-            StreamingAccountItem(
-                serviceName = "Spotify Premium",
-                serviceDesc = "Collega l'account: dati in tempo reale via API",
-                isConnected = premiumConnected,
-                enabled = !freeConnected,
-                brandColor = Color(0xFF1DB954),
-                iconComposable = { SpotifyBrandLogo() },
-                onToggle = {
-                    if (premiumConnected) onDisconnectSpotify()
-                    else onConnectSpotify()
-                },
-                testTag = "service_spotify_premium"
-            )
+                // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
+                // funzionalmente dipende dalle notifiche.
+                StreamingAccountItem(
+                    serviceName = "Spotify Free",
+                    serviceDesc = "Rileva l'ascolto dalle notifiche",
+                    isConnected = freeConnected,
+                    enabled = !premiumConnected,
+                    brandColor = Color(0xFF1DB954),
+                    iconComposable = { SpotifyBrandLogo() },
+                    onToggle = { onToggleService("spotify_free") },
+                    testTag = "service_spotify_free"
+                )
 
-            if (spotifyError != null) {
-                Text(
-                    text = "Errore: $spotifyError",
-                    color = Color(0xFFFF6B6B),
-                    fontSize = 11.sp,
-                    modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
+                Spacer(modifier = Modifier.height(12.dp))
+
+                StreamingAccountItem(
+                    serviceName = "Amazon Music",
+                    serviceDesc = "Rileva l'ascolto dalle notifiche",
+                    isConnected = connectedServices["amazon_music"] == true,
+                    brandColor = Color(0xFF00A8E1),
+                    iconComposable = { AmazonMusicBrandLogo() },
+                    onToggle = { onToggleService("amazon_music") },
+                    testTag = "service_amazon_music"
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
-            // funzionalmente dipende dalle notifiche.
-            StreamingAccountItem(
-                serviceName = "Spotify Free",
-                serviceDesc = "Rileva l'ascolto dalle notifiche",
-                isConnected = freeConnected,
-                enabled = !premiumConnected,
-                brandColor = Color(0xFF1DB954),
-                iconComposable = { SpotifyBrandLogo() },
-                onToggle = { onToggleService("spotify_free") },
-                testTag = "service_spotify_free"
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            StreamingAccountItem(
-                serviceName = "Amazon Music",
-                serviceDesc = "Rileva l'ascolto dalle notifiche",
-                isConnected = connectedServices["amazon_music"] == true,
-                brandColor = Color(0xFF00A8E1),
-                iconComposable = { AmazonMusicBrandLogo() },
-                onToggle = { onToggleService("amazon_music") },
-                testTag = "service_amazon_music"
-            )
+            // Pulsante Chiudi
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PureWhite,
+                    contentColor = BlackPitch
+                )
+            ) {
+                Text(
+                    text = "Chiudi",
+                    color = BlackPitch,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
         }
     }
 }
@@ -1961,7 +2017,7 @@ private fun SettingsDialog(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Contenuto scrollabile delle impostazioni
+            // Contenuto scrollabile delle impostazioni (fuso direttamente con lo sfondo)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1974,24 +2030,25 @@ private fun SettingsDialog(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 1.5.sp,
-                    modifier = Modifier.padding(bottom = 12.dp)
+                    modifier = Modifier.padding(bottom = 8.dp)
                 )
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF16161A))
-                        .border(1.dp, Color(0xFF26262E), RoundedCornerShape(16.dp))
-                        .clickable { onToggleApplyCoverToFeed(!applyCoverToFeed) }
-                        .padding(16.dp),
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onToggleApplyCoverToFeed(!applyCoverToFeed) }
+                        )
+                        .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(end = 12.dp)
+                            .padding(end = 16.dp)
                     ) {
                         Text(
                             text = "Copertina su Live e Feed",
@@ -2003,8 +2060,8 @@ private fun SettingsDialog(
                         Text(
                             text = "Applica la tua immagine di copertina profilo come sfondo atmosferico anche nelle sezioni Live e Feed",
                             color = SubtitleGray,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp
+                            fontSize = 13.sp,
+                            lineHeight = 17.sp
                         )
                     }
 
@@ -2021,7 +2078,7 @@ private fun SettingsDialog(
                 }
             }
 
-            // Pulsante di chiusura
+            // Pulsante Salva modifiche coerente con Modifica Profilo
             Button(
                 onClick = onDismiss,
                 modifier = Modifier
@@ -2033,10 +2090,18 @@ private fun SettingsDialog(
                     contentColor = BlackPitch
                 )
             ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = BlackPitch,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Chiudi",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
+                    text = "Salva modifiche",
+                    color = BlackPitch,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
                 )
             }
         }

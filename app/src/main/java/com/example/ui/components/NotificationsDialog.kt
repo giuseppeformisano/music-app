@@ -1,7 +1,6 @@
 package com.example.ui.components
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -10,15 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,8 +26,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -44,10 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.model.FriendRequest
+import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
-
-private val RowBg = Color(0xFF0E0E0E)
 
 @Composable
 fun NotificationsDialog(
@@ -64,88 +62,114 @@ fun NotificationsDialog(
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp)
+                .padding(top = 36.dp, bottom = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header standardizzato in alto a sinistra
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                // Header standardizzato in alto a sinistra
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Notifiche",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
-                    )
-                    if (pendingRequests.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(Color(0xFFFF3B30))
-                                .padding(horizontal = 7.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = pendingRequests.size.toString(),
-                                color = PureWhite,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Notifiche",
+                            color = PureWhite,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.4).sp
+                        )
+                        if (pendingRequests.isNotEmpty()) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFF3B30))
+                                    .padding(horizontal = 7.dp, vertical = 2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = pendingRequests.size.toString(),
+                                    color = PureWhite,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+
+                if (pendingRequests.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Notifications,
+                                contentDescription = null,
+                                tint = SubtitleGray.copy(alpha = 0.25f),
+                                modifier = Modifier.size(36.dp)
                             )
+                            Spacer(modifier = Modifier.height(10.dp))
+                            Text(
+                                text = "Nessuna notifica",
+                                color = SubtitleGray.copy(alpha = 0.5f),
+                                fontSize = 13.sp
+                            )
+                        }
+                    }
+                } else {
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Text(
+                            text = "Richieste di follow",
+                            color = SubtitleGray.copy(alpha = 0.6f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 0.3.sp
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f),
+                            contentPadding = PaddingValues(vertical = 4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            items(pendingRequests, key = { it.id }) { request ->
+                                FriendRequestRow(
+                                    request = request,
+                                    onAccept = { onAccept(request) },
+                                    onReject = { onReject(request) }
+                                )
+                            }
                         }
                     }
                 }
             }
 
-            if (pendingRequests.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = null,
-                            tint = SubtitleGray.copy(alpha = 0.25f),
-                            modifier = Modifier.size(36.dp)
-                        )
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "Nessuna notifica",
-                            color = SubtitleGray.copy(alpha = 0.5f),
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            } else {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    Text(
-                        text = "Richieste di follow",
-                        color = SubtitleGray.copy(alpha = 0.6f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 0.3.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f),
-                        contentPadding = PaddingValues(bottom = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        items(pendingRequests, key = { it.id }) { request ->
-                            FriendRequestRow(
-                                request = request,
-                                onAccept = { onAccept(request) },
-                                onReject = { onReject(request) }
-                            )
-                        }
-                    }
-                }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Pulsante Chiudi
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PureWhite,
+                    contentColor = BlackPitch
+                )
+            ) {
+                Text(
+                    text = "Chiudi",
+                    color = BlackPitch,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
             }
         }
     }
@@ -160,9 +184,7 @@ private fun FriendRequestRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(RowBg)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
@@ -170,18 +192,18 @@ private fun FriendRequestRow(
             contentDescription = request.fromUserName,
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .size(42.dp)
+                .size(44.dp)
                 .clip(CircleShape)
         )
 
-        Spacer(modifier = Modifier.width(11.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = request.fromUserName,
                 color = PureWhite,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -196,12 +218,12 @@ private fun FriendRequestRow(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF1A1A1A))
+                    .background(PureWhite.copy(alpha = 0.08f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -213,12 +235,12 @@ private fun FriendRequestRow(
                     imageVector = Icons.Default.Close,
                     contentDescription = "Rifiuta",
                     tint = SubtitleGray,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
             Box(
                 modifier = Modifier
-                    .size(32.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .background(PureWhite)
                     .clickable(
@@ -232,7 +254,7 @@ private fun FriendRequestRow(
                     imageVector = Icons.Default.Check,
                     contentDescription = "Accetta",
                     tint = Color.Black,
-                    modifier = Modifier.size(14.dp)
+                    modifier = Modifier.size(16.dp)
                 )
             }
         }

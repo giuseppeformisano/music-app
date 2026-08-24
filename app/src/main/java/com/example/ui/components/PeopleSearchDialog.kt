@@ -9,12 +9,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,6 +27,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
@@ -41,16 +45,15 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.model.User
+import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
-
-private val RowBg = Color(0xFF0E0E0E)
-private val FieldBg = Color(0xFF111111)
 
 @Composable
 fun PeopleSearchDialog(
@@ -67,21 +70,33 @@ fun PeopleSearchDialog(
     val focusManager = LocalFocusManager.current
 
     UtilityDialog(onDismiss = onDismiss) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth(0.92f)
-                    .fillMaxHeight(0.78f)
-                    .padding(horizontal = 4.dp)
-            ) {
-                Text(
-                    text = "Cerca persone",
-                    color = PureWhite,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp)
+                .padding(top = 36.dp, bottom = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                // Header standardizzato in alto a sinistra
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Cerca persone",
+                        color = PureWhite,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp
+                    )
+                }
 
                 OutlinedTextField(
                     value = searchQuery,
@@ -107,30 +122,31 @@ fun PeopleSearchDialog(
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = PureWhite.copy(alpha = 0.15f),
                         unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = FieldBg,
-                        unfocusedContainerColor = FieldBg,
+                        focusedContainerColor = PureWhite.copy(alpha = 0.06f),
+                        unfocusedContainerColor = PureWhite.copy(alpha = 0.06f),
                         focusedTextColor = PureWhite,
                         unfocusedTextColor = PureWhite,
                         cursorColor = PureWhite
                     )
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 if (searchResults.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         Text(
                             text = if (searchQuery.isBlank()) "Cerca qualcuno per nome o username"
                                    else "Nessun risultato per \"$searchQuery\"",
                             color = SubtitleGray.copy(alpha = 0.5f),
-                            fontSize = 13.sp
+                            fontSize = 14.sp,
+                            textAlign = TextAlign.Center
                         )
                     }
                 } else {
                     LazyColumn(
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(bottom = 8.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                        contentPadding = PaddingValues(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         items(searchResults, key = { it.id }) { user ->
                             val alreadyFollowing = followingIds.contains(user.id)
@@ -146,8 +162,31 @@ fun PeopleSearchDialog(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Pulsante Chiudi
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PureWhite,
+                    contentColor = BlackPitch
+                )
+            ) {
+                Text(
+                    text = "Chiudi",
+                    color = BlackPitch,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 15.sp
+                )
+            }
         }
     }
+}
 
 @Composable
 private fun PeopleResultRow(
@@ -160,23 +199,21 @@ private fun PeopleResultRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(RowBg)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 onClick = onOpenProfile
             )
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(modifier = Modifier.size(42.dp)) {
+        Box(modifier = Modifier.size(44.dp)) {
             AsyncImage(
                 model = user.avatarUrl,
                 contentDescription = user.name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(42.dp)
+                    .size(44.dp)
                     .clip(CircleShape)
             )
             // Lo stato (online/live) è visibile SOLO se segui già la persona.
@@ -190,22 +227,23 @@ private fun PeopleResultRow(
             }
         }
 
-        Spacer(modifier = Modifier.width(11.dp))
+        Spacer(modifier = Modifier.width(12.dp))
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = user.name,
                 color = PureWhite,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = "@${user.username}",
-                color = SubtitleGray.copy(alpha = 0.7f),
+                text = "@${user.username.removePrefix("@")}",
+                color = SubtitleGray,
                 fontSize = 12.sp,
-                maxLines = 1
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
