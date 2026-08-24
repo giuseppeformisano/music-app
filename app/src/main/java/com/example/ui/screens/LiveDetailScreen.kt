@@ -31,7 +31,18 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Smartphone
+import androidx.compose.material.icons.filled.Speaker
+import androidx.compose.material.icons.filled.SportsEsports
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -242,7 +253,12 @@ fun LiveDetailScreen(
                     )
                 }
 
-                // 2. AVATAR PROFILO CON CERCHIO LUMINOSO + EQUALIZZATORI
+                // 2. AVATAR PROFILO CON CERCHIO LUMINOSO + EQUALIZZATORI + BADGE SORGENTE/DISPOSITIVO
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -306,6 +322,10 @@ fun LiveDetailScreen(
                         isReversed = false,
                         modifier = Modifier.padding(start = 16.dp)
                     )
+                }
+
+                // Badge: a sinistra la piattaforma, a destra il dispositivo (sfondo trasparente)
+                LiveSourceDeviceBadge(track = track, accent = primaryColor)
                 }
 
                 // 3. SEZIONE BRANO: Copertina + Titolo/Artista + Barra Temporale
@@ -534,6 +554,112 @@ fun LiveDetailScreen(
         }
       }
     }
+}
+
+/**
+ * Badge sorgente/dispositivo sotto l'avatar. Sfondo trasparente, fuso con la pagina.
+ * Sinistra: piattaforma di ascolto (Spotify / Amazon Music).
+ * Destra: dispositivo in riproduzione (telefono per Free/Amazon; da API device per Premium).
+ */
+@Composable
+private fun LiveSourceDeviceBadge(track: Track, accent: Color) {
+    val isAmazon = track.source == "amazon_music"
+    val platformName = if (isAmazon) "Amazon Music" else "Spotify"
+    val platformColor = if (isAmazon) Color(0xFF25D1DA) else Color(0xFF1DB954)
+    val (deviceIcon, deviceLabel) = deviceIconAndLabel(track.deviceType, track.deviceName)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Sinistra — piattaforma
+        Row(
+            modifier = Modifier.weight(1f),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(platformColor),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(11.dp)
+                )
+            }
+            Text(
+                text = "Ascoltando su $platformName",
+                color = PureWhite.copy(alpha = 0.9f),
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = (-0.1).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Destra — dispositivo
+        Row(
+            modifier = Modifier.widthIn(max = 150.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = deviceLabel,
+                color = Zinc400,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = (-0.1).sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Icon(
+                imageVector = deviceIcon,
+                contentDescription = deviceLabel,
+                tint = accent,
+                modifier = Modifier.size(15.dp)
+            )
+        }
+    }
+}
+
+/** Mappa il tipo device Spotify (o il telefono per notifiche) a icona Material + etichetta. */
+private fun deviceIconAndLabel(type: String, name: String): Pair<ImageVector, String> {
+    val t = type.lowercase()
+    val label = name.ifBlank {
+        when (t) {
+            "smartphone" -> "Telefono"
+            "computer" -> "Computer"
+            "speaker" -> "Speaker"
+            "tv" -> "TV"
+            "automobile" -> "Auto"
+            "gameconsole" -> "Console"
+            "castvideo", "castaudio" -> "Cast"
+            "avr", "stb", "audiodongle" -> "Impianto"
+            else -> "Dispositivo"
+        }
+    }
+    val icon = when (t) {
+        "smartphone" -> Icons.Filled.Smartphone
+        "computer" -> Icons.Filled.Computer
+        "speaker" -> Icons.Filled.Speaker
+        "tv" -> Icons.Filled.Tv
+        "automobile" -> Icons.Filled.DirectionsCar
+        "gameconsole" -> Icons.Filled.SportsEsports
+        "castvideo", "castaudio" -> Icons.Filled.Cast
+        "avr", "stb", "audiodongle" -> Icons.Filled.Speaker
+        else -> Icons.Filled.Devices
+    }
+    return icon to label
 }
 
 @Composable

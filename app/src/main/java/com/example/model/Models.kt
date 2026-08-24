@@ -11,7 +11,9 @@ data class Track(
     val accentColorHex: Long = 0xFF1DB954, // Hex color extracted from album art
     val genre: String = "Alternative / Electronic",
     val releaseYear: String = "2024",
-    val source: String = "spotify"
+    val source: String = "spotify",
+    val deviceType: String = "",   // tipo device Spotify API (Smartphone/Computer/Speaker/Automobile/TV...)
+    val deviceName: String = ""    // nome device (es. "Audi A3", "iPhone di Marco")
 )
 
 data class User(

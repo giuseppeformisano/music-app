@@ -44,14 +44,7 @@ object SpotifyWebApiRepository {
             val token = SpotifyAuthRepository.getValidAccessToken(context)
                 ?: return@withContext PlaybackResult.Unknown("Sessione Spotify assente: ricollega l'account")
 
-            // Passo 1: currently-playing
-            val r1 = get("https://api.spotify.com/v1/me/player/currently-playing", token)
-            authError(r1.code)?.let { return@withContext PlaybackResult.Unknown(it) }
-            if (r1.code != 204 && r1.code in 200..299 && r1.body != null) {
-                parsePlayback(r1.body)?.let { return@withContext it }
-            }
-
-            // Passo 2 - Fallback: /v1/me/player, più affidabile, riporta anche il device attivo
+            // Passo 1: /v1/me/player — stato completo (item, is_playing, progress e DEVICE attivo)
             val r2 = get("https://api.spotify.com/v1/me/player", token)
             authError(r2.code)?.let { return@withContext PlaybackResult.Unknown(it) }
             if (r2.code == 204) return@withContext PlaybackResult.NotPlaying
@@ -59,8 +52,15 @@ object SpotifyWebApiRepository {
                 parsePlayback(r2.body)?.let { return@withContext it }
             }
 
-            // 204 su currently-playing e nessun device attivo → davvero nulla in play
-            if (r1.code == 204) PlaybackResult.NotPlaying else PlaybackResult.Unknown()
+            // Passo 2 - Fallback: currently-playing (senza info device)
+            val r1 = get("https://api.spotify.com/v1/me/player/currently-playing", token)
+            authError(r1.code)?.let { return@withContext PlaybackResult.Unknown(it) }
+            if (r1.code != 204 && r1.code in 200..299 && r1.body != null) {
+                parsePlayback(r1.body)?.let { return@withContext it }
+            }
+
+            // 204 su entrambi → davvero nulla in play
+            if (r1.code == 204 || r2.code == 204) PlaybackResult.NotPlaying else PlaybackResult.Unknown()
         } catch (e: Exception) {
             Log.e(TAG, "getCurrentlyPlaying error: ${e.message}")
             PlaybackResult.Unknown() // transitorio: non toccare la live
@@ -96,6 +96,10 @@ object SpotifyWebApiRepository {
             val coverUrl = album?.optJSONArray("images")?.optJSONObject(0)?.optString("url") ?: ""
             val durationMs = item.optLong("duration_ms", 0L)
             val uri = item.optString("uri")
+            // Device attivo (presente solo nella risposta di /v1/me/player)
+            val device = obj.optJSONObject("device")
+            val deviceType = device?.optString("type") ?: ""
+            val deviceName = device?.optString("name") ?: ""
             Track(
                 id = uri,
                 title = title,
@@ -106,7 +110,10 @@ object SpotifyWebApiRepository {
                 durationMs = durationMs,
                 accentColorHex = 0xFF1DB954L,
                 genre = "",
-                releaseYear = ""
+                releaseYear = "",
+                source = "spotify",
+                deviceType = deviceType,
+                deviceName = deviceName
             )
         } catch (e: Exception) {
             Log.e(TAG, "parseTrack error: ${e.message}")

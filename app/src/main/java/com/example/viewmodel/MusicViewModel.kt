@@ -472,7 +472,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 coverUrl = coverUrl,
                 durationText = if (durationMs > 0) formatMs(durationMs) else "3:45",
                 durationMs = durationMs,
-                source = source
+                source = source,
+                // Sorgente via notifiche (Spotify Free / Amazon Music): sempre dal telefono.
+                deviceType = "Smartphone",
+                deviceName = ""
             )
             val updatedUser = _uiState.value.currentUser.copy(
                 currentTrack = track, isLiveNow = true,

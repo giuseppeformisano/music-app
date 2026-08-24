@@ -79,7 +79,10 @@ object FirebaseRepository {
             "album" to "",
             "coverUrl" to artUrl,
             "durationMs" to durationMs,
-            "source" to source
+            "source" to source,
+            // Sorgente via notifiche (Spotify Free / Amazon Music): sempre dal telefono.
+            "deviceType" to "Smartphone",
+            "deviceName" to ""
         )
         db.collection(USERS_COLLECTION).document(userId)
             .update(
@@ -437,7 +440,9 @@ object FirebaseRepository {
             "accentColorHex" to track.accentColorHex,
             "genre" to track.genre,
             "releaseYear" to track.releaseYear,
-            "source" to track.source
+            "source" to track.source,
+            "deviceType" to track.deviceType,
+            "deviceName" to track.deviceName
         )
     }
 
@@ -541,6 +546,8 @@ object FirebaseRepository {
         val genre = map["genre"] as? String ?: "Musica"
         val releaseYear = map["releaseYear"] as? String ?: "2024"
         val source = map["source"] as? String ?: "spotify"
+        val deviceType = map["deviceType"] as? String ?: ""
+        val deviceName = map["deviceName"] as? String ?: ""
 
         return Track(
             id = map["id"] as? String ?: (title + artist).hashCode().toString(),
@@ -553,7 +560,9 @@ object FirebaseRepository {
             accentColorHex = accentColorHex,
             genre = genre,
             releaseYear = releaseYear,
-            source = source
+            source = source,
+            deviceType = deviceType,
+            deviceName = deviceName
         )
     }
 }
