@@ -77,112 +77,86 @@ fun PeopleSearchDialog(
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(top = 36.dp, bottom = 20.dp)
         ) {
-            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                // Header standardizzato in alto a sinistra
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Cerca persone",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
-                    )
-                }
-
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = onQueryChanged,
-                    placeholder = { Text("Nome o @username", color = SubtitleGray.copy(alpha = 0.6f), fontSize = 14.sp) },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = null, tint = SubtitleGray.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotBlank()) {
-                            IconButton(onClick = { onQueryChanged("") }) {
-                                Icon(Icons.Default.Close, contentDescription = "Cancella", tint = SubtitleGray, modifier = Modifier.size(16.dp))
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = {
-                        keyboardController?.hide(); focusManager.clearFocus()
-                    }),
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = PureWhite.copy(alpha = 0.15f),
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedContainerColor = PureWhite.copy(alpha = 0.06f),
-                        unfocusedContainerColor = PureWhite.copy(alpha = 0.06f),
-                        focusedTextColor = PureWhite,
-                        unfocusedTextColor = PureWhite,
-                        cursorColor = PureWhite
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                if (searchResults.isEmpty()) {
-                    Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                        Text(
-                            text = if (searchQuery.isBlank()) "Cerca qualcuno per nome o username"
-                                   else "Nessun risultato per \"$searchQuery\"",
-                            color = SubtitleGray.copy(alpha = 0.5f),
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(searchResults, key = { it.id }) { user ->
-                            val alreadyFollowing = followingIds.contains(user.id)
-                            val requested = sentRequestIds.contains(user.id)
-                            PeopleResultRow(
-                                user = user,
-                                alreadyFollowing = alreadyFollowing,
-                                requested = requested,
-                                onSendRequest = { onSendRequest(user) },
-                                onOpenProfile = { onDismiss(); onOpenProfile(user) }
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pulsante Chiudi
-            Button(
-                onClick = onDismiss,
+            // Header standardizzato in alto a sinistra
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PureWhite,
-                    contentColor = BlackPitch
-                )
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Chiudi",
-                    color = BlackPitch,
+                    text = "Cerca persone",
+                    color = PureWhite,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    letterSpacing = (-0.4).sp
                 )
+            }
+
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onQueryChanged,
+                placeholder = { Text("Nome o @username", color = SubtitleGray.copy(alpha = 0.6f), fontSize = 14.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = SubtitleGray.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        IconButton(onClick = { onQueryChanged("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancella", tint = SubtitleGray, modifier = Modifier.size(16.dp))
+                        }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = {
+                    keyboardController?.hide(); focusManager.clearFocus()
+                }),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PureWhite.copy(alpha = 0.15f),
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = PureWhite.copy(alpha = 0.06f),
+                    unfocusedContainerColor = PureWhite.copy(alpha = 0.06f),
+                    focusedTextColor = PureWhite,
+                    unfocusedTextColor = PureWhite,
+                    cursorColor = PureWhite
+                )
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            if (searchResults.isEmpty()) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        text = if (searchQuery.isBlank()) "Cerca qualcuno per nome o username"
+                               else "Nessun risultato per \"$searchQuery\"",
+                        color = SubtitleGray.copy(alpha = 0.5f),
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(searchResults, key = { it.id }) { user ->
+                        val alreadyFollowing = followingIds.contains(user.id)
+                        val requested = sentRequestIds.contains(user.id)
+                        PeopleResultRow(
+                            user = user,
+                            alreadyFollowing = alreadyFollowing,
+                            requested = requested,
+                            onSendRequest = { onSendRequest(user) },
+                            onOpenProfile = { onDismiss(); onOpenProfile(user) }
+                        )
+                    }
+                }
             }
         }
     }

@@ -1118,162 +1118,136 @@ private fun FollowersFollowingDialog(
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(top = 36.dp, bottom = 20.dp)
         ) {
-            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                // Header standardizzato in alto a sinistra
-                Row(
+            // Header standardizzato in alto a sinistra
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    color = PureWhite,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.4).sp
+                )
+            }
+
+            // Campo di ricerca
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 14.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(PureWhite.copy(alpha = 0.06f))
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.weight(1f),
+                    textStyle = TextStyle(
+                        color = PureWhite,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Normal
+                    ),
+                    cursorBrush = SolidColor(PureWhite),
+                    singleLine = true,
+                    decorationBox = { innerTextField ->
+                        if (searchQuery.isEmpty()) {
+                            Text(text = "Cerca...", color = SubtitleGray, fontSize = 14.sp)
+                        }
+                        innerTextField()
+                    }
+                )
+            }
+
+            // Lista utenti o empty state (senza riquadri grigi di sfondo)
+            if (filtered.isEmpty()) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = title,
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
+                        text = "Nessun utente",
+                        color = SubtitleGray.copy(alpha = 0.6f),
+                        fontSize = 14.sp,
+                        textAlign = TextAlign.Center
                     )
                 }
-
-                // Campo di ricerca
-                Row(
+            } else {
+                LazyColumn(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 14.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(PureWhite.copy(alpha = 0.06f))
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    BasicTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.weight(1f),
-                        textStyle = TextStyle(
-                            color = PureWhite,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Normal
-                        ),
-                        cursorBrush = SolidColor(PureWhite),
-                        singleLine = true,
-                        decorationBox = { innerTextField ->
-                            if (searchQuery.isEmpty()) {
-                                Text(text = "Cerca...", color = SubtitleGray, fontSize = 14.sp)
-                            }
-                            innerTextField()
-                        }
-                    )
-                }
-
-                // Lista utenti o empty state (senza riquadri grigi di sfondo)
-                if (filtered.isEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Nessun utente",
-                            color = SubtitleGray.copy(alpha = 0.6f),
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                        contentPadding = PaddingValues(vertical = 4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        items(filtered) { u ->
-                            Row(
+                    items(filtered) { u ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null
+                                ) { onOpenProfile(u) }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            AsyncImage(
+                                model = u.avatarUrl,
+                                contentDescription = "Avatar ${u.name}",
+                                contentScale = ContentScale.Crop,
                                 modifier = Modifier
-                                    .fillMaxWidth()
+                                    .size(44.dp)
+                                    .clip(CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = u.name,
+                                    color = PureWhite,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = "@${u.username.removePrefix("@")}",
+                                    color = SubtitleGray,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(PureWhite.copy(alpha = 0.08f))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null
-                                    ) { onOpenProfile(u) }
-                                    .padding(vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                    ) { onRemove(u) }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                AsyncImage(
-                                    model = u.avatarUrl,
-                                    contentDescription = "Avatar ${u.name}",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
+                                Text(
+                                    text = "Rimuovi",
+                                    color = SubtitleGray,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium
                                 )
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = u.name,
-                                        color = PureWhite,
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = "@${u.username.removePrefix("@")}",
-                                        color = SubtitleGray,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(PureWhite.copy(alpha = 0.08f))
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = null
-                                        ) { onRemove(u) }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = "Rimuovi",
-                                        color = SubtitleGray,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
                             }
                         }
                     }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pulsante Chiudi
-            Button(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PureWhite,
-                    contentColor = BlackPitch
-                )
-            ) {
-                Text(
-                    text = "Chiudi",
-                    color = BlackPitch,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
-                )
             }
         }
     }
@@ -1674,112 +1648,86 @@ private fun ConnectAccountsDialog(
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+                .padding(top = 36.dp, bottom = 20.dp)
         ) {
-            Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                // Header standardizzato in alto a sinistra
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 24.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Collega Account",
-                            color = PureWhite,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.4).sp
-                        )
-                        Text(
-                            text = "Scegli i tuoi servizi di streaming",
-                            color = SubtitleGray,
-                            fontSize = 13.sp,
-                            letterSpacing = 0.2.sp
-                        )
-                    }
-                }
-
-                // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
-                // l'altro viene oscurato e reso non cliccabile.
-                val premiumConnected = connectedServices["spotify"] == true
-                val freeConnected = connectedServices["spotify_free"] == true
-
-                StreamingAccountItem(
-                    serviceName = "Spotify Premium",
-                    serviceDesc = "Collega l'account: dati in tempo reale via API",
-                    isConnected = premiumConnected,
-                    enabled = !freeConnected,
-                    brandColor = Color(0xFF1DB954),
-                    iconComposable = { SpotifyBrandLogo() },
-                    onToggle = {
-                        if (premiumConnected) onDisconnectSpotify()
-                        else onConnectSpotify()
-                    },
-                    testTag = "service_spotify_premium"
-                )
-
-                if (spotifyError != null) {
-                    Text(
-                        text = "Errore: $spotifyError",
-                        color = Color(0xFFFF6B6B),
-                        fontSize = 11.sp,
-                        modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
-                // funzionalmente dipende dalle notifiche.
-                StreamingAccountItem(
-                    serviceName = "Spotify Free",
-                    serviceDesc = "Rileva l'ascolto dalle notifiche",
-                    isConnected = freeConnected,
-                    enabled = !premiumConnected,
-                    brandColor = Color(0xFF1DB954),
-                    iconComposable = { SpotifyBrandLogo() },
-                    onToggle = { onToggleService("spotify_free") },
-                    testTag = "service_spotify_free"
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                StreamingAccountItem(
-                    serviceName = "Amazon Music",
-                    serviceDesc = "Rileva l'ascolto dalle notifiche",
-                    isConnected = connectedServices["amazon_music"] == true,
-                    brandColor = Color(0xFF00A8E1),
-                    iconComposable = { AmazonMusicBrandLogo() },
-                    onToggle = { onToggleService("amazon_music") },
-                    testTag = "service_amazon_music"
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pulsante Chiudi
-            Button(
-                onClick = onDismiss,
+            // Header standardizzato in alto a sinistra
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PureWhite,
-                    contentColor = BlackPitch
-                )
+                    .padding(bottom = 24.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                Column {
+                    Text(
+                        text = "Collega Account",
+                        color = PureWhite,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.4).sp
+                    )
+                    Text(
+                        text = "Scegli i tuoi servizi di streaming",
+                        color = SubtitleGray,
+                        fontSize = 13.sp,
+                        letterSpacing = 0.2.sp
+                    )
+                }
+            }
+
+            // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
+            // l'altro viene oscurato e reso non cliccabile.
+            val premiumConnected = connectedServices["spotify"] == true
+            val freeConnected = connectedServices["spotify_free"] == true
+
+            StreamingAccountItem(
+                serviceName = "Spotify Premium",
+                serviceDesc = "Collega l'account: dati in tempo reale via API",
+                isConnected = premiumConnected,
+                enabled = !freeConnected,
+                brandColor = Color(0xFF1DB954),
+                iconComposable = { SpotifyBrandLogo() },
+                onToggle = {
+                    if (premiumConnected) onDisconnectSpotify()
+                    else onConnectSpotify()
+                },
+                testTag = "service_spotify_premium"
+            )
+
+            if (spotifyError != null) {
                 Text(
-                    text = "Chiudi",
-                    color = BlackPitch,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    text = "Errore: $spotifyError",
+                    color = Color(0xFFFF6B6B),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(top = 6.dp, start = 4.dp, end = 4.dp)
                 )
             }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
+            // funzionalmente dipende dalle notifiche.
+            StreamingAccountItem(
+                serviceName = "Spotify Free",
+                serviceDesc = "Rileva l'ascolto dalle notifiche",
+                isConnected = freeConnected,
+                enabled = !premiumConnected,
+                brandColor = Color(0xFF1DB954),
+                iconComposable = { SpotifyBrandLogo() },
+                onToggle = { onToggleService("spotify_free") },
+                testTag = "service_spotify_free"
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            StreamingAccountItem(
+                serviceName = "Amazon Music",
+                serviceDesc = "Rileva l'ascolto dalle notifiche",
+                isConnected = connectedServices["amazon_music"] == true,
+                brandColor = Color(0xFF00A8E1),
+                iconComposable = { AmazonMusicBrandLogo() },
+                onToggle = { onToggleService("amazon_music") },
+                testTag = "service_amazon_music"
+            )
         }
     }
 }
