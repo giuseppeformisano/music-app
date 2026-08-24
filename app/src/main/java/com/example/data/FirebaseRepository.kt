@@ -126,6 +126,24 @@ object FirebaseRepository {
             }
     }
 
+    /**
+     * PRIMO login: se il documento non esiste ancora, crea il profilo dai metadati
+     * dell'account (nome, avatar Google, ecc.). Se esiste già NON sovrascrive: la
+     * persistenza dei dati modificati dall'utente resta intatta.
+     */
+    fun ensureUserProfile(user: User) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(user.id).get()
+            .addOnSuccessListener { snap ->
+                val exists = snap.exists() && !(snap.getString("name").isNullOrBlank())
+                if (!exists) syncCurrentUser(user)
+            }
+            .addOnFailureListener {
+                // Lettura fallita: tenta comunque di creare il profilo dai metadati account.
+                syncCurrentUser(user)
+            }
+    }
+
     fun syncCurrentUser(user: User) {
         val db = firestore ?: return
         try {

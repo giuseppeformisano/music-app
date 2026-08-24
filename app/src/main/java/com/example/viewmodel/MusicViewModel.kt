@@ -125,7 +125,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         connectedServices = services
                     )
                 }
-                FirebaseRepository.syncCurrentUser(user)
+                FirebaseRepository.ensureUserProfile(user)
                 startFirebaseListener()
                 saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
@@ -189,9 +189,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         connectedServices = services
                     )
                 }
-                // Scrive il profilo completo su Firestore (nome, username, avatar, ecc.),
-                // altrimenti il documento nasce con il solo fcmToken e l'utente resta senza metadati.
-                FirebaseRepository.syncCurrentUser(user)
+                // PRIMO login: crea il profilo dai metadati account; se esiste già non
+                // sovrascrive i dati persistiti (nome/avatar modificati dall'utente).
+                FirebaseRepository.ensureUserProfile(user)
                 startFirebaseListener()
                 saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
@@ -410,8 +410,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun syncNotificationListenerServiceFlags() {
-        com.example.MusicNotificationListenerService.isSpotifyFreeEnabled = _uiState.value.connectedServices["spotify_free"] ?: true
-        com.example.MusicNotificationListenerService.isAmazonMusicEnabled = _uiState.value.connectedServices["amazon_music"] ?: true
+        com.example.MusicNotificationListenerService.isSpotifyFreeEnabled = _uiState.value.connectedServices["spotify_free"] ?: false
+        com.example.MusicNotificationListenerService.isAmazonMusicEnabled = _uiState.value.connectedServices["amazon_music"] ?: false
     }
 
     fun openNotificationListenerSettings(context: Context) {

@@ -59,9 +59,10 @@ class MusicNotificationListenerService : NotificationListenerService() {
     private fun loadPreferences() {
         try {
             val prefs = getSharedPreferences("connected_services", Context.MODE_PRIVATE)
-            // Se non specificato, di default sono abilitati se l'utente ha concesso l'accesso alle notifiche
-            isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", true)
-            isAmazonMusicEnabled = prefs.getBoolean("amazon_music", true)
+            // Default FALSE: la live via notifiche parte SOLO se l'utente ha collegato
+            // esplicitamente Spotify Free / Amazon Music. Senza collegamento nessun tracking.
+            isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", false)
+            isAmazonMusicEnabled = prefs.getBoolean("amazon_music", false)
         } catch (_: Exception) {}
     }
 
