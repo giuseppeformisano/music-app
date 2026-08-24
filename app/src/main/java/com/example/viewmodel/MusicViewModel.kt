@@ -580,7 +580,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         remoteUsers.map { processUserImages(it) }
                     }
                     _uiState.update { current ->
-                        val merged = (processed + current.feedUsers).distinctBy { it.id }
+                        // `processed` è la lista autorevole dal server. Gli utenti non più
+                        // presenti (cancellati) NON vengono resuscitati: manteniamo dalla cache
+                        // locale solo quelli che seguiamo (per non perderli se escono dai 40
+                        // più recenti). Così la ricerca persone non mostra profili cancellati.
+                        val freshIds = processed.map { it.id }.toSet()
+                        val followed = current.currentUser.followingIds.toSet()
+                        val retained = current.feedUsers.filter { it.id !in freshIds && it.id in followed }
+                        val merged = (processed + retained).distinctBy { it.id }
                         val updatedActiveProfile = if (current.activeProfileUser != null && !current.activeProfileUser.isCurrentUser) {
                             processed.find { it.id == current.activeProfileUser.id } ?: current.activeProfileUser
                         } else {

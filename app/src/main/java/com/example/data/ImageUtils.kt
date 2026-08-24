@@ -212,9 +212,22 @@ object ImageUtils {
 
             val safeId = userId.ifBlank { "current_user" }.replace("/", "_").replace(":", "_")
             val targetDir = File(context.filesDir, "profiles").apply { if (!exists()) mkdirs() }
-            val targetFile = File(targetDir, "${prefix}_${safeId}.jpg")
 
-            targetFile.writeBytes(bytes)
+            // Nome basato sull'hash del contenuto: quando l'immagine cambia cambia anche il
+            // path file:// → Coil ricarica (niente vecchia immagine dalla cache). Se il
+            // contenuto è identico il path resta stabile e la cache di Coil viene riusata.
+            val contentHash = java.security.MessageDigest.getInstance("MD5")
+                .digest(bytes)
+                .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
+                .take(12)
+            val targetFile = File(targetDir, "${prefix}_${safeId}_${contentHash}.jpg")
+
+            if (!targetFile.exists()) {
+                // Rimuove le versioni precedenti dello stesso avatar/cover per non accumulare file.
+                targetDir.listFiles { f -> f.name.startsWith("${prefix}_${safeId}_") && f.name != targetFile.name }
+                    ?.forEach { it.delete() }
+                targetFile.writeBytes(bytes)
+            }
             "file://${targetFile.absolutePath}"
         } catch (e: Exception) {
             Log.e(TAG, "Errore base64ToLocalFile: ${e.message}")

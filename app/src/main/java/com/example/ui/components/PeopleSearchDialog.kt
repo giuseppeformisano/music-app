@@ -179,12 +179,15 @@ private fun PeopleResultRow(
                     .size(42.dp)
                     .clip(CircleShape)
             )
-            PresenceDot(
-                isOnline = user.isOnline,
-                isLive = user.currentTrack != null,
-                size = 13.dp,
-                modifier = Modifier.align(Alignment.BottomEnd)
-            )
+            // Lo stato (online/live) è visibile SOLO se segui già la persona.
+            if (alreadyFollowing) {
+                PresenceDot(
+                    isOnline = user.isOnline,
+                    isLive = user.currentTrack != null,
+                    size = 13.dp,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(11.dp))
