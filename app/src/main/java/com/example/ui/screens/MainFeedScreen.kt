@@ -1736,14 +1736,6 @@ private fun LiveUserMinimalItem(
                         primaryColor = primaryColor,
                         secondaryColor = secondaryColor
                     )
-
-                    LivePlatformBadge(
-                        source = currentDisplayTrack.source,
-                        modifier = Modifier
-                            .align(Alignment.TopStart)
-                            .offset(x = 1.dp, y = 1.dp)
-                            .zIndex(15f)
-                    )
                 }
 
                 Spacer(modifier = Modifier.width(14.dp))
@@ -2081,17 +2073,6 @@ private fun SupernovaEntranceItem(
                             trackId = track.id,
                             primaryColor = primaryColor,
                             secondaryColor = secondaryColor
-                        )
-                    }
-
-                    if (dataAlpha > 0.05f) {
-                        LivePlatformBadge(
-                            source = track.source,
-                            modifier = Modifier
-                                .align(Alignment.TopStart)
-                                .offset(x = 1.dp, y = 1.dp)
-                                .graphicsLayer { alpha = dataAlpha }
-                                .zIndex(15f)
                         )
                     }
                 }
