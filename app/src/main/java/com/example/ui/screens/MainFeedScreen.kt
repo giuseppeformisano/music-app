@@ -205,8 +205,6 @@ fun MainFeedScreen(
         modifier = modifier
             .fillMaxSize()
             .background(BlackPitch)
-            .padding(top = 28.dp)
-            .navigationBarsPadding()
             .testTag("main_screen")
     ) {
         // Sfondo atmosferico opzionale ereditato dalla copertina del profilo
@@ -239,7 +237,12 @@ fun MainFeedScreen(
             )
         }
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 28.dp)
+                .navigationBarsPadding()
+        ) {
             // ================= 1. HEADER SUPERIORE UNIVERSALE =================
             // Centrato e minimale: logo "m" cerchiata + "live" in corsivo minuscolo al centro,
             // lente di ingrandimento a sinistra, avatar profilo a destra.
@@ -303,6 +306,7 @@ fun MainFeedScreen(
             exit = scaleOut(animationSpec = tween(200)) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
+                .navigationBarsPadding()
                 .padding(end = 20.dp, bottom = 24.dp)
         ) {
             FloatingActionButton(
