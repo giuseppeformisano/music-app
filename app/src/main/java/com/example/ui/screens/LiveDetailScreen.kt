@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -44,7 +45,6 @@ import androidx.compose.material.icons.filled.Tv
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -77,7 +77,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.painterResource
 import com.example.R
 import coil.compose.AsyncImage
@@ -88,7 +92,6 @@ import com.example.model.Track
 import com.example.model.User
 import com.example.ui.components.CustomReaction
 import com.example.ui.components.CustomReactionIcon
-import com.example.ui.components.LiveEqualizerSymmetrical
 import com.example.ui.components.allCustomReactions
 import com.example.ui.components.liveNameVibration
 import com.example.ui.theme.BlackPitch
@@ -150,6 +153,13 @@ fun LiveDetailScreen(
     }
 
     val (primaryColor, secondaryColor) = dynamicColors
+
+    // Piattaforma di ascolto (logo + nome) e dispositivo attivo
+    val isAmazon = track.source == "amazon_music"
+    val platformName = if (isAmazon) "Amazon Music" else "Spotify"
+    val platformLogoRes = if (isAmazon) R.drawable.ic_amazon_music else R.drawable.ic_spotify
+    val platformTextColor = if (isAmazon) Color(0xFF25D1DA) else Color(0xFF1DB954)
+    val deviceIconVec = deviceIcon(track.deviceType)
 
     // Minutaggio REALE: durata dal brano; posizione estrapolata dalla posizione
     // catturata (trackProgressMs) + tempo trascorso da trackProgressAt.
@@ -255,27 +265,25 @@ fun LiveDetailScreen(
                     )
                 }
 
-                // 2. AVATAR PROFILO CON CERCHIO LUMINOSO + EQUALIZZATORI
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
+                // 2. ONDA AUDIO DINAMICA COLORATA (colori dall'artwork) + AVATAR AL CENTRO
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(210.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Equalizzatore stilizzato a Sinistra
-                    LiveEqualizerSymmetrical(
-                        brush = Brush.verticalGradient(
-                            listOf(primaryColor, secondaryColor)
-                        ),
-                        maxHeight = 60.dp,
-                        barCount = 5,
-                        isReversed = true,
-                        modifier = Modifier.padding(end = 16.dp)
+                    LiveAudioWave(
+                        primary = primaryColor,
+                        secondary = secondaryColor,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(200.dp)
                     )
 
-                    // Cerchio Avatar Profilo (~175dp)
+                    // Cerchio Avatar Profilo al centro dell'onda
                     Box(
                         modifier = Modifier
-                            .size(175.dp)
+                            .size(150.dp)
                             .shadow(
                                 elevation = 22.dp,
                                 shape = CircleShape,
@@ -283,8 +291,8 @@ fun LiveDetailScreen(
                                 spotColor = primaryColor.copy(alpha = 0.75f)
                             )
                             .border(
-                                width = 2.5.dp,
-                                color = primaryColor,
+                                width = 1.5.dp,
+                                color = primaryColor.copy(alpha = 0.55f),
                                 shape = CircleShape
                             )
                             .padding(4.dp)
@@ -308,21 +316,7 @@ fun LiveDetailScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-
-                    // Equalizzatore stilizzato a Destra
-                    LiveEqualizerSymmetrical(
-                        brush = Brush.verticalGradient(
-                            listOf(secondaryColor, primaryColor)
-                        ),
-                        maxHeight = 60.dp,
-                        barCount = 5,
-                        isReversed = false,
-                        modifier = Modifier.padding(start = 16.dp)
-                    )
                 }
-
-                // 3. BADGE SORGENTE/DISPOSITIVO (Equidistanziato tra Avatar sopra e Copertina sotto)
-                LiveSourceDeviceBadge(track = track)
 
                 // 3. SEZIONE BRANO: Copertina + Titolo/Artista + Barra Temporale
                 Column(
@@ -362,6 +356,23 @@ fun LiveDetailScreen(
                             modifier = Modifier.weight(1f),
                             verticalArrangement = Arrangement.Center
                         ) {
+                            // Piattaforma: logo + nome (Spotify o Amazon Music)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Image(
+                                    painter = painterResource(id = platformLogoRes),
+                                    contentDescription = platformName,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = platformName,
+                                    color = platformTextColor,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    letterSpacing = 0.1.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
                             Text(
                                 text = track.title,
                                 color = PureWhite,
@@ -381,21 +392,42 @@ fun LiveDetailScreen(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
+
+                        Spacer(modifier = Modifier.width(10.dp))
+
+                        // Solo icona del dispositivo attivo
+                        Icon(
+                            imageVector = deviceIconVec,
+                            contentDescription = "Dispositivo",
+                            tint = PureWhite.copy(alpha = 0.8f),
+                            modifier = Modifier.size(22.dp)
+                        )
                     }
 
                     // Barra Temporale
                     Column(
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        LinearProgressIndicator(
-                            progress = { progressFraction },
+                        // Barra a gradiente d'accento (fusa con lo sfondo)
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(3.5.dp)
-                                .clip(RoundedCornerShape(2.dp)),
-                            color = primaryColor,
-                            trackColor = PureWhite.copy(alpha = 0.15f)
-                        )
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(PureWhite.copy(alpha = 0.15f))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(progressFraction)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            listOf(secondaryColor, primaryColor)
+                                        )
+                                    )
+                            )
+                        }
 
                         Spacer(modifier = Modifier.height(6.dp))
 
@@ -553,58 +585,53 @@ fun LiveDetailScreen(
 }
 
 /**
- * Badge sorgente/dispositivo sotto l'avatar. Sfondo trasparente, fuso con la pagina.
- * Layout centrato: [logo piattaforma + nome]  |  [icona dispositivo].
+ * Onda audio dinamica e colorata dietro l'avatar. Più linee sovrapposte con envelope
+ * (più alta al centro, sfuma ai bordi), animate in continuo (fase + ampiezza pulsante).
+ * I colori derivano dall'artwork del brano (primary/secondary) con un tocco caldo.
  */
 @Composable
-private fun LiveSourceDeviceBadge(track: Track) {
-    val isAmazon = track.source == "amazon_music"
-    val platformName = if (isAmazon) "Amazon Music" else "Spotify"
-    val logoRes = if (isAmazon) R.drawable.ic_amazon_music else R.drawable.ic_spotify
-    val deviceIcon = deviceIcon(track.deviceType)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 8.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Sinistra — logo piattaforma + nome
-        Image(
-            painter = painterResource(id = logoRes),
-            contentDescription = platformName,
-            modifier = Modifier.size(17.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = platformName,
-            color = PureWhite.copy(alpha = 0.92f),
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-            letterSpacing = (-0.1).sp,
-            maxLines = 1
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        // Divider verticale sottile
-        Box(
-            modifier = Modifier
-                .height(15.dp)
-                .width(1.dp)
-                .background(PureWhite.copy(alpha = 0.22f))
-        )
-
-        Spacer(modifier = Modifier.width(14.dp))
-
-        // Destra — solo icona dispositivo
-        Icon(
-            imageVector = deviceIcon,
-            contentDescription = "Dispositivo",
-            tint = PureWhite.copy(alpha = 0.85f),
-            modifier = Modifier.size(17.dp)
-        )
+private fun LiveAudioWave(primary: Color, secondary: Color, modifier: Modifier = Modifier) {
+    val transition = rememberInfiniteTransition(label = "wave")
+    val phase by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(5200, easing = LinearEasing), RepeatMode.Restart),
+        label = "phase"
+    )
+    val ampPulse by transition.animateFloat(
+        initialValue = 0.82f,
+        targetValue = 1.14f,
+        animationSpec = infiniteRepeatable(tween(1700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ampPulse"
+    )
+    val brush = Brush.horizontalGradient(
+        listOf(secondary, primary, Color(0xFFFFC24B), primary, secondary)
+    )
+    Canvas(modifier = modifier) {
+        val w = size.width
+        val h = size.height
+        val midY = h / 2f
+        val layers = 6
+        val steps = 100
+        for (i in 0 until layers) {
+            val path = Path()
+            val amp = (h * 0.30f) * (1f - i * 0.11f) * ampPulse
+            val freq = 2.0f + i * 0.7f
+            val layerPhase = phase * (1f + i * 0.15f) + i * 0.6f
+            for (s in 0..steps) {
+                val t = s.toFloat() / steps
+                val x = w * t
+                val env = kotlin.math.sin(Math.PI * t).toFloat() // 0 ai bordi, 1 al centro
+                val y = midY + amp * env * kotlin.math.sin(freq * 2f * Math.PI.toFloat() * t + layerPhase)
+                if (s == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(
+                path = path,
+                brush = brush,
+                style = Stroke(width = 2.2f, cap = StrokeCap.Round),
+                alpha = (0.55f - i * 0.07f).coerceAtLeast(0.12f)
+            )
+        }
     }
 }
 
