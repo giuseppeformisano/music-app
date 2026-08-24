@@ -361,7 +361,9 @@ fun LiveDetailScreen(
                                 Image(
                                     painter = painterResource(id = platformLogoRes),
                                     contentDescription = platformName,
-                                    modifier = Modifier.size(14.dp)
+                                    modifier = Modifier
+                                        .size(15.dp)
+                                        .clip(CircleShape)
                                 )
                                 Spacer(modifier = Modifier.width(5.dp))
                                 Text(

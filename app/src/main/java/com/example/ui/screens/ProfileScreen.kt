@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.foundation.Image
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
@@ -65,6 +66,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.ui.res.painterResource
+import com.example.R
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -1889,95 +1892,31 @@ private fun StreamingAccountItem(
 }
 
 /**
- * Icona Vettoriale Spotify
+ * Icona Spotify
  */
 @Composable
 private fun SpotifyBrandLogo() {
-    androidx.compose.foundation.Canvas(modifier = Modifier.size(40.dp)) {
-        val radius = size.minDimension / 2f
-        drawCircle(color = Color(0xFF1DB954), radius = radius)
-
-        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = radius * 0.18f,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round
-        )
-
-        // Tre onde curve bianche
-        val w = size.width
-        val h = size.height
-
-        val path1 = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.28f, h * 0.38f)
-            cubicTo(w * 0.45f, h * 0.32f, w * 0.62f, h * 0.34f, w * 0.74f, h * 0.42f)
-        }
-        drawPath(path1, color = Color.White, style = stroke)
-
-        val path2 = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.32f, h * 0.52f)
-            cubicTo(w * 0.47f, h * 0.47f, w * 0.60f, h * 0.49f, w * 0.70f, h * 0.55f)
-        }
-        drawPath(
-            path2,
-            color = Color.White,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = radius * 0.16f,
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
-        )
-
-        val path3 = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.36f, h * 0.65f)
-            cubicTo(w * 0.48f, h * 0.61f, w * 0.58f, h * 0.63f, w * 0.66f, h * 0.68f)
-        }
-        drawPath(
-            path3,
-            color = Color.White,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = radius * 0.14f,
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
-        )
-    }
+    Image(
+        painter = painterResource(id = R.drawable.ic_spotify),
+        contentDescription = "Spotify",
+        modifier = Modifier
+            .size(40.dp)
+            .clip(CircleShape)
+    )
 }
 
 /**
- * Icona Vettoriale Amazon Music
+ * Icona Amazon Music
  */
 @Composable
 private fun AmazonMusicBrandLogo() {
-    androidx.compose.foundation.Canvas(modifier = Modifier.size(40.dp)) {
-        val corner = 10.dp.toPx()
-        drawRoundRect(
-            color = Color(0xFF00A8E1),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(corner, corner)
-        )
-
-        val w = size.width
-        val h = size.height
-
-        // Sorriso / freccia Amazon stilizzata
-        val smilePath = androidx.compose.ui.graphics.Path().apply {
-            moveTo(w * 0.25f, h * 0.58f)
-            cubicTo(w * 0.42f, h * 0.74f, w * 0.60f, h * 0.74f, w * 0.75f, h * 0.58f)
-        }
-        drawPath(
-            smilePath,
-            color = Color.White,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = w * 0.09f,
-                cap = androidx.compose.ui.graphics.StrokeCap.Round
-            )
-        )
-
-        // Onde audio superiori
-        val stroke = androidx.compose.ui.graphics.drawscope.Stroke(
-            width = w * 0.08f,
-            cap = androidx.compose.ui.graphics.StrokeCap.Round
-        )
-        drawLine(Color.White, androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.42f), androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.30f), stroke.width)
-        drawLine(Color.White, androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.46f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.22f), stroke.width)
-        drawLine(Color.White, androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.42f), androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.28f), stroke.width)
-    }
+    Image(
+        painter = painterResource(id = R.drawable.ic_amazon_music_app),
+        contentDescription = "Amazon Music",
+        modifier = Modifier
+            .size(40.dp)
+            .clip(RoundedCornerShape(10.dp))
+    )
 }
 
 /**
