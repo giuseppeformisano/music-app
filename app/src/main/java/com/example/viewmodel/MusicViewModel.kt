@@ -107,6 +107,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var lastLiveHeartbeat = 0L
     private val httpClient by lazy { OkHttpClient() }
 
+    private var isAppInForeground = true
+
     init {
         SpotifyAuthRepository.loadTokens(appContext)
         checkForUpdate()
@@ -117,17 +119,21 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 val user = applyUserLocalPrefs(rawUser)
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
                 val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
+                val initialUser = user.copy(isOnline = isAppInForeground)
                 _uiState.update {
                     it.copy(
-                        currentUser = user,
+                        currentUser = initialUser,
                         isLoggedIn = true,
                         isSpotifyConnected = spotifyConnected,
                         connectedServices = services
                     )
                 }
-                FirebaseRepository.ensureUserProfile(user)
+                FirebaseRepository.ensureUserProfile(initialUser)
+                if (isAppInForeground && initialUser.id.isNotBlank()) {
+                    FirebaseRepository.setOnline(initialUser.id, true)
+                }
                 startFirebaseListener()
-                saveFcmToken(user.id)
+                saveFcmToken(initialUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }
         }
@@ -179,9 +185,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 val user = applyUserLocalPrefs(rawUser)
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
                 val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
+                val loggedUser = user.copy(isOnline = isAppInForeground)
                 _uiState.update {
                     it.copy(
-                        currentUser = user,
+                        currentUser = loggedUser,
                         isLoggedIn = true,
                         isLoggingIn = false,
                         loginError = null,
@@ -191,9 +198,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 // PRIMO login: crea il profilo dai metadati account; se esiste già non
                 // sovrascrive i dati persistiti (nome/avatar modificati dall'utente).
-                FirebaseRepository.ensureUserProfile(user)
+                FirebaseRepository.ensureUserProfile(loggedUser)
+                if (isAppInForeground && loggedUser.id.isNotBlank()) {
+                    FirebaseRepository.setOnline(loggedUser.id, true)
+                }
                 startFirebaseListener()
-                saveFcmToken(user.id)
+                saveFcmToken(loggedUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }.onFailure { error ->
                 _uiState.update {
@@ -369,23 +379,27 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     /** Presenza: l'utente sta usando l'app (connesso) — distinta dall'essere in live. */
     fun setOnline(online: Boolean) {
         val id = _uiState.value.currentUser.id
-        if (id.isBlank()) return
-        _uiState.update { it.copy(currentUser = it.currentUser.copy(isOnline = online)) }
-        FirebaseRepository.setOnline(id, online)
+        if (id.isNotBlank()) {
+            _uiState.update { it.copy(currentUser = it.currentUser.copy(isOnline = online)) }
+            FirebaseRepository.setOnline(id, online)
+        }
     }
 
     // Lo stato LIVE dipende dalla music-app (Spotify/Amazon), NON dal fatto che la nostra
     // app (MUSIC) sia in primo piano: chiudendo/mettendo in background MUSIC non si esce
     // dalla live (si resta live finché la music-app riproduce/è in pausa).
     fun onAppForeground() {
-        // no-op: mantenuto per compatibilità con MainActivity.onResume
+        isAppInForeground = true
+        setOnline(true)
     }
 
     fun onAppStopped() {
+        isAppInForeground = false
         setOnline(false)
     }
 
     fun onAppDestroyed() {
+        isAppInForeground = false
         setOnline(false)
     }
 

@@ -158,7 +158,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
-        viewModel.setOnline(false)
         try { unregisterReceiver(spotifyReceiver) } catch (e: Exception) { /* receiver was not registered */ }
     }
 
