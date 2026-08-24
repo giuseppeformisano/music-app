@@ -255,12 +255,7 @@ fun LiveDetailScreen(
                     )
                 }
 
-                // 2. AVATAR PROFILO CON CERCHIO LUMINOSO + EQUALIZZATORI + BADGE SORGENTE/DISPOSITIVO
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(18.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                // 2. AVATAR PROFILO CON CERCHIO LUMINOSO + EQUALIZZATORI
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -326,9 +321,8 @@ fun LiveDetailScreen(
                     )
                 }
 
-                // Badge: piattaforma (logo + nome) | divider | icona dispositivo — sfondo trasparente
+                // 3. BADGE SORGENTE/DISPOSITIVO (Equidistanziato tra Avatar sopra e Copertina sotto)
                 LiveSourceDeviceBadge(track = track)
-                }
 
                 // 3. SEZIONE BRANO: Copertina + Titolo/Artista + Barra Temporale
                 Column(
