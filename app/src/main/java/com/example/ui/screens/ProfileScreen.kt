@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -61,6 +62,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -155,11 +158,14 @@ fun ProfileScreen(
     onOpenUserProfile: (User) -> Unit = {},
     isNotificationListenerEnabled: Boolean = false,
     onEnableNotificationListener: () -> Unit = {},
+    applyCoverToFeed: Boolean = false,
+    onToggleApplyCoverToFeed: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     var showEditProfileSheet by remember { mutableStateOf(false) }
     var showConnectAccountsSheet by remember { mutableStateOf(false) }
+    var showSettingsSheet by remember { mutableStateOf(false) }
     var showFollowersDialog by remember { mutableStateOf(false) }
     var showFollowingDialog by remember { mutableStateOf(false) }
 
@@ -222,7 +228,8 @@ fun ProfileScreen(
                 onNotificationsClick = onOpenNotifications,
                 notificationCount = notificationCount,
                 isCurrentUser = isCurrentUser,
-                onLogout = onLogout
+                onLogout = onLogout,
+                onOpenSettings = { showSettingsSheet = true }
             )
 
             // Tutti i blocchi della pagina equidistanziati verticalmente entro lo spazio disponibile (Zero Scrolling)
@@ -336,6 +343,15 @@ fun ProfileScreen(
                 onDismiss = { showFollowingDialog = false }
             )
         }
+
+        // ================= DIALOG: IMPOSTAZIONI =================
+        if (showSettingsSheet) {
+            SettingsDialog(
+                applyCoverToFeed = applyCoverToFeed,
+                onToggleApplyCoverToFeed = onToggleApplyCoverToFeed,
+                onDismiss = { showSettingsSheet = false }
+            )
+        }
     }
 }
 
@@ -346,6 +362,7 @@ private fun ProfileTopHeader(
     notificationCount: Int,
     isCurrentUser: Boolean,
     onLogout: () -> Unit,
+    onOpenSettings: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -354,21 +371,42 @@ private fun ProfileTopHeader(
             .padding(horizontal = 16.dp, vertical = 10.dp)
             .testTag("profile_top_header")
     ) {
-        // Sinistra: torna al feed
-        IconButton(
-            onClick = onBack,
-            modifier = Modifier
-                .size(44.dp)
-                .clip(CircleShape)
-                .align(Alignment.CenterStart)
-                .testTag("profile_back_button")
+        // Sinistra: torna al feed + impostazioni
+        Row(
+            modifier = Modifier.align(Alignment.CenterStart),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Torna al feed",
-                tint = PureWhite,
-                modifier = Modifier.size(22.dp)
-            )
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .testTag("profile_back_button")
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Torna al feed",
+                    tint = PureWhite,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            if (isCurrentUser) {
+                IconButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .testTag("profile_settings_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Settings,
+                        contentDescription = "Impostazioni",
+                        tint = PureWhite,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
         }
 
         // Centro: logo "m" — sempre centrato indipendentemente dalle icone a destra
@@ -1883,6 +1921,125 @@ private fun AmazonMusicBrandLogo() {
         drawLine(Color.White, androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.42f), androidx.compose.ui.geometry.Offset(w * 0.38f, h * 0.30f), stroke.width)
         drawLine(Color.White, androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.46f), androidx.compose.ui.geometry.Offset(w * 0.50f, h * 0.22f), stroke.width)
         drawLine(Color.White, androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.42f), androidx.compose.ui.geometry.Offset(w * 0.62f, h * 0.28f), stroke.width)
+    }
+}
+
+/**
+ * Dialog / Pannello Impostazioni
+ */
+@Composable
+private fun SettingsDialog(
+    applyCoverToFeed: Boolean,
+    onToggleApplyCoverToFeed: (Boolean) -> Unit,
+    onDismiss: () -> Unit
+) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
+                .padding(horizontal = 24.dp)
+                .padding(top = 36.dp, bottom = 20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            // Header standardizzato in alto a sinistra
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Impostazioni",
+                    color = PureWhite,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.4).sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // Contenuto scrollabile delle impostazioni
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    text = "ASPETTO E SFONDO",
+                    color = SubtitleGray,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF16161A))
+                        .border(1.dp, Color(0xFF26262E), RoundedCornerShape(16.dp))
+                        .clickable { onToggleApplyCoverToFeed(!applyCoverToFeed) }
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp)
+                    ) {
+                        Text(
+                            text = "Copertina su Live e Feed",
+                            color = PureWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Applica la tua immagine di copertina profilo come sfondo atmosferico anche nelle sezioni Live e Feed",
+                            color = SubtitleGray,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp
+                        )
+                    }
+
+                    Switch(
+                        checked = applyCoverToFeed,
+                        onCheckedChange = onToggleApplyCoverToFeed,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = PureWhite,
+                            checkedTrackColor = Color(0xFF383842),
+                            uncheckedThumbColor = SubtitleGray,
+                            uncheckedTrackColor = Color(0xFF1E1E24)
+                        )
+                    )
+                }
+            }
+
+            // Pulsante di chiusura
+            Button(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(24.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PureWhite,
+                    contentColor = BlackPitch
+                )
+            ) {
+                Text(
+                    text = "Chiudi",
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 

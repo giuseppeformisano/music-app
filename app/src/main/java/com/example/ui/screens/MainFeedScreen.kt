@@ -149,11 +149,17 @@ fun MainFeedScreen(
     onOpenPeopleSearch: () -> Unit,
     feedbackToast: String?,
     onClearToast: () -> Unit,
+    applyCoverToFeed: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
     
+    val atmosphericCoverUrl = currentUser.coverUrl?.takeIf { it.isNotBlank() }
+        ?: currentUser.currentTrack?.coverUrl?.takeIf { it.isNotBlank() }
+        ?: currentUser.sharedTracks.firstOrNull()?.coverUrl?.takeIf { it.isNotBlank() }
+        ?: ""
+
     // Utenti live degli amici: SEMPRE con dati freschi da `stories` (niente copie statiche)
     val liveFriends = stories.filter { it.isActuallyLive && !it.isCurrentUser }
     // Animazione d'ingresso pilotata dagli ID (dati sempre aggiornati). Ogni utente non
@@ -203,6 +209,36 @@ fun MainFeedScreen(
             .navigationBarsPadding()
             .testTag("main_screen")
     ) {
+        // Sfondo atmosferico opzionale ereditato dalla copertina del profilo
+        if (applyCoverToFeed && atmosphericCoverUrl.isNotBlank()) {
+            AsyncImage(
+                model = atmosphericCoverUrl,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        scaleX = 1.15f
+                        scaleY = 1.15f
+                    }
+                    .blur(radius = 12.dp)
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                BlackPitch.copy(alpha = 0.45f),
+                                BlackPitch.copy(alpha = 0.70f),
+                                BlackPitch.copy(alpha = 0.90f)
+                            )
+                        )
+                    )
+            )
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             // ================= 1. HEADER SUPERIORE UNIVERSALE =================
             // Centrato e minimale: logo "m" cerchiata + "live" in corsivo minuscolo al centro,

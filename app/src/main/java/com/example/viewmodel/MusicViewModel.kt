@@ -84,7 +84,8 @@ data class MusicUiState(
     val isNotificationListenerEnabled: Boolean = false,
     // Aumenta periodicamente per forzare la riValutazione del TTL di staleness dei live
     // anche quando non arrivano nuovi eventi da Firestore.
-    val liveTick: Long = 0L
+    val liveTick: Long = 0L,
+    val applyCoverToFeed: Boolean = false
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -110,6 +111,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var isAppInForeground = true
 
     init {
+        val userSettingsPrefs = appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
+        val initialApplyCover = userSettingsPrefs.getBoolean("apply_cover_to_feed", false)
+        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover) }
+
         SpotifyAuthRepository.loadTokens(appContext)
         checkForUpdate()
         val existingUser = AuthRepository.currentFirebaseUser
@@ -374,6 +379,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearSpotifyError() {
         _uiState.update { it.copy(spotifyError = null) }
+    }
+
+    fun setApplyCoverToFeed(enabled: Boolean) {
+        _uiState.update { it.copy(applyCoverToFeed = enabled) }
+        appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("apply_cover_to_feed", enabled)
+            .apply()
     }
 
     /** Presenza: l'utente sta usando l'app (connesso) — distinta dall'essere in live. */

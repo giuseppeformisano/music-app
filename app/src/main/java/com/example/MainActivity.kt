@@ -251,7 +251,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onOpenShareSheet = { viewModel.openShareSheet() },
                     onOpenPeopleSearch = { viewModel.openPeopleSearch() },
                     feedbackToast = uiState.feedbackToast,
-                    onClearToast = { viewModel.clearToast() }
+                    onClearToast = { viewModel.clearToast() },
+                    applyCoverToFeed = uiState.applyCoverToFeed
                 )
             }
         }
@@ -296,7 +297,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                     isSentRequest = uiState.sentRequestIds.contains(displayUser.id),
                     onOpenUserProfile = { u -> viewModel.openProfile(u) },
                     isNotificationListenerEnabled = uiState.isNotificationListenerEnabled,
-                    onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) }
+                    onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) },
+                    applyCoverToFeed = uiState.applyCoverToFeed,
+                    onToggleApplyCoverToFeed = { viewModel.setApplyCoverToFeed(it) }
                 )
             }
         }
