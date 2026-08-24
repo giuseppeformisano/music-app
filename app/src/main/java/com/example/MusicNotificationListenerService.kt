@@ -56,6 +56,14 @@ class MusicNotificationListenerService : NotificationListenerService() {
         }
     }
 
+    // Forza la ri-emissione del brano corrente: azzera lastTrack così il prossimo check
+    // lo tratta come "nuovo" e scatta onTrackChanged (popola la live locale alla riapertura).
+    private fun forceResync() {
+        lastTrack = ""
+        lastSource = ""
+        checkMediaSessions()
+    }
+
     private fun loadPreferences() {
         try {
             val prefs = getSharedPreferences("connected_services", Context.MODE_PRIVATE)
@@ -239,6 +247,10 @@ class MusicNotificationListenerService : NotificationListenerService() {
 
         fun stopListening() {
             try { instance?.requestUnbind() } catch (_: Exception) {}
+        }
+
+        fun resyncCurrentTrack() {
+            try { instance?.forceResync() } catch (_: Exception) {}
         }
     }
 }

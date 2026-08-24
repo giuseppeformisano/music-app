@@ -406,6 +406,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         syncNotificationListenerServiceFlags()
         if (enabled) {
             com.example.MusicNotificationListenerService.startListening(appContext)
+            // Riapertura app con musica già in corso: forza il re-emit del brano corrente
+            // (altrimenti il service lo vede come "stesso brano" e non popola la live locale
+            // finché non cambi traccia).
+            com.example.MusicNotificationListenerService.resyncCurrentTrack()
         }
     }
 
