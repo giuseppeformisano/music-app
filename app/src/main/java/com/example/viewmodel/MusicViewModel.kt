@@ -81,7 +81,10 @@ data class MusicUiState(
     val sentRequestIds: Set<String> = emptySet(),
     val followerDetails: List<User> = emptyList(),
     val followingDetails: List<User> = emptyList(),
-    val isNotificationListenerEnabled: Boolean = false
+    val isNotificationListenerEnabled: Boolean = false,
+    // Aumenta periodicamente per forzare la riValutazione del TTL di staleness dei live
+    // anche quando non arrivano nuovi eventi da Firestore.
+    val liveTick: Long = 0L
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -94,6 +97,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var searchJob: Job? = null
     private var userSearchJob: Job? = null
     private var firebaseObserverJob: Job? = null
+    private var liveStaleTickerJob: Job? = null
     private var spotifyPollingJob: Job? = null
     // Debounce: evita che un singolo poll vuoto (204 tra brani / errore rete transitorio)
     // faccia sparire e riapparire la live agli altri
@@ -121,6 +125,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         connectedServices = services
                     )
                 }
+                FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
                 saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
@@ -184,6 +189,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         connectedServices = services
                     )
                 }
+                // Scrive il profilo completo su Firestore (nome, username, avatar, ecc.),
+                // altrimenti il documento nasce con il solo fcmToken e l'utente resta senza metadati.
+                FirebaseRepository.syncCurrentUser(user)
                 startFirebaseListener()
                 saveFcmToken(user.id)
                 if (spotifyConnected) startSpotifyPolling()
@@ -202,6 +210,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         stopSpotifyPolling()
         AuthRepository.signOut()
         firebaseObserverJob?.cancel()
+        liveStaleTickerJob?.cancel()
         _uiState.value = MusicUiState()
     }
 
@@ -549,6 +558,15 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun startFirebaseListener() {
         val userId = _uiState.value.currentUser.id
+        // Ticker: forza la riValutazione del TTL dei live anche in assenza di eventi Firestore
+        // (es. tutti i live vengono uccisi contemporaneamente e nessun altro aggiorna il DB).
+        liveStaleTickerJob?.cancel()
+        liveStaleTickerJob = viewModelScope.launch {
+            while (isActive) {
+                kotlinx.coroutines.delay(30_000L)
+                _uiState.update { it.copy(liveTick = System.currentTimeMillis()) }
+            }
+        }
         firebaseObserverJob?.cancel()
         firebaseObserverJob = viewModelScope.launch {
             FirebaseRepository.observeOtherUsers(userId)
@@ -1137,16 +1155,24 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun getStoriesList(): List<User> {
         val state = _uiState.value
         val followingIds = state.currentUser.followingIds
+        val now = System.currentTimeMillis()
         val list = mutableListOf<User>()
+        // Il proprio stato è locale e sempre "fresco": nessun TTL su noi stessi.
         if (state.currentUser.currentTrack != null && state.currentUser.isLiveNow) list.add(state.currentUser)
+        // Gli altri sono live solo se il documento è stato aggiornato di recente: se il loro
+        // processo viene ucciso l'heartbeat si ferma e dopo il TTL spariscono (UC8).
         list.addAll(state.feedUsers.filter {
-            followingIds.contains(it.id) && it.isActuallyLive
+            followingIds.contains(it.id) && it.isActuallyLive && (now - it.updatedAt) < LIVE_STALE_TTL_MS
         })
         return list
     }
 
     companion object {
         const val FRIEND_REQUEST_CHANNEL_ID = "friend_requests_channel"
+        // Un utente è considerato live solo se il suo documento è stato aggiornato entro questo
+        // tempo. L'heartbeat del listener rinfresca updatedAt ~ogni 20s; 90s tollera qualche
+        // ping perso ma fa sparire chi ha il processo ucciso (UC8).
+        private const val LIVE_STALE_TTL_MS = 90_000L
         private const val DEFAULT_COVER = "https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=600&auto=format&fit=crop&q=80"
 
         private fun com.google.firebase.auth.FirebaseUser.toAppUser(): User {

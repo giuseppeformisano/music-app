@@ -28,6 +28,7 @@ data class User(
     val currentTrack: Track? = null,
     val trackProgressMs: Long = 0L,      // posizione di ascolto catturata (ms)
     val trackProgressAt: Long = 0L,      // wall-clock (ms) di quando è stata catturata la posizione
+    val updatedAt: Long = 0L,            // ultimo aggiornamento del documento (per TTL di staleness)
     val sharedTracks: List<Track> = emptyList(),
     val stats: UserStats = UserStats(),
     val followerIds: List<String> = emptyList(),

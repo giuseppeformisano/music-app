@@ -455,6 +455,7 @@ object FirebaseRepository {
         val isLiveNow = data["isLiveNow"] as? Boolean ?: false
         val trackProgressMs = (data["trackProgressMs"] as? Number)?.toLong() ?: 0L
         val trackProgressAt = (data["trackProgressAt"] as? Number)?.toLong() ?: 0L
+        val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: 0L
 
         val currentTrackMap = data["currentTrack"] as? Map<String, Any?>
         val currentTrack = currentTrackMap?.let { mapToTrack(it) }
@@ -496,6 +497,7 @@ object FirebaseRepository {
             currentTrack = currentTrack,
             trackProgressMs = trackProgressMs,
             trackProgressAt = trackProgressAt,
+            updatedAt = updatedAt,
             sharedTracks = sharedTracks,
             stats = com.example.model.UserStats(
                 sharedCount = sharedCount,

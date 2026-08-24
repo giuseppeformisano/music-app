@@ -20,6 +20,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
     private var lastSource = ""
     private val handler = Handler(Looper.getMainLooper())
     private val recheck = Runnable { checkMediaSessions() }
+    // Heartbeat: mentre un brano è live (anche in PAUSA), rinfresca periodicamente lo stato
+    // così updatedAt resta fresco su Firestore. Se il processo viene ucciso, l'heartbeat si
+    // ferma → dopo il TTL gli altri smettono di vederti live (UC8 anche da kill di sistema).
+    private val heartbeat = Runnable { checkMediaSessions() }
+    private val heartbeatMs = 20_000L
 
     override fun onCreate() {
         super.onCreate()
@@ -62,6 +67,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
 
     private fun stopPlayback(source: String = "") {
         if (source.isEmpty() || lastSource == source) {
+            handler.removeCallbacks(heartbeat)
             lastTrack = ""
             lastSource = ""
             pendingTrack = null
@@ -136,6 +142,10 @@ class MusicNotificationListenerService : NotificationListenerService() {
             ).firstNotNullOfOrNull { key ->
                 meta.getString(key)?.takeIf { it.startsWith("http", ignoreCase = true) }
             } ?: ""
+
+            // Brano live valido: riarma l'heartbeat (anche in pausa) per tenere fresco updatedAt.
+            handler.removeCallbacks(heartbeat)
+            handler.postDelayed(heartbeat, heartbeatMs)
 
             if (title == lastTrack && source == lastSource) {
                 if (onProgressChanged != null) {
