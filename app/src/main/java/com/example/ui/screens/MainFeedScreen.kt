@@ -574,7 +574,6 @@ private fun LivePageContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(BlackPitch)
     ) {
         if (!iAmLive && displayLive.isEmpty()) {
             Box(
@@ -593,8 +592,7 @@ private fun LivePageContent(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .background(BlackPitch),
+                    .fillMaxSize(),
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -1618,9 +1616,6 @@ private fun LiveUserMinimalItem(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            // Sfondo arrotondato SENZA clip dei figli: così la custodia CD, mentre
-            // ruota a libro in 3D, resta interamente visibile e non viene tagliata.
-            .background(BlackPitch, RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(color = PureWhite.copy(alpha = 0.08f)),
@@ -1958,7 +1953,6 @@ private fun SupernovaEntranceItem(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(BlackPitch, RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = ripple(color = PureWhite.copy(alpha = 0.08f)),
@@ -2137,7 +2131,6 @@ private fun ExitingLiveItem(
         modifier = modifier
             .fillMaxWidth()
             .graphicsLayer { alpha = itemAlpha }
-            .background(BlackPitch, RoundedCornerShape(16.dp))
             .padding(horizontal = 6.dp, vertical = 8.dp)
             .testTag("live_item_exiting_${user.id}")
     ) {
