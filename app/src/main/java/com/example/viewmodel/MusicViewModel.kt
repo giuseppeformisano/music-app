@@ -380,6 +380,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         setOnline(false)
     }
 
+    override fun onCleared() {
+        super.onCleared()
+        // Il ViewModel muore (app chiusa): sgancia i callback così il listener continua a
+        // pubblicare la live scrivendo DIRETTAMENTE su Firestore (UC5/UC9: app MUSIC chiusa
+        // ma streaming attivo → l'amico continua a vederti live).
+        com.example.MusicNotificationListenerService.onTrackChanged = null
+        com.example.MusicNotificationListenerService.onProgressChanged = null
+        com.example.MusicNotificationListenerService.onPlaybackStopped = null
+    }
+
     fun checkNotificationListenerEnabled() {
         val enabled = com.example.MusicNotificationListenerService.isEnabled(appContext)
         _uiState.update { it.copy(isNotificationListenerEnabled = enabled) }

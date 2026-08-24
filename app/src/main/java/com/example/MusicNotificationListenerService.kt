@@ -85,8 +85,16 @@ class MusicNotificationListenerService : NotificationListenerService() {
                 ComponentName(this, MusicNotificationListenerService::class.java)
             )
 
-            val spotifyController = if (isSpotifyFreeEnabled) controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE } else null
-            val amazonController = if (isAmazonMusicEnabled) controllers.firstOrNull { it.packageName == AMAZON_MUSIC_PACKAGE } else null
+            // Notifica media presente? In PAUSA la notifica resta (app aperta); alla CHIUSURA
+            // sparisce. È il discriminatore affidabile tra pausa e chiusura del player:
+            // così una sessione che "persiste in pausa" dopo la chiusura NON tiene live.
+            val notifs = try { activeNotifications } catch (_: Exception) { null }
+            fun hasNotif(pkg: String): Boolean = notifs?.any { it.packageName == pkg } ?: true
+
+            val spotifyController = if (isSpotifyFreeEnabled && hasNotif(SPOTIFY_PACKAGE))
+                controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE } else null
+            val amazonController = if (isAmazonMusicEnabled && hasNotif(AMAZON_MUSIC_PACKAGE))
+                controllers.firstOrNull { it.packageName == AMAZON_MUSIC_PACKAGE } else null
 
             // Priorità all'app che sta effettivamente suonando (STATE_PLAYING o STATE_BUFFERING)
             val activeController: Pair<MediaController, String>? = when {
