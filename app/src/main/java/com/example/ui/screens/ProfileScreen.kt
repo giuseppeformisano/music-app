@@ -351,7 +351,10 @@ fun ProfileScreen(
         if (showSettingsSheet) {
             SettingsDialog(
                 applyCoverToFeed = applyCoverToFeed,
-                onToggleApplyCoverToFeed = onToggleApplyCoverToFeed,
+                onSave = { newApplyCoverToFeed ->
+                    onToggleApplyCoverToFeed(newApplyCoverToFeed)
+                    showSettingsSheet = false
+                },
                 onDismiss = { showSettingsSheet = false }
             )
         }
@@ -1873,9 +1876,11 @@ private fun AmazonMusicBrandLogo() {
 @Composable
 private fun SettingsDialog(
     applyCoverToFeed: Boolean,
-    onToggleApplyCoverToFeed: (Boolean) -> Unit,
+    onSave: (Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var localApplyCoverToFeed by remember(applyCoverToFeed) { mutableStateOf(applyCoverToFeed) }
+
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
         Column(
             modifier = Modifier
@@ -1926,7 +1931,7 @@ private fun SettingsDialog(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null,
-                            onClick = { onToggleApplyCoverToFeed(!applyCoverToFeed) }
+                            onClick = { localApplyCoverToFeed = !localApplyCoverToFeed }
                         )
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -1953,8 +1958,8 @@ private fun SettingsDialog(
                     }
 
                     Switch(
-                        checked = applyCoverToFeed,
-                        onCheckedChange = onToggleApplyCoverToFeed,
+                        checked = localApplyCoverToFeed,
+                        onCheckedChange = { localApplyCoverToFeed = it },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = PureWhite,
                             checkedTrackColor = Color(0xFF383842),
@@ -1967,7 +1972,7 @@ private fun SettingsDialog(
 
             // Pulsante Salva modifiche coerente con Modifica Profilo
             Button(
-                onClick = onDismiss,
+                onClick = { onSave(localApplyCoverToFeed) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
