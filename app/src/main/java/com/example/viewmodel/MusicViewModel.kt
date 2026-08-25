@@ -651,10 +651,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 .catch { }
                 .collect { fresh ->
                     val newIds = fresh.pendingRequests.map { it.id }.toSet()
-                    if (friendRequestsInitialized) {
-                        fresh.pendingRequests.filter { it.id !in knownFriendRequestIds }
-                            .forEach { showFriendRequestNotification(it) }
-                    }
+                    // FCM Push via Render gestisce la notifica reale in tempo reale su qualsiasi stato (aperta, background, chiusa).
                     friendRequestsInitialized = true
                     knownFriendRequestIds = newIds
 
