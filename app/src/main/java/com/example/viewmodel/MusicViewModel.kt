@@ -1007,7 +1007,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var friendRequestsInitialized = false
 
     private fun showFriendRequestNotification(request: FriendRequest) {
-        if (!com.example.data.NotificationDeduplicator.shouldShow(request.id)) return
+        if (!com.example.data.NotificationDeduplicator.shouldShow(appContext, request.id)) return
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (appContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return
