@@ -111,12 +111,13 @@ class MusicNotificationListenerService : NotificationListenerService() {
             val amazonController = if (isAmazonMusicEnabled && hasNotif(AMAZON_MUSIC_PACKAGE))
                 controllers.firstOrNull { it.packageName == AMAZON_MUSIC_PACKAGE } else null
 
-            // Priorità all'app che sta effettivamente suonando (STATE_PLAYING o STATE_BUFFERING)
+            // Priorità all'app che sta effettivamente suonando (STATE_PLAYING o STATE_BUFFERING).
+            // A parità di esecuzione sul dispositivo, Amazon Music (o sorgente nativa) ha precedenza.
             val activeController: Pair<MediaController, String>? = when {
-                spotifyController != null && isPlaying(spotifyController) -> spotifyController to "spotify"
                 amazonController != null && isPlaying(amazonController) -> amazonController to "amazon_music"
-                spotifyController != null && isPausedOrActive(spotifyController) -> spotifyController to "spotify"
+                spotifyController != null && isPlaying(spotifyController) -> spotifyController to "spotify"
                 amazonController != null && isPausedOrActive(amazonController) -> amazonController to "amazon_music"
+                spotifyController != null && isPausedOrActive(spotifyController) -> spotifyController to "spotify"
                 else -> null
             }
 
@@ -184,6 +185,29 @@ class MusicNotificationListenerService : NotificationListenerService() {
         } catch (_: Exception) {}
     }
 
+    /**
+     * Verifica se sul dispositivo è EFFETTIVAMENTE IN ESECUZIONE (STATE_PLAYING/BUFFERING)
+     * una riproduzione da Amazon Music / sorgente nativa non-Spotify.
+     */
+    fun hasActiveNonSpotifyPlayback(): Boolean {
+        try {
+            loadPreferences()
+            if (!isAmazonMusicEnabled) return false
+            val manager = getSystemService(MEDIA_SESSION_SERVICE) as? MediaSessionManager ?: return false
+            val controllers = manager.getActiveSessions(
+                ComponentName(this, MusicNotificationListenerService::class.java)
+            ) ?: return false
+            val notifs = try { activeNotifications } catch (_: Exception) { null }
+            fun hasNotif(pkg: String): Boolean = notifs?.any { it.packageName == pkg } ?: true
+            val amazonController = if (hasNotif(AMAZON_MUSIC_PACKAGE))
+                controllers.firstOrNull { it.packageName == AMAZON_MUSIC_PACKAGE } else null
+
+            return amazonController != null && isPlaying(amazonController)
+        } catch (_: Exception) {
+            return false
+        }
+    }
+
     private fun isPlaying(controller: MediaController): Boolean {
         val state = controller.playbackState?.state
         return state == PlaybackState.STATE_PLAYING || state == PlaybackState.STATE_BUFFERING
@@ -229,6 +253,10 @@ class MusicNotificationListenerService : NotificationListenerService() {
         var onPlaybackStopped: ((source: String) -> Unit)? = null
         var pendingTrack: Pending? = null
             private set
+
+        fun isNonSpotifyDevicePlaybackActive(): Boolean {
+            return instance?.hasActiveNonSpotifyPlayback() ?: false
+        }
 
         fun isEnabled(context: Context): Boolean {
             val cn = ComponentName(context, MusicNotificationListenerService::class.java)

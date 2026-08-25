@@ -305,6 +305,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun fetchCurrentlyPlaying() {
+        // Se sul dispositivo è EFFETTIVAMENTE in esecuzione un'altra sorgente (es. Amazon Music),
+        // questa ha precedenza assoluta sullo streaming via API di Spotify Premium.
+        if (com.example.MusicNotificationListenerService.isNonSpotifyDevicePlaybackActive()) {
+            return
+        }
+
         val result = SpotifyWebApiRepository.getCurrentlyPlaying(appContext)
         val currentTrackId = _uiState.value.nowPlayingTrack?.id
 
