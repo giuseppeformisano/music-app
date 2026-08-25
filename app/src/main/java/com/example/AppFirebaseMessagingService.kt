@@ -37,8 +37,10 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
                 .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentTitle(title)
                 .setContentText(body)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setVibrate(longArrayOf(0, 250, 250, 250))
                 .setAutoCancel(true)
 
             if (avatarBitmap != null) {

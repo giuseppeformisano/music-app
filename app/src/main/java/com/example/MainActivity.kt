@@ -177,7 +177,12 @@ class MainActivity : ComponentActivity() {
                 MusicViewModel.FRIEND_REQUEST_CHANNEL_ID,
                 "Richieste di Follow",
                 NotificationManager.IMPORTANCE_HIGH
-            ).apply { description = "Nuove richieste di follow ricevute" }
+            ).apply {
+                description = "Nuove richieste di follow ricevute"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 250, 250, 250)
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
+            }
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(channel)
         }
     }
