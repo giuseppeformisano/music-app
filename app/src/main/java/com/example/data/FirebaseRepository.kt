@@ -91,6 +91,7 @@ object FirebaseRepository {
             )
             db.collection(USERS_COLLECTION).document(userId).get()
                 .addOnSuccessListener { doc ->
+                    val wasLiveAlready = doc?.getBoolean("isLiveNow") ?: false
                     db.collection(USERS_COLLECTION).document(userId)
                         .update(
                             mapOf(
@@ -102,7 +103,7 @@ object FirebaseRepository {
                             )
                         )
                         .addOnSuccessListener {
-                            if (doc != null) {
+                            if (!wasLiveAlready && doc != null) {
                                 val u = mapDocToUser(doc.data, doc.id)
                                 if (u != null) {
                                     val liveUser = u.copy(
