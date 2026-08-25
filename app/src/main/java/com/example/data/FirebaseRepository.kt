@@ -340,7 +340,28 @@ object FirebaseRepository {
                 "sentRequestIds", FieldValue.arrayUnion(to.id)
             )
             batch.commit()
-                .addOnSuccessListener { Log.d(TAG, "Richiesta inviata con successo a ${to.name}") }
+                .addOnSuccessListener {
+                    Log.d(TAG, "Richiesta inviata con successo a ${to.name}")
+                    // Invia la notifica Push al destinatario tramite il backend Render
+                    db.collection(USERS_COLLECTION).document(to.id).get()
+                        .addOnSuccessListener { doc ->
+                            val fcmToken = doc?.getString("fcmToken")
+                            if (!fcmToken.isNullOrBlank()) {
+                                PushNotificationSender.sendPushNotification(
+                                    targetToken = fcmToken,
+                                    title = "Nuova richiesta di contatto",
+                                    body = "${from.name} (@${from.username}) ti ha inviato una richiesta di contatto",
+                                    data = mapOf(
+                                        "type" to "follow_request",
+                                        "fromUserId" to from.id,
+                                        "fromUserName" to from.name,
+                                        "fromUserUsername" to from.username,
+                                        "fromUserAvatarUrl" to fromAvatar
+                                    )
+                                )
+                            }
+                        }
+                }
                 .addOnFailureListener { e -> Log.w(TAG, "Errore invio richiesta: ${e.message}") }
         } catch (e: Exception) {
             Log.e(TAG, "sendFollowRequest error: ${e.message}")
