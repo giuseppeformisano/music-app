@@ -650,10 +650,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             FirebaseRepository.observeCurrentUserDocument(userId)
                 .catch { }
                 .collect { fresh ->
-                    // Notifica solo le NUOVE richieste ricevute (dopo il primo snapshot)
-                    // Le notifiche push per le richieste di contatto sono gestite in tempo reale da FCM via backend Render
+                    val newIds = fresh.pendingRequests.map { it.id }.toSet()
                     if (friendRequestsInitialized) {
-                        // disattivato il doppione locale
+                        fresh.pendingRequests.filter { it.id !in knownFriendRequestIds }
+                            .forEach { showFriendRequestNotification(it) }
                     }
                     friendRequestsInitialized = true
                     knownFriendRequestIds = newIds
@@ -1007,6 +1007,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var friendRequestsInitialized = false
 
     private fun showFriendRequestNotification(request: FriendRequest) {
+        if (!com.example.data.NotificationDeduplicator.shouldShow(request.id)) return
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (appContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return

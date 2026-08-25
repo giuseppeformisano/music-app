@@ -30,6 +30,9 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         }
 
+        val notifKey = data["requestId"] ?: data["fromUserId"] ?: "${title}_$body"
+        if (!com.example.data.NotificationDeduplicator.shouldShow(notifKey)) return
+
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             val avatarBitmap = if (avatarUrl.isNotBlank()) com.example.data.ImageUtils.loadAvatarBitmap(this@AppFirebaseMessagingService, avatarUrl) else null
 

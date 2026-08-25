@@ -353,6 +353,7 @@ object FirebaseRepository {
                                     body = "${from.name} (@${from.username}) ti ha inviato una richiesta di contatto",
                                     data = mapOf(
                                         "type" to "follow_request",
+                                        "requestId" to "${from.id}_${to.id}",
                                         "fromUserId" to from.id,
                                         "fromUserName" to from.name,
                                         "fromUserUsername" to from.username,
