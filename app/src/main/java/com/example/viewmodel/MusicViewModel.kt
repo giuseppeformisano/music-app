@@ -1003,44 +1003,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var knownFriendRequestIds = emptySet<String>()
     private var friendRequestsInitialized = false
 
-    private fun showFriendRequestNotification(request: FriendRequest) {
-        if (!com.example.data.NotificationDeduplicator.shouldShow(appContext, request.id)) return
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (appContext.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) return
-        }
-        val intent = android.content.Intent(appContext, com.example.MainActivity::class.java).apply {
-            putExtra(com.example.MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
-            flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or
-                    android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
-        }
-        val pendingIntent = android.app.PendingIntent.getActivity(
-            appContext,
-            request.id.hashCode(),
-            intent,
-            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
-        )
-        viewModelScope.launch(Dispatchers.IO) {
-            val avatarBitmap = com.example.data.ImageUtils.loadAvatarBitmap(appContext, request.fromUserAvatarUrl)
-            val builder = androidx.core.app.NotificationCompat.Builder(appContext, FRIEND_REQUEST_CHANNEL_ID)
-                .setSmallIcon(com.example.R.drawable.ic_stat_notification)
-                .setContentTitle("Nuova richiesta di follow")
-                .setContentText("@${request.fromUserUsername} vuole seguirti")
-                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
-                .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
-                .setContentIntent(pendingIntent)
-                .setAutoCancel(true)
 
-            if (avatarBitmap != null) {
-                builder.setLargeIcon(avatarBitmap)
-            }
-
-            withContext(Dispatchers.Main) {
-                androidx.core.app.NotificationManagerCompat.from(appContext)
-                    .notify(request.id.hashCode(), builder.build())
-            }
-        }
-    }
 
     fun shareTrack(track: Track) {
         // Condivisione nel FEED: aggiorna solo i brani condivisi + stats.
