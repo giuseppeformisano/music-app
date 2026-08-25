@@ -74,6 +74,14 @@ class MusicNotificationListenerService : NotificationListenerService() {
         } catch (_: Exception) {}
     }
 
+    private fun getSavedUserId(): String? {
+        val authId = FirebaseAuth.getInstance().currentUser?.uid
+        if (!authId.isNullOrBlank()) return authId
+        return try {
+            getSharedPreferences("user_settings", Context.MODE_PRIVATE).getString("last_user_id", null)
+        } catch (_: Exception) { null }
+    }
+
     private fun stopPlayback(source: String = "") {
         if (source.isEmpty() || lastSource == source) {
             handler.removeCallbacks(heartbeat)
@@ -84,7 +92,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
                 onPlaybackStopped?.invoke(source)
             } else {
                 // Sveglia in background: aggiorna direttamente a DB se l'app è chiusa
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                val userId = getSavedUserId()
                 if (userId != null) {
                     FirebaseRepository.clearLiveTrack(userId)
                 }
@@ -177,7 +185,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
                 onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl, source)
             } else {
                 // Sveglia in background: aggiorna direttamente a DB solo se la UI dell'app è chiusa
-                val userId = FirebaseAuth.getInstance().currentUser?.uid
+                val userId = getSavedUserId()
                 if (userId != null) {
                     FirebaseRepository.updateLiveTrack(userId, title, artist, durationMs, positionMs, artUrl, source)
                 }

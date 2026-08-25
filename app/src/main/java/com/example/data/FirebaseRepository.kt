@@ -91,7 +91,6 @@ object FirebaseRepository {
             )
             db.collection(USERS_COLLECTION).document(userId).get()
                 .addOnSuccessListener { doc ->
-                    val wasLiveAlready = doc?.getBoolean("isLiveNow") ?: false
                     db.collection(USERS_COLLECTION).document(userId)
                         .update(
                             mapOf(
@@ -103,9 +102,23 @@ object FirebaseRepository {
                             )
                         )
                         .addOnSuccessListener {
-                            if (!wasLiveAlready && doc != null) {
+                            if (doc != null) {
                                 val u = mapDocToUser(doc.data, doc.id)
-                                if (u != null) sendLiveNotificationToFollowers(u)
+                                if (u != null) {
+                                    val liveUser = u.copy(
+                                        currentTrack = com.example.model.Track(
+                                            id = "${title}_${artist}",
+                                            title = title,
+                                            artist = artist,
+                                            album = "",
+                                            coverUrl = resolvedCover,
+                                            durationMs = durationMs,
+                                            source = source
+                                        ),
+                                        isLiveNow = true
+                                    )
+                                    sendLiveNotificationToFollowers(liveUser)
+                                }
                             }
                         }
                 }
