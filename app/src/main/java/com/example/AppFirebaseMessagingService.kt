@@ -36,6 +36,17 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             val avatarBitmap = if (avatarUrl.isNotBlank()) com.example.data.ImageUtils.loadAvatarBitmap(this@AppFirebaseMessagingService, avatarUrl) else null
 
+            val intent = android.content.Intent(this@AppFirebaseMessagingService, MainActivity::class.java).apply {
+                putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
+                flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val pendingIntent = android.app.PendingIntent.getActivity(
+                this@AppFirebaseMessagingService,
+                notifKey.hashCode(),
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
             val notifBuilder = NotificationCompat.Builder(this@AppFirebaseMessagingService, MusicViewModel.FRIEND_REQUEST_CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_stat_notification)
                 .setContentTitle(title)
@@ -44,6 +55,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
                 .setDefaults(NotificationCompat.DEFAULT_ALL)
                 .setVibrate(longArrayOf(0, 250, 250, 250))
+                .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
 
             if (avatarBitmap != null) {
