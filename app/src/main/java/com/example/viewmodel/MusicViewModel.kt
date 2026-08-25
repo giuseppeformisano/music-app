@@ -380,6 +380,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             trackProgressMs = progressMs, trackProgressAt = now
         )
         _uiState.update { it.copy(nowPlayingTrack = liveTrack, currentUser = updatedUser) }
+        checkAndSendLiveNotification(updatedUser)
         FirebaseRepository.syncCurrentUser(updatedUser)
     }
 
@@ -511,6 +512,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 trackProgressMs = positionMs, trackProgressAt = now
             )
             _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
+            checkAndSendLiveNotification(updatedUser)
             FirebaseRepository.syncCurrentUser(updatedUser)
         }
     }
@@ -1037,6 +1039,27 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         FirebaseRepository.deleteSharedTrack(currentUser.id, track.id)
+    }
+
+    private var wasLive = false
+
+    private fun checkAndSendLiveNotification(user: User) {
+        if (user.isLiveNow && !wasLive) {
+            wasLive = true
+            FirebaseRepository.sendLiveNotificationToFollowers(user)
+        } else if (!user.isLiveNow) {
+            wasLive = false
+        }
+    }
+
+    fun openLiveFromNotification(hostUserId: String) {
+        if (hostUserId.isBlank()) return
+        FirebaseRepository.getUsersByIds(listOf(hostUserId)) { users ->
+            val hostUser = users.firstOrNull()
+            if (hostUser != null) {
+                openStory(hostUser)
+            }
+        }
     }
 
     fun openStory(user: User) {

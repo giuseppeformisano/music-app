@@ -371,6 +371,43 @@ object FirebaseRepository {
         }
     }
 
+    fun sendLiveNotificationToFollowers(user: User) {
+        val db = firestore ?: return
+        val followerIds = user.followerIds
+        if (followerIds.isEmpty()) return
+
+        val pushAvatarUrl = if (user.avatarUrl.startsWith("http", ignoreCase = true)) user.avatarUrl else ""
+
+        followerIds.chunked(10).forEach { chunk ->
+            db.collection(USERS_COLLECTION)
+                .whereIn(FieldPath.documentId(), chunk)
+                .get()
+                .addOnSuccessListener { snapshots ->
+                    for (doc in snapshots.documents) {
+                        val fcmToken = doc.getString("fcmToken")
+                        if (!fcmToken.isNullOrBlank()) {
+                            PushNotificationSender.sendPushNotification(
+                                targetToken = fcmToken,
+                                title = "${user.name} è in Live 🎵",
+                                body = "Tocca per ascoltare la diretta di @${user.username}",
+                                data = mapOf(
+                                    "type" to "live_start",
+                                    "open_live" to "true",
+                                    "hostUserId" to user.id,
+                                    "hostUserName" to user.name,
+                                    "hostUserUsername" to user.username,
+                                    "fromUserAvatarUrl" to pushAvatarUrl
+                                )
+                            )
+                        }
+                    }
+                }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Errore invio notifica live ai follower: ${e.message}")
+                }
+        }
+    }
+
     // Accetta: 1 batch atomico. Il follow finisce in follower/following; la richiesta
     // viene RIMOSSA (niente doc "ACCEPTED" che si accumulano) da entrambi i lati.
     fun acceptFollowRequest(currentUserId: String, fromUserId: String) {

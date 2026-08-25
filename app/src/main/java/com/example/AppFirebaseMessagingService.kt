@@ -20,9 +20,14 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         val data = message.data
-        val title = data["title"] ?: message.notification?.title ?: "Nuova richiesta di follow"
+        val isLive = data["type"] == "live_start" || data["open_live"] == "true"
+        val hostUserId = data["hostUserId"] ?: ""
+
+        val defaultTitle = if (isLive) "Diretta Live 🎵" else "Nuova richiesta di follow"
+        val title = data["title"] ?: message.notification?.title ?: defaultTitle
         val body = data["body"] ?: message.notification?.body ?: ""
 
+        val notifKey = data["requestId"] ?: data["fromUserId"] ?: hostUserId.ifBlank { "${title}_$body" }
         val avatarUrl = data["avatarUrl"] ?: data["fromUserAvatarUrl"] ?: ""
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -30,15 +35,20 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         }
 
-        val notifKey = data["requestId"] ?: data["fromUserId"] ?: "${title}_$body"
-
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
             val avatarBitmap = if (avatarUrl.isNotBlank()) com.example.data.ImageUtils.loadAvatarBitmap(this@AppFirebaseMessagingService, avatarUrl) else null
 
             val intent = android.content.Intent(this@AppFirebaseMessagingService, MainActivity::class.java).apply {
-                putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
-                putExtra("open_notifications", "true")
-                putExtra("type", "follow_request")
+                if (isLive) {
+                    putExtra(MainActivity.EXTRA_OPEN_LIVE, true)
+                    putExtra("open_live", "true")
+                    putExtra("type", "live_start")
+                    putExtra("hostUserId", hostUserId)
+                } else {
+                    putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
+                    putExtra("open_notifications", "true")
+                    putExtra("type", "follow_request")
+                }
                 flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val pendingIntent = android.app.PendingIntent.getActivity(
