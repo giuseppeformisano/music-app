@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -135,66 +136,42 @@ fun TrackDetailDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    // 1. HEADER: Avatar piccolo + @username + Pulsante Cestino (se mia canzone)
+                    // 1. HEADER: Avatar piccolo + @username (centrato)
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {
-                                        if (user != null) {
-                                            onOpenUserProfile(user)
-                                            onDismiss()
-                                        }
-                                    }
-                                )
-                        ) {
-                            if (user?.avatarUrl?.isNotBlank() == true) {
-                                AsyncImage(
-                                    model = user.avatarUrl,
-                                    contentDescription = "Avatar ${user.name}",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .clip(CircleShape)
-                                        .border(0.8.dp, PureWhite.copy(alpha = 0.4f), CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-
-                            Text(
-                                text = "@${user?.username?.lowercase() ?: "utente"}",
-                                color = PureWhite,
-                                fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-0.2).sp
-                            )
-                        }
-
-                        if (isMyTrack && onDeleteTrack != null) {
-                            IconButton(
+                        horizontalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
                                 onClick = {
-                                    onDeleteTrack(track)
-                                    onDismiss()
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Elimina canzone dal feed",
-                                    tint = Color(0xFFFF453A),
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        } else {
-                            Spacer(modifier = Modifier.size(32.dp))
+                                    if (user != null) {
+                                        onOpenUserProfile(user)
+                                        onDismiss()
+                                    }
+                                }
+                            )
+                    ) {
+                        if (user?.avatarUrl?.isNotBlank() == true) {
+                            AsyncImage(
+                                model = user.avatarUrl,
+                                contentDescription = "Avatar ${user.name}",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(CircleShape)
+                                    .border(0.8.dp, PureWhite.copy(alpha = 0.4f), CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
                         }
+
+                        Text(
+                            text = "@${user?.username?.lowercase() ?: "utente"}",
+                            color = PureWhite,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.2).sp
+                        )
                     }
 
                     // 2. COVER ALBUM PIÙ GRANDE AL CENTRO
@@ -423,6 +400,28 @@ fun TrackDetailDialog(
                             )
                         }
                     }
+                }
+            }
+
+            // Pulsante Cestino in alto a destra (sotto la status bar)
+            if (isMyTrack && onDeleteTrack != null) {
+                IconButton(
+                    onClick = {
+                        onDeleteTrack(track)
+                        onDismiss()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(top = 12.dp, end = 12.dp)
+                        .size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Elimina canzone dal feed",
+                        tint = PureWhite,
+                        modifier = Modifier.size(22.dp)
+                    )
                 }
             }
 
