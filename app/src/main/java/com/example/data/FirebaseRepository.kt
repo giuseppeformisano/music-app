@@ -349,8 +349,8 @@ object FirebaseRepository {
                             if (!fcmToken.isNullOrBlank()) {
                                 PushNotificationSender.sendPushNotification(
                                     targetToken = fcmToken,
-                                    title = "Nuova richiesta di contatto",
-                                    body = "${from.name} (@${from.username}) ti ha inviato una richiesta di contatto",
+                                    title = "Nuova richiesta di follow",
+                                    body = "@${from.username} vuole seguirti",
                                     data = mapOf(
                                         "type" to "follow_request",
                                         "requestId" to "${from.id}_${to.id}",

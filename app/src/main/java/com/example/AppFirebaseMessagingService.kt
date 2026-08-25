@@ -20,7 +20,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         val data = message.data
-        val title = data["title"] ?: message.notification?.title ?: "Nuova notifica"
+        val title = data["title"] ?: message.notification?.title ?: "Nuova richiesta di follow"
         val body = data["body"] ?: message.notification?.body ?: ""
 
         val avatarUrl = data["avatarUrl"] ?: data["fromUserAvatarUrl"] ?: ""
