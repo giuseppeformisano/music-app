@@ -371,10 +371,10 @@ fun MusicApp(viewModel: MusicViewModel) {
             )
         }
 
-        // Dialog: Notifiche & Richieste Amicizia
-        if (uiState.showNotifications) {
+        // Dialog: Notifiche e Richieste Amicizia
+        if (uiState.isNotificationsOpen) {
             NotificationsDialog(
-                pendingRequests = uiState.pendingFriendRequests,
+                requests = uiState.pendingFriendRequests,
                 onAccept = { viewModel.acceptFriendRequest(it) },
                 onReject = { viewModel.rejectFriendRequest(it) },
                 onDismiss = { viewModel.closeNotifications() }
@@ -390,6 +390,7 @@ fun MusicApp(viewModel: MusicViewModel) {
 
         // Dialog: Track Detail Inspector
         uiState.selectedTrackDetail?.let { (track, owner) ->
+            val isMyTrack = owner?.isCurrentUser == true || (owner?.id?.isNotBlank() == true && owner.id == uiState.currentUser.id)
             TrackDetailDialog(
                 track = track,
                 user = owner,
@@ -397,7 +398,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onSendMessage = { user, trk -> viewModel.openChat(user, trk) },
                 onSendTextMessage = { user, text, trk -> viewModel.sendMessage(user.id, text, trk) },
                 onOpenUserProfile = { user -> viewModel.openProfile(user) },
-                onShareToMyFeed = { trk -> viewModel.shareTrack(trk) }
+                onShareToMyFeed = { trk -> viewModel.shareTrack(trk) },
+                isMyTrack = isMyTrack,
+                onDeleteTrack = { trk -> viewModel.deleteSharedTrack(trk) }
             )
         }
     }

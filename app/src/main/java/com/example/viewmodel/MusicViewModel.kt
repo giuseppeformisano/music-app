@@ -1065,6 +1065,20 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         // l'intero profilo (incluso currentTrack live) — non serve qui.
     }
 
+    fun deleteSharedTrack(track: Track) {
+        val currentUser = _uiState.value.currentUser
+        val updatedTracks = currentUser.sharedTracks.filterNot { it.id == track.id }
+        val updatedUser = currentUser.copy(sharedTracks = updatedTracks)
+        _uiState.update {
+            it.copy(
+                currentUser = updatedUser,
+                activeProfileUser = if (it.activeProfileUser?.isCurrentUser == true || it.activeProfileUser?.id == currentUser.id) updatedUser else it.activeProfileUser,
+                feedbackToast = "Canzone rimossa dal feed"
+            )
+        }
+        FirebaseRepository.deleteSharedTrack(currentUser.id, track.id)
+    }
+
     fun openStory(user: User) {
         val allStories = getStoriesList()
         val index = allStories.indexOfFirst { it.id == user.id }

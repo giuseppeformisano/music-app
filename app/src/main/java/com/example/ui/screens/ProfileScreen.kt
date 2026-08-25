@@ -163,6 +163,7 @@ fun ProfileScreen(
     onEnableNotificationListener: () -> Unit = {},
     applyCoverToFeed: Boolean = false,
     onToggleApplyCoverToFeed: (Boolean) -> Unit = {},
+    onShareTrack: (Track) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -283,7 +284,7 @@ fun ProfileScreen(
                     FloatingLiveBar(
                         track = user.currentTrack,
                         onClick = { onOpenLiveDetail(user) },
-                        onShare = { onSelectTrack(user.currentTrack, user) },
+                        onShare = { user.currentTrack?.let { onShareTrack(it) } },
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

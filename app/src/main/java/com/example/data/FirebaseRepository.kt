@@ -244,6 +244,32 @@ object FirebaseRepository {
     }
 
     /**
+     * Rimuove un brano condiviso dal feed dell'utente su Firestore.
+     */
+    fun deleteSharedTrack(userId: String, trackId: String) {
+        val db = firestore ?: return
+        try {
+            db.collection(USERS_COLLECTION).document(userId).get()
+                .addOnSuccessListener { doc ->
+                    if (doc != null && doc.exists()) {
+                        val currentList = (doc.get("sharedTracks") as? List<Map<String, Any?>>) ?: emptyList()
+                        val updatedList = currentList.filterNot { map ->
+                            (map["id"] as? String) == trackId
+                        }
+                        db.collection(USERS_COLLECTION).document(userId).update(
+                            mapOf(
+                                "sharedTracks" to updatedList,
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                    }
+                }
+        } catch (e: Exception) {
+            Log.e(TAG, "Errore durante deleteSharedTrack: ${e.message}")
+        }
+    }
+
+    /**
      * Ascolta in tempo reale gli altri utenti con limit(40) e cache attiva.
      * limit alto per non far cadere dalla lista i live che smettono di aggiornare
      * updatedAt (es. Premium in background sullo stesso brano).

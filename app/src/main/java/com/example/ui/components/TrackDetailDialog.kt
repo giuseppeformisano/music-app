@@ -26,6 +26,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -80,7 +81,9 @@ fun TrackDetailDialog(
     onSendMessage: (User, Track) -> Unit = { _, _ -> },
     onSendTextMessage: ((User, String, Track) -> Unit)? = null,
     onOpenUserProfile: (User) -> Unit = {},
-    onShareToMyFeed: (Track) -> Unit = {}
+    onShareToMyFeed: (Track) -> Unit = {},
+    isMyTrack: Boolean = false,
+    onDeleteTrack: ((Track) -> Unit)? = null
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -132,42 +135,66 @@ fun TrackDetailDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    // 1. HEADER: Avatar piccolo + @username
+                    // 1. HEADER: Avatar piccolo + @username + Pulsante Cestino (se mia canzone)
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {
-                                    if (user != null) {
-                                        onOpenUserProfile(user)
-                                        onDismiss()
-                                    }
-                                }
-                            )
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        if (user?.avatarUrl?.isNotBlank() == true) {
-                            AsyncImage(
-                                model = user.avatarUrl,
-                                contentDescription = "Avatar ${user.name}",
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clip(CircleShape)
-                                    .border(0.8.dp, PureWhite.copy(alpha = 0.4f), CircleShape)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        if (user != null) {
+                                            onOpenUserProfile(user)
+                                            onDismiss()
+                                        }
+                                    }
+                                )
+                        ) {
+                            if (user?.avatarUrl?.isNotBlank() == true) {
+                                AsyncImage(
+                                    model = user.avatarUrl,
+                                    contentDescription = "Avatar ${user.name}",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .clip(CircleShape)
+                                        .border(0.8.dp, PureWhite.copy(alpha = 0.4f), CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                            }
+
+                            Text(
+                                text = "@${user?.username?.lowercase() ?: "utente"}",
+                                color = PureWhite,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.2).sp
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
                         }
 
-                        Text(
-                            text = "@${user?.username?.lowercase() ?: "utente"}",
-                            color = PureWhite,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = (-0.2).sp
-                        )
+                        if (isMyTrack && onDeleteTrack != null) {
+                            IconButton(
+                                onClick = {
+                                    onDeleteTrack(track)
+                                    onDismiss()
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Elimina canzone dal feed",
+                                    tint = Color(0xFFFF453A),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        } else {
+                            Spacer(modifier = Modifier.size(32.dp))
+                        }
                     }
 
                     // 2. COVER ALBUM PIÙ GRANDE AL CENTRO
