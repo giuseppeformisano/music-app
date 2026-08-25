@@ -72,29 +72,32 @@ object FirebaseRepository {
 
     fun updateLiveTrack(userId: String, title: String, artist: String, durationMs: Long, positionMs: Long, artUrl: String, source: String) {
         val db = firestore ?: return
-        val trackMap = mapOf(
-            "id" to "${title}_${artist}",
-            "title" to title,
-            "artist" to artist,
-            "album" to "",
-            "coverUrl" to artUrl,
-            "durationMs" to durationMs,
-            "source" to source,
-            // Sorgente via notifiche (Spotify Free / Amazon Music): sempre dal telefono.
-            "deviceType" to "Smartphone",
-            "deviceName" to ""
-        )
-        db.collection(USERS_COLLECTION).document(userId)
-            .update(
-                mapOf(
-                    "currentTrack" to trackMap,
-                    "isLiveNow" to true,
-                    "trackProgressMs" to positionMs,
-                    "trackProgressAt" to System.currentTimeMillis(),
-                    "updatedAt" to System.currentTimeMillis()
-                )
+        CoroutineScope(Dispatchers.IO).launch {
+            val resolvedCover = CoverResolver.resolveCoverUrl(artist, title, artUrl)
+            val trackMap = mapOf(
+                "id" to "${title}_${artist}",
+                "title" to title,
+                "artist" to artist,
+                "album" to "",
+                "coverUrl" to resolvedCover,
+                "durationMs" to durationMs,
+                "source" to source,
+                // Sorgente via notifiche (Spotify Free / Amazon Music): sempre dal telefono.
+                "deviceType" to "Smartphone",
+                "deviceName" to ""
             )
-            .addOnFailureListener { }
+            db.collection(USERS_COLLECTION).document(userId)
+                .update(
+                    mapOf(
+                        "currentTrack" to trackMap,
+                        "isLiveNow" to true,
+                        "trackProgressMs" to positionMs,
+                        "trackProgressAt" to System.currentTimeMillis(),
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                )
+                .addOnFailureListener { }
+        }
     }
 
     fun clearLiveTrack(userId: String) {

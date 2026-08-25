@@ -481,14 +481,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         source: String = "spotify"
     ) {
         if (trackName.isBlank()) return
-        val currentId = _uiState.value.nowPlayingTrack?.id
-        if (trackId.isNotBlank() && trackId == currentId) return
         val cleanArtist = sanitizeSpotifyContext(artistName)
         val cleanAlbum = sanitizeSpotifyContext(albumName)
         viewModelScope.launch {
-            // Preferisci l'artwork reale della MediaSession; altrimenti cerca su iTunes
-            val coverUrl = if (artUrl.startsWith("http", ignoreCase = true)) artUrl
-                           else fetchItunesCover(cleanArtist, trackName)
+            val coverUrl = com.example.data.CoverResolver.resolveCoverUrl(cleanArtist, trackName, artUrl)
             val now = System.currentTimeMillis()
             lastLiveHeartbeat = now
             val track = Track(
@@ -570,7 +566,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // ===================== FIREBASE =====================
 
-    private fun processUserImages(user: User): User {
+    private suspend fun processUserImages(user: User): User {
         val localAvatar = if (user.avatarUrl.startsWith("data:image", ignoreCase = true) ||
             (user.avatarUrl.length > 200 && !user.avatarUrl.startsWith("http", ignoreCase = true) && !user.avatarUrl.startsWith("file:", ignoreCase = true))
         ) {
@@ -587,7 +583,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             user.coverUrl
         }
 
-        return user.copy(avatarUrl = localAvatar, coverUrl = localCover)
+        val updatedTrack = user.currentTrack?.let { track ->
+            if (user.isLiveNow && (track.coverUrl.isBlank() || track.coverUrl.contains("unsplash.com") || !track.coverUrl.startsWith("http", ignoreCase = true))) {
+                val fetchedCover = com.example.data.CoverResolver.resolveCoverUrl(track.artist, track.title, track.coverUrl)
+                track.copy(coverUrl = fetchedCover)
+            } else {
+                track
+            }
+        }
+
+        return user.copy(avatarUrl = localAvatar, coverUrl = localCover, currentTrack = updatedTrack)
     }
 
     private fun startFirebaseListener() {
