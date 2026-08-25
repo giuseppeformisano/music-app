@@ -572,7 +572,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // ===================== FIREBASE =====================
 
-    private suspend fun processUserImages(user: User): User {
+    private fun processUserImages(user: User): User {
         val localAvatar = if (user.avatarUrl.startsWith("data:image", ignoreCase = true) ||
             (user.avatarUrl.length > 200 && !user.avatarUrl.startsWith("http", ignoreCase = true) && !user.avatarUrl.startsWith("file:", ignoreCase = true))
         ) {
@@ -589,16 +589,17 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             user.coverUrl
         }
 
-        val updatedTrack = user.currentTrack?.let { track ->
-            if (user.isLiveNow && (track.coverUrl.isBlank() || track.coverUrl.contains("unsplash.com") || !track.coverUrl.startsWith("http", ignoreCase = true))) {
-                val fetchedCover = com.example.data.CoverResolver.resolveCoverUrl(track.artist, track.title, track.coverUrl)
-                track.copy(coverUrl = fetchedCover)
-            } else {
-                track
-            }
-        }
+        return user.copy(avatarUrl = localAvatar, coverUrl = localCover)
+    }
 
-        return user.copy(avatarUrl = localAvatar, coverUrl = localCover, currentTrack = updatedTrack)
+    private suspend fun resolveLiveTrackCovers(user: User): User {
+        val u = processUserImages(user)
+        val tr = u.currentTrack ?: return u
+        if (u.isLiveNow && (tr.coverUrl.isBlank() || tr.coverUrl.contains("unsplash.com") || !tr.coverUrl.startsWith("http", ignoreCase = true))) {
+            val resolved = com.example.data.CoverResolver.resolveCoverUrl(tr.artist, tr.title, tr.coverUrl)
+            return u.copy(currentTrack = tr.copy(coverUrl = resolved))
+        }
+        return u
     }
 
     private fun startFirebaseListener() {
@@ -618,7 +619,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 .catch { }
                 .collect { remoteUsers ->
                     val processed = withContext(Dispatchers.IO) {
-                        remoteUsers.map { processUserImages(it) }
+                        remoteUsers.map { resolveLiveTrackCovers(it) }
                     }
                     _uiState.update { current ->
                         // `processed` è la lista autorevole dal server. Gli utenti non più
