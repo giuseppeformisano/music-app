@@ -17,8 +17,8 @@ import coil.fetch.Fetcher
 import coil.request.Options
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
-import java.io.File
-import java.io.FileOutputStream
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class Base64Fetcher(
     private val data: String,
@@ -232,6 +232,37 @@ object ImageUtils {
         } catch (e: Exception) {
             Log.e(TAG, "Errore base64ToLocalFile: ${e.message}")
             base64OrUrl
+        }
+    }
+
+    /**
+     * Carica e decodifica l'avatar dell'utente in un oggetto Bitmap (da URL HTTP, file:/// o stringa Base64).
+     * Utilizzato per mostrare la foto profilo come icona grande (setLargeIcon) nelle notifiche Android.
+     */
+    suspend fun loadAvatarBitmap(context: Context, avatarUrl: String?): Bitmap? = withContext(Dispatchers.IO) {
+        if (avatarUrl.isNullOrBlank()) return@withContext null
+        try {
+            if (avatarUrl.startsWith("data:image", ignoreCase = true) ||
+                (avatarUrl.length > 200 && !avatarUrl.startsWith("http", ignoreCase = true) && !avatarUrl.startsWith("file:", ignoreCase = true))
+            ) {
+                val cleanBase64 = if (avatarUrl.contains(",")) avatarUrl.substringAfter(",") else avatarUrl
+                val bytes = Base64.decode(cleanBase64.trim(), Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+            } else if (avatarUrl.startsWith("file:", ignoreCase = true) || avatarUrl.startsWith("/")) {
+                val cleanPath = avatarUrl.removePrefix("file://").removePrefix("file:")
+                BitmapFactory.decodeFile(cleanPath)
+            } else {
+                val loader = ImageLoader(context)
+                val request = coil.request.ImageRequest.Builder(context)
+                    .data(avatarUrl)
+                    .allowHardware(false)
+                    .build()
+                val result = loader.execute(request)
+                (result.drawable as? BitmapDrawable)?.bitmap
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Errore loadAvatarBitmap: ${e.message}")
+            null
         }
     }
 }

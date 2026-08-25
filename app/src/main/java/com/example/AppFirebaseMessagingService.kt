@@ -20,22 +20,31 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
         val title = data["title"] ?: message.notification?.title ?: "Nuova notifica"
         val body = data["body"] ?: message.notification?.body ?: ""
 
+        val avatarUrl = data["avatarUrl"] ?: data["fromUserAvatarUrl"] ?: ""
+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
                 != android.content.pm.PackageManager.PERMISSION_GRANTED) return
         }
 
-        val notif = NotificationCompat.Builder(this, MusicViewModel.FRIEND_REQUEST_CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_notification)
-            .setContentTitle(title)
-            .setContentText(body)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .setAutoCancel(true)
-            .build()
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val avatarBitmap = if (avatarUrl.isNotBlank()) com.example.data.ImageUtils.loadAvatarBitmap(this@AppFirebaseMessagingService, avatarUrl) else null
 
-        (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-            .notify(System.currentTimeMillis().toInt(), notif)
+            val notifBuilder = NotificationCompat.Builder(this@AppFirebaseMessagingService, MusicViewModel.FRIEND_REQUEST_CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_stat_notification)
+                .setContentTitle(title)
+                .setContentText(body)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(NotificationCompat.DEFAULT_ALL)
+                .setAutoCancel(true)
+
+            if (avatarBitmap != null) {
+                notifBuilder.setLargeIcon(avatarBitmap)
+            }
+
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .notify(System.currentTimeMillis().toInt(), notifBuilder.build())
+        }
     }
 
     companion object {

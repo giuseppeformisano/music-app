@@ -1023,17 +1023,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             intent,
             android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
-        val notif = androidx.core.app.NotificationCompat.Builder(appContext, FRIEND_REQUEST_CHANNEL_ID)
-            .setSmallIcon(com.example.R.drawable.ic_stat_notification)
-            .setContentTitle("Nuova richiesta di follow")
-            .setContentText("@${request.fromUserUsername} vuole seguirti")
-            .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
-            .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .build()
-        androidx.core.app.NotificationManagerCompat.from(appContext)
-            .notify(request.id.hashCode(), notif)
+        viewModelScope.launch(Dispatchers.IO) {
+            val avatarBitmap = com.example.data.ImageUtils.loadAvatarBitmap(appContext, request.fromUserAvatarUrl)
+            val builder = androidx.core.app.NotificationCompat.Builder(appContext, FRIEND_REQUEST_CHANNEL_ID)
+                .setSmallIcon(com.example.R.drawable.ic_stat_notification)
+                .setContentTitle("Nuova richiesta di follow")
+                .setContentText("@${request.fromUserUsername} vuole seguirti")
+                .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
+                .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+
+            if (avatarBitmap != null) {
+                builder.setLargeIcon(avatarBitmap)
+            }
+
+            withContext(Dispatchers.Main) {
+                androidx.core.app.NotificationManagerCompat.from(appContext)
+                    .notify(request.id.hashCode(), builder.build())
+            }
+        }
     }
 
     fun shareTrack(track: Track) {
