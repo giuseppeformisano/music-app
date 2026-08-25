@@ -1217,14 +1217,20 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun getStoriesList(): List<User> {
         val state = _uiState.value
         val followingIds = state.currentUser.followingIds
-        val now = System.currentTimeMillis()
+        val localNow = System.currentTimeMillis()
+        // Riferimento temporale ROBUSTO allo sfasamento di orologio tra dispositivi: usiamo il
+        // timestamp più recente scritto da chiunque (≈ "ora" nel dominio di chi scrive), così un
+        // amico realmente live non sparisce se l'orologio di questo device è avanti. Ripieghiamo
+        // sull'orologio locale solo se nessuno aggiorna da oltre il TTL, così i processi uccisi
+        // scadono comunque (UC8).
+        val maxUpdatedAt = state.feedUsers.maxOfOrNull { it.updatedAt } ?: 0L
+        val referenceNow = if (localNow - maxUpdatedAt > LIVE_STALE_TTL_MS) localNow else maxUpdatedAt
         val list = mutableListOf<User>()
         // Il proprio stato è locale e sempre "fresco": nessun TTL su noi stessi.
         if (state.currentUser.currentTrack != null && state.currentUser.isLiveNow) list.add(state.currentUser)
-        // Gli altri sono live solo se il documento è stato aggiornato di recente: se il loro
-        // processo viene ucciso l'heartbeat si ferma e dopo il TTL spariscono (UC8).
+        // Gli altri sono live solo se il documento è stato aggiornato di recente.
         list.addAll(state.feedUsers.filter {
-            followingIds.contains(it.id) && it.isActuallyLive && (now - it.updatedAt) < LIVE_STALE_TTL_MS
+            followingIds.contains(it.id) && it.isActuallyLive && (referenceNow - it.updatedAt) < LIVE_STALE_TTL_MS
         })
         return list
     }
