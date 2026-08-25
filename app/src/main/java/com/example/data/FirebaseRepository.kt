@@ -423,8 +423,8 @@ object FirebaseRepository {
                             if (!fcmToken.isNullOrBlank()) {
                                 PushNotificationSender.sendPushNotification(
                                     targetToken = fcmToken,
-                                    title = "${user.name} è in Live 🎵",
-                                    body = "Tocca per ascoltare la diretta di @${user.username}",
+                                    title = "${user.name} è in Live",
+                                    body = "Tocca per visualizzare la diretta di @${user.username}",
                                     data = mapOf(
                                         "type" to "live_start",
                                         "open_live" to "true",
