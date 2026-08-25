@@ -651,10 +651,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 .catch { }
                 .collect { fresh ->
                     // Notifica solo le NUOVE richieste ricevute (dopo il primo snapshot)
-                    val newIds = fresh.pendingRequests.map { it.id }.toSet()
+                    // Le notifiche push per le richieste di contatto sono gestite in tempo reale da FCM via backend Render
                     if (friendRequestsInitialized) {
-                        fresh.pendingRequests.filter { it.id !in knownFriendRequestIds }
-                            .forEach { showFriendRequestNotification(it) }
+                        // disattivato il doppione locale
                     }
                     friendRequestsInitialized = true
                     knownFriendRequestIds = newIds
