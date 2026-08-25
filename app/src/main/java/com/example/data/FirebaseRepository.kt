@@ -104,8 +104,8 @@ object FirebaseRepository {
                         )
                         .addOnSuccessListener {
                             if (!wasLiveAlready && doc != null) {
-                                val u = parseUserDocument(doc)
-                                sendLiveNotificationToFollowers(u)
+                                val u = mapDocToUser(doc.data, doc.id)
+                                if (u != null) sendLiveNotificationToFollowers(u)
                             }
                         }
                 }
