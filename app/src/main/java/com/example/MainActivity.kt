@@ -137,8 +137,13 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
     }
 
-    private fun handleNotificationIntent(intent: Intent) {
-        if (intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)) {
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent == null) return
+        val openBool = intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)
+        val openString = intent.getStringExtra("open_notifications")
+        val notifType = intent.getStringExtra("type")
+
+        if (openBool || openString == "true" || notifType == "follow_request") {
             viewModel.openNotifications()
         }
     }

@@ -38,6 +38,8 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
 
             val intent = android.content.Intent(this@AppFirebaseMessagingService, MainActivity::class.java).apply {
                 putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
+                putExtra("open_notifications", "true")
+                putExtra("type", "follow_request")
                 flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val pendingIntent = android.app.PendingIntent.getActivity(

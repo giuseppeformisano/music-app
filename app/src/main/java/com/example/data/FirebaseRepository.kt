@@ -353,6 +353,7 @@ object FirebaseRepository {
                                     body = "@${from.username} vuole seguirti",
                                     data = mapOf(
                                         "type" to "follow_request",
+                                        "open_notifications" to "true",
                                         "requestId" to "${from.id}_${to.id}",
                                         "fromUserId" to from.id,
                                         "fromUserName" to from.name,
