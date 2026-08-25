@@ -28,6 +28,9 @@ class MusicNotificationListenerService : NotificationListenerService() {
 
     override fun onCreate() {
         super.onCreate()
+        try {
+            com.google.firebase.FirebaseApp.initializeApp(this)
+        } catch (_: Exception) {}
         loadPreferences()
     }
 

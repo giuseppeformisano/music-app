@@ -398,8 +398,8 @@ object FirebaseRepository {
 
     fun sendLiveNotificationToFollowers(user: User) {
         val now = System.currentTimeMillis()
-        if (now - lastLivePushTimestamp < 120_000L) {
-            Log.d(TAG, "sendLiveNotificationToFollowers ignorata: inviata meno di 2 minuti fa")
+        if (now - lastLivePushTimestamp < 5_000L) {
+            Log.d(TAG, "sendLiveNotificationToFollowers ignorata: inviata meno di 5 secondi fa")
             return
         }
         lastLivePushTimestamp = now
