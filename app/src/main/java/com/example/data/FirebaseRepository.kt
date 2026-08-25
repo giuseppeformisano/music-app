@@ -91,7 +91,6 @@ object FirebaseRepository {
             )
             db.collection(USERS_COLLECTION).document(userId).get()
                 .addOnSuccessListener { doc ->
-                    val wasLiveAlready = doc?.getBoolean("isLiveNow") ?: false
                     db.collection(USERS_COLLECTION).document(userId)
                         .update(
                             mapOf(
@@ -103,7 +102,7 @@ object FirebaseRepository {
                             )
                         )
                         .addOnSuccessListener {
-                            if (!wasLiveAlready && doc != null) {
+                            if (doc != null) {
                                 val u = mapDocToUser(doc.data, doc.id)
                                 if (u != null) {
                                     val liveUser = u.copy(
@@ -395,7 +394,16 @@ object FirebaseRepository {
         }
     }
 
+    private var lastLivePushTimestamp = 0L
+
     fun sendLiveNotificationToFollowers(user: User) {
+        val now = System.currentTimeMillis()
+        if (now - lastLivePushTimestamp < 120_000L) {
+            Log.d(TAG, "sendLiveNotificationToFollowers ignorata: inviata meno di 2 minuti fa")
+            return
+        }
+        lastLivePushTimestamp = now
+
         val db = firestore ?: return
         Log.d(TAG, "sendLiveNotificationToFollowers avviata per utente ${user.id} (${user.name})")
 
