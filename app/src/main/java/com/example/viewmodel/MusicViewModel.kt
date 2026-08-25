@@ -696,7 +696,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
                         appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
                             .edit()
-                            .putString("last_user_id", user.id)
+                            .putString("last_user_id", fresh.id)
                             .apply()
 
                         val updatedCurrentUser = current.currentUser.copy(
