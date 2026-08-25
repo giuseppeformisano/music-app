@@ -89,16 +89,26 @@ object FirebaseRepository {
                 "deviceType" to "Smartphone",
                 "deviceName" to ""
             )
-            db.collection(USERS_COLLECTION).document(userId)
-                .update(
-                    mapOf(
-                        "currentTrack" to trackMap,
-                        "isLiveNow" to true,
-                        "trackProgressMs" to positionMs,
-                        "trackProgressAt" to System.currentTimeMillis(),
-                        "updatedAt" to System.currentTimeMillis()
-                    )
-                )
+            db.collection(USERS_COLLECTION).document(userId).get()
+                .addOnSuccessListener { doc ->
+                    val wasLiveAlready = doc?.getBoolean("isLiveNow") ?: false
+                    db.collection(USERS_COLLECTION).document(userId)
+                        .update(
+                            mapOf(
+                                "currentTrack" to trackMap,
+                                "isLiveNow" to true,
+                                "trackProgressMs" to positionMs,
+                                "trackProgressAt" to System.currentTimeMillis(),
+                                "updatedAt" to System.currentTimeMillis()
+                            )
+                        )
+                        .addOnSuccessListener {
+                            if (!wasLiveAlready && doc != null) {
+                                val u = parseUserDocument(doc)
+                                sendLiveNotificationToFollowers(u)
+                            }
+                        }
+                }
                 .addOnFailureListener { }
         }
     }
