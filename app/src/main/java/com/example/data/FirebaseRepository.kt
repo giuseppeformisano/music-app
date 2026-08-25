@@ -346,6 +346,7 @@ object FirebaseRepository {
                     db.collection(USERS_COLLECTION).document(to.id).get()
                         .addOnSuccessListener { doc ->
                             val fcmToken = doc?.getString("fcmToken")
+                            val pushAvatarUrl = if (from.avatarUrl.startsWith("http", ignoreCase = true)) from.avatarUrl else ""
                             if (!fcmToken.isNullOrBlank()) {
                                 PushNotificationSender.sendPushNotification(
                                     targetToken = fcmToken,
@@ -358,7 +359,7 @@ object FirebaseRepository {
                                         "fromUserId" to from.id,
                                         "fromUserName" to from.name,
                                         "fromUserUsername" to from.username,
-                                        "fromUserAvatarUrl" to fromAvatar
+                                        "fromUserAvatarUrl" to pushAvatarUrl
                                     )
                                 )
                             }
