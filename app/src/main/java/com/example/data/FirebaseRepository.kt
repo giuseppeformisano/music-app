@@ -373,35 +373,45 @@ object FirebaseRepository {
 
     fun sendLiveNotificationToFollowers(user: User) {
         val db = firestore ?: return
-        val followerIds = user.followerIds
-        if (followerIds.isEmpty()) return
+        Log.d(TAG, "sendLiveNotificationToFollowers avviata per utente ${user.id} (${user.name})")
 
-        val pushAvatarUrl = if (user.avatarUrl.startsWith("http", ignoreCase = true)) user.avatarUrl else ""
+        db.collection(USERS_COLLECTION).document(user.id).get()
+            .addOnSuccessListener { userDoc ->
+                val followerIds = (userDoc?.get("followerIds") as? List<*>)?.filterIsInstance<String>() ?: user.followerIds
+                Log.d(TAG, "sendLiveNotificationToFollowers: trovati ${followerIds.size} follower per ${user.id}")
+                if (followerIds.isEmpty()) return@addOnSuccessListener
 
-        followerIds.forEach { followerId ->
-            db.collection(USERS_COLLECTION).document(followerId).get()
-                .addOnSuccessListener { doc ->
-                    val fcmToken = doc.getString("fcmToken")
-                    if (!fcmToken.isNullOrBlank()) {
-                        PushNotificationSender.sendPushNotification(
-                            targetToken = fcmToken,
-                            title = "${user.name} è in Live 🎵",
-                            body = "Tocca per ascoltare la diretta di @${user.username}",
-                            data = mapOf(
-                                "type" to "live_start",
-                                "open_live" to "true",
-                                "hostUserId" to user.id,
-                                "hostUserName" to user.name,
-                                "hostUserUsername" to user.username,
-                                "fromUserAvatarUrl" to pushAvatarUrl
-                            )
-                        )
-                    }
+                val pushAvatarUrl = if (user.avatarUrl.startsWith("http", ignoreCase = true)) user.avatarUrl else ""
+
+                followerIds.forEach { followerId ->
+                    db.collection(USERS_COLLECTION).document(followerId).get()
+                        .addOnSuccessListener { doc ->
+                            val fcmToken = doc?.getString("fcmToken")
+                            Log.d(TAG, "Follower $followerId fcmToken: $fcmToken")
+                            if (!fcmToken.isNullOrBlank()) {
+                                PushNotificationSender.sendPushNotification(
+                                    targetToken = fcmToken,
+                                    title = "${user.name} è in Live 🎵",
+                                    body = "Tocca per ascoltare la diretta di @${user.username}",
+                                    data = mapOf(
+                                        "type" to "live_start",
+                                        "open_live" to "true",
+                                        "hostUserId" to user.id,
+                                        "hostUserName" to user.name,
+                                        "hostUserUsername" to user.username,
+                                        "fromUserAvatarUrl" to pushAvatarUrl
+                                    )
+                                )
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "Errore recupero doc follower $followerId: ${e.message}")
+                        }
                 }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Errore invio notifica live ai follower: ${e.message}")
-                }
-        }
+            }
+            .addOnFailureListener { e ->
+                Log.e(TAG, "Errore recupero doc utente per notifica live: ${e.message}")
+            }
     }
 
     // Accetta: 1 batch atomico. Il follow finisce in follower/following; la richiesta
