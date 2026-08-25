@@ -4,7 +4,6 @@ import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -66,7 +65,7 @@ private fun ImmersiveScaffold(
         properties = DialogProperties(
             decorFitsSystemWindows = false,
             usePlatformDefaultWidth = false,
-            dismissOnClickOutside = true
+            dismissOnClickOutside = false
         )
     ) {
         // Fullscreen nativo edge-to-edge dietro la barra di stato sin dal frame zero
@@ -89,7 +88,7 @@ private fun ImmersiveScaffold(
                     WindowManager.LayoutParams.MATCH_PARENT,
                     WindowManager.LayoutParams.MATCH_PARENT
                 )
-                w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
+                w.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING)
             }
         }
 
@@ -150,10 +149,6 @@ private fun ImmersiveScaffold(
                             scope.launch { offsetY.snapTo((offsetY.value + dy).coerceAtLeast(0f)) }
                         }
                     )
-                }
-                // Tap sullo sfondo chiude
-                .pointerInput(Unit) {
-                    detectTapGestures(onTap = { onDismiss() })
                 },
             contentAlignment = Alignment.Center
         ) {

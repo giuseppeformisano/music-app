@@ -75,7 +75,6 @@ fun PeopleSearchDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .imePadding()
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp)
         ) {

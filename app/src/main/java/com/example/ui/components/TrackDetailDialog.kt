@@ -122,7 +122,6 @@ fun TrackDetailDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .navigationBarsPadding()
-                    .imePadding()
                     .padding(horizontal = 24.dp, vertical = 20.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
