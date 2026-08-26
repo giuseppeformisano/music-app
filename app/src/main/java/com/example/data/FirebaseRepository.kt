@@ -247,6 +247,7 @@ object FirebaseRepository {
                 "presenceState" to user.presenceState.value,
                 "isOnline" to user.isOnline,
                 "isLiveNow" to user.isLiveNow,
+                "liveNotificationsEnabled" to user.liveNotificationsEnabled,
                 "currentTrack" to user.currentTrack?.let { trackToMap(it) },
                 "trackProgressMs" to user.trackProgressMs,
                 "trackProgressAt" to user.trackProgressAt,
@@ -276,6 +277,13 @@ object FirebaseRepository {
         } catch (e: Exception) {
             Log.e(TAG, "Errore durante syncCurrentUser: ${e.message}")
         }
+    }
+
+    fun setLiveNotificationsEnabled(userId: String, enabled: Boolean) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(userId)
+            .update(mapOf("liveNotificationsEnabled" to enabled, "updatedAt" to System.currentTimeMillis()))
+            .addOnFailureListener { }
     }
 
     /**
@@ -461,6 +469,12 @@ object FirebaseRepository {
                 followerIds.forEach { followerId ->
                     db.collection(USERS_COLLECTION).document(followerId).get()
                         .addOnSuccessListener { doc ->
+                            val liveNotifsEnabled = doc?.getBoolean("liveNotificationsEnabled") ?: true
+                            if (!liveNotifsEnabled) {
+                                Log.d(TAG, "Follower $followerId ha disattivato le notifiche Live, salto l'invio push.")
+                                return@addOnSuccessListener
+                            }
+
                             val fcmToken = doc?.getString("fcmToken")
                             Log.d(TAG, "Follower $followerId fcmToken: $fcmToken")
                             if (!fcmToken.isNullOrBlank()) {
@@ -692,6 +706,7 @@ object FirebaseRepository {
             )
         }?.sortedByDescending { it.timestamp } ?: emptyList()
         val sentRequestIds = (data["sentRequestIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
+        val liveNotificationsEnabled = data["liveNotificationsEnabled"] as? Boolean ?: true
 
         return User(
             id = id,
@@ -715,7 +730,8 @@ object FirebaseRepository {
             followerIds = followerIds,
             followingIds = followingIds,
             pendingRequests = pendingRequests,
-            sentRequestIds = sentRequestIds
+            sentRequestIds = sentRequestIds,
+            liveNotificationsEnabled = liveNotificationsEnabled
         )
     }
 

@@ -408,11 +408,20 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun setLiveNotificationsEnabled(enabled: Boolean) {
-        _uiState.update { it.copy(liveNotificationsEnabled = enabled) }
+        _uiState.update {
+            it.copy(
+                liveNotificationsEnabled = enabled,
+                currentUser = it.currentUser.copy(liveNotificationsEnabled = enabled)
+            )
+        }
         appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
             .edit()
             .putBoolean("live_notifications_enabled", enabled)
             .apply()
+        val userId = _uiState.value.currentUser.id
+        if (userId.isNotBlank()) {
+            FirebaseRepository.setLiveNotificationsEnabled(userId, enabled)
+        }
     }
 
     /** Presenza: l'utente sta usando l'app (connesso) — distinta dall'essere in live. */
