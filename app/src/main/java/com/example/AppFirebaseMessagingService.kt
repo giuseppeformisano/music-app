@@ -21,6 +21,14 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val data = message.data
         val isLive = data["type"] == "live_start" || data["open_live"] == "true"
+        if (isLive) {
+            val liveNotifsEnabled = try {
+                getSharedPreferences("user_settings", android.content.Context.MODE_PRIVATE)
+                    .getBoolean("live_notifications_enabled", true)
+            } catch (_: Exception) { true }
+            if (!liveNotifsEnabled) return
+        }
+
         val hostUserId = data["hostUserId"] ?: ""
 
         val defaultTitle = if (isLive) "Diretta Live 🎵" else "Nuova richiesta di follow"

@@ -318,7 +318,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                     isNotificationListenerEnabled = uiState.isNotificationListenerEnabled,
                     onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) },
                     applyCoverToFeed = uiState.applyCoverToFeed,
-                    onToggleApplyCoverToFeed = { viewModel.setApplyCoverToFeed(it) }
+                    onToggleApplyCoverToFeed = { viewModel.setApplyCoverToFeed(it) },
+                    liveNotificationsEnabled = uiState.liveNotificationsEnabled,
+                    onToggleLiveNotifications = { viewModel.setLiveNotificationsEnabled(it) }
                 )
             }
         }

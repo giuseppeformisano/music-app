@@ -85,7 +85,8 @@ data class MusicUiState(
     // Aumenta periodicamente per forzare la riValutazione del TTL di staleness dei live
     // anche quando non arrivano nuovi eventi da Firestore.
     val liveTick: Long = 0L,
-    val applyCoverToFeed: Boolean = false
+    val applyCoverToFeed: Boolean = false,
+    val liveNotificationsEnabled: Boolean = true
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -113,7 +114,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     init {
         val userSettingsPrefs = appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
         val initialApplyCover = userSettingsPrefs.getBoolean("apply_cover_to_feed", false)
-        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover) }
+        val initialLiveNotifs = userSettingsPrefs.getBoolean("live_notifications_enabled", true)
+        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs) }
 
         SpotifyAuthRepository.loadTokens(appContext)
         checkForUpdate()
@@ -402,6 +404,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
             .edit()
             .putBoolean("apply_cover_to_feed", enabled)
+            .apply()
+    }
+
+    fun setLiveNotificationsEnabled(enabled: Boolean) {
+        _uiState.update { it.copy(liveNotificationsEnabled = enabled) }
+        appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("live_notifications_enabled", enabled)
             .apply()
     }
 

@@ -163,6 +163,8 @@ fun ProfileScreen(
     onEnableNotificationListener: () -> Unit = {},
     applyCoverToFeed: Boolean = false,
     onToggleApplyCoverToFeed: (Boolean) -> Unit = {},
+    liveNotificationsEnabled: Boolean = true,
+    onToggleLiveNotifications: (Boolean) -> Unit = {},
     onShareTrack: (Track) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -352,8 +354,10 @@ fun ProfileScreen(
         if (showSettingsSheet) {
             SettingsDialog(
                 applyCoverToFeed = applyCoverToFeed,
-                onSave = { newApplyCoverToFeed ->
+                liveNotificationsEnabled = liveNotificationsEnabled,
+                onSave = { newApplyCoverToFeed, newLiveNotifs ->
                     onToggleApplyCoverToFeed(newApplyCoverToFeed)
+                    onToggleLiveNotifications(newLiveNotifs)
                     showSettingsSheet = false
                 },
                 onDismiss = { showSettingsSheet = false }
@@ -1877,10 +1881,12 @@ private fun AmazonMusicBrandLogo() {
 @Composable
 private fun SettingsDialog(
     applyCoverToFeed: Boolean,
-    onSave: (Boolean) -> Unit,
+    liveNotificationsEnabled: Boolean,
+    onSave: (Boolean, Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     var localApplyCoverToFeed by remember(applyCoverToFeed) { mutableStateOf(applyCoverToFeed) }
+    var localLiveNotificationsEnabled by remember(liveNotificationsEnabled) { mutableStateOf(liveNotificationsEnabled) }
 
     com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
         Column(
@@ -1969,11 +1975,66 @@ private fun SettingsDialog(
                         )
                     )
                 }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "NOTIFICHE",
+                    color = SubtitleGray,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { localLiveNotificationsEnabled = !localLiveNotificationsEnabled }
+                        )
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 16.dp)
+                    ) {
+                        Text(
+                            text = "Notifiche Live dei seguiti",
+                            color = PureWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Ricevi una notifica push quando una persona che segui avvia una sessione Live",
+                            color = SubtitleGray,
+                            fontSize = 13.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+
+                    Switch(
+                        checked = localLiveNotificationsEnabled,
+                        onCheckedChange = { localLiveNotificationsEnabled = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = PureWhite,
+                            checkedTrackColor = Color(0xFF383842),
+                            uncheckedThumbColor = SubtitleGray,
+                            uncheckedTrackColor = Color(0xFF1E1E24)
+                        )
+                    )
+                }
             }
 
             // Pulsante Salva modifiche coerente con Modifica Profilo
             Button(
-                onClick = { onSave(localApplyCoverToFeed) },
+                onClick = { onSave(localApplyCoverToFeed, localLiveNotificationsEnabled) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(48.dp),
