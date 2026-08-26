@@ -67,7 +67,10 @@ class MusicNotificationListenerService : NotificationListenerService() {
         checkMediaSessions()
     }
 
-    private var isSessionActive = false
+    // Ultima attività "live" rilevata: usata per capire se è una NUOVA sessione di ascolto
+    // (=> push agli amici) o solo un cambio traccia dentro la stessa sessione (=> niente push).
+    private var lastLiveActivityAt = 0L
+    private val newSessionGapMs = 60_000L
 
     private fun loadPreferences() {
         try {
@@ -91,7 +94,6 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastTrack = ""
             lastSource = ""
             pendingTrack = null
-            isSessionActive = false
             if (onPlaybackStopped != null) {
                 onPlaybackStopped?.invoke(source)
             } else {
@@ -169,6 +171,14 @@ class MusicNotificationListenerService : NotificationListenerService() {
             handler.removeCallbacks(heartbeat)
             handler.postDelayed(heartbeat, heartbeatMs)
 
+            // Nuova sessione di ascolto SOLO dopo un'assenza prolungata: i cambi traccia e i
+            // brevi buchi tra un brano e l'altro NON contano come nuova sessione → niente push
+            // ripetuta agli amici. lastLiveActivityAt viene rinfrescato a ogni check live (anche
+            // in pausa/heartbeat), così durante l'ascolto continuo il divario resta piccolo.
+            val nowMs = System.currentTimeMillis()
+            val isNewSession = nowMs - lastLiveActivityAt > newSessionGapMs
+            lastLiveActivityAt = nowMs
+
             if (title == lastTrack && source == lastSource) {
                 if (onProgressChanged != null) {
                     onProgressChanged?.invoke(positionMs, durationMs, source)
@@ -184,9 +194,6 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastTrack = title
             lastSource = source
             pendingTrack = Pending(title, artist, durationMs, positionMs, artUrl, source)
-
-            val isNewSession = !isSessionActive
-            isSessionActive = true
 
             if (onTrackChanged != null) {
                 onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl, source)
