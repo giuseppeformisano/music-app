@@ -1090,18 +1090,30 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun openStory(user: User) {
-        val allStories = getStoriesList()
-        val index = allStories.indexOfFirst { it.id == user.id }
+        if (!user.isCurrentUser) {
+            // Assicura che l'utente sia presente in feedUsers come LIVE (upsert), così comparirà
+            // in getStoriesList() — la lista effettivamente usata per renderizzare il dettaglio.
+            val liveUser = user.copy(presenceState = com.example.model.UserPresenceState.LIVE)
+            val feed = _uiState.value.feedUsers
+            val newFeed = if (feed.any { it.id == user.id })
+                feed.map { if (it.id == user.id) liveUser else it }
+            else
+                listOf(liveUser) + feed
+            // La push "live" arriva solo ai follower: assicura il follow noto localmente così
+            // l'utente compare in getStoriesList() anche all'avvio a freddo da notifica, prima
+            // che il listener del documento profilo abbia caricato followingIds.
+            val cu = _uiState.value.currentUser
+            val ensuredFollowing = if (cu.followingIds.contains(user.id)) cu.followingIds
+                                   else cu.followingIds + user.id
+            _uiState.update {
+                it.copy(feedUsers = newFeed, currentUser = cu.copy(followingIds = ensuredFollowing))
+            }
+        }
+        // L'indice DEVE riferirsi a getStoriesList(): è ciò che il dettaglio live indicizza.
+        val stories = getStoriesList()
+        val index = stories.indexOfFirst { it.id == user.id }
         if (index != -1) {
             _uiState.update { it.copy(activeStoryUserIndex = index) }
-        } else {
-            val updatedFeed = if (_uiState.value.feedUsers.none { it.id == user.id } && !user.isCurrentUser) {
-                listOf(user.copy(presenceState = com.example.model.UserPresenceState.LIVE)) + _uiState.value.feedUsers
-            } else _uiState.value.feedUsers
-            val refreshedStories = if (user.isCurrentUser) listOf(_uiState.value.currentUser) + updatedFeed
-                                   else updatedFeed
-            val newIdx = refreshedStories.indexOfFirst { it.id == user.id }.coerceAtLeast(0)
-            _uiState.update { it.copy(feedUsers = updatedFeed, activeStoryUserIndex = newIdx) }
         }
     }
 
