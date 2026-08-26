@@ -16,6 +16,18 @@ data class Track(
     val deviceName: String = ""    // nome device (es. "Audi A3", "iPhone di Marco")
 )
 
+enum class UserPresenceState(val value: String) {
+    OFFLINE("OFFLINE"), // App chiusa, nessuna musica attiva
+    ONLINE("ONLINE"),   // App aperta in primo piano, nessuna musica attiva
+    LIVE("LIVE");       // Musica in riproduzione/pausa attiva (app aperta o chiusa)
+
+    companion object {
+        fun fromString(value: String?): UserPresenceState {
+            return entries.firstOrNull { it.value.equals(value, ignoreCase = true) } ?: OFFLINE
+        }
+    }
+}
+
 data class User(
     val id: String,
     val name: String,
@@ -25,8 +37,7 @@ data class User(
     val bio: String = "",
     val email: String = "",
     val isCurrentUser: Boolean = false,
-    val isOnline: Boolean = false,       // sta usando l'app (connesso), non necessariamente in ascolto
-    val isLiveNow: Boolean = true,       // sta effettivamente ascoltando un brano in live
+    val presenceState: UserPresenceState = UserPresenceState.OFFLINE,
     val currentTrack: Track? = null,
     val trackProgressMs: Long = 0L,      // posizione di ascolto catturata (ms)
     val trackProgressAt: Long = 0L,      // wall-clock (ms) di quando è stata catturata la posizione
@@ -40,8 +51,14 @@ data class User(
     val pendingRequests: List<FriendRequest> = emptyList(),
     val sentRequestIds: List<String> = emptyList()
 ) {
+    val isOnline: Boolean
+        get() = presenceState == UserPresenceState.ONLINE || presenceState == UserPresenceState.LIVE
+
+    val isLiveNow: Boolean
+        get() = presenceState == UserPresenceState.LIVE
+
     val isActuallyLive: Boolean
-        get() = isLiveNow && currentTrack != null
+        get() = presenceState == UserPresenceState.LIVE && currentTrack != null
 }
 
 data class UserStats(

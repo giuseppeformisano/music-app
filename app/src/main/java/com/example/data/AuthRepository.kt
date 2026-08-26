@@ -68,7 +68,7 @@ object AuthRepository {
             email = email ?: "",
             avatarUrl = photoUrl?.toString() ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400",
             isCurrentUser = true,
-            isLiveNow = false,
+            presenceState = com.example.model.UserPresenceState.OFFLINE,
             currentTrack = null,
             sharedTracks = emptyList(),
             stats = UserStats(sharedCount = 0, topArtist = "", totalMinutesOrGenres = "")

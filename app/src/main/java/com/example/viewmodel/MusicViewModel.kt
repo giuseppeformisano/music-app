@@ -124,7 +124,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 val user = applyUserLocalPrefs(rawUser)
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
                 val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
-                val initialUser = user.copy(isOnline = isAppInForeground)
+                val initialUser = user.copy(presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE)
                 _uiState.update {
                     it.copy(
                         currentUser = initialUser,
@@ -190,7 +190,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 val user = applyUserLocalPrefs(rawUser)
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
                 val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
-                val loggedUser = user.copy(isOnline = isAppInForeground)
+                val loggedUser = user.copy(presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE)
                 _uiState.update {
                     it.copy(
                         currentUser = loggedUser,
@@ -245,7 +245,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                     put("spotify", true)
                     put("spotify_free", false)
                 }
-                val updatedUser = _uiState.value.currentUser.copy(isLiveNow = true)
+                val updatedUser = _uiState.value.currentUser.copy(presenceState = com.example.model.UserPresenceState.LIVE)
                 _uiState.update {
                     it.copy(
                         isSpotifyConnected = true,
@@ -267,7 +267,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         stopSpotifyPolling()
         SpotifyAuthRepository.clearTokens(appContext)
         val services = _uiState.value.connectedServices.toMutableMap().apply { put("spotify", false) }
-        val updatedUser = _uiState.value.currentUser.copy(isLiveNow = false, currentTrack = null)
+        val updatedUser = _uiState.value.currentUser.copy(
+            presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE,
+            currentTrack = null
+        )
         _uiState.update {
             it.copy(
                 isSpotifyConnected = false,
@@ -376,8 +379,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
         lastLiveHeartbeat = now
         val updatedUser = _uiState.value.currentUser.copy(
-            currentTrack = liveTrack, isLiveNow = true,
-            trackProgressMs = progressMs, trackProgressAt = now
+            currentTrack = liveTrack,
+            presenceState = com.example.model.UserPresenceState.LIVE,
+            trackProgressMs = progressMs,
+            trackProgressAt = now
         )
         _uiState.update { it.copy(nowPlayingTrack = liveTrack, currentUser = updatedUser) }
         checkAndSendLiveNotification(updatedUser)
@@ -400,7 +405,15 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun setOnline(online: Boolean) {
         val id = _uiState.value.currentUser.id
         if (id.isNotBlank()) {
-            _uiState.update { it.copy(currentUser = it.currentUser.copy(isOnline = online)) }
+            val currentPresence = _uiState.value.currentUser.presenceState
+            val newPresence = if (currentPresence == com.example.model.UserPresenceState.LIVE) {
+                com.example.model.UserPresenceState.LIVE
+            } else if (online) {
+                com.example.model.UserPresenceState.ONLINE
+            } else {
+                com.example.model.UserPresenceState.OFFLINE
+            }
+            _uiState.update { it.copy(currentUser = it.currentUser.copy(presenceState = newPresence)) }
             FirebaseRepository.setOnline(id, online)
         }
     }
@@ -508,7 +521,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 deviceName = ""
             )
             val updatedUser = _uiState.value.currentUser.copy(
-                currentTrack = track, isLiveNow = true,
+                currentTrack = track,
+                presenceState = com.example.model.UserPresenceState.LIVE,
                 trackProgressMs = positionMs, trackProgressAt = now
             )
             _uiState.update { it.copy(nowPlayingTrack = track, currentUser = updatedUser) }
@@ -543,7 +557,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (source.isNotBlank() && !currentTrack.source.equals(source, ignoreCase = true)) {
             return
         }
-        val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, isLiveNow = false)
+        val updatedUser = _uiState.value.currentUser.copy(
+            currentTrack = null,
+            presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE
+        )
         _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
         FirebaseRepository.syncCurrentUser(updatedUser)
     }
@@ -1049,10 +1066,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var wasLive = false
 
     private fun checkAndSendLiveNotification(user: User) {
-        if (user.isLiveNow && !wasLive) {
+        if (user.presenceState == com.example.model.UserPresenceState.LIVE && !wasLive) {
             wasLive = true
             FirebaseRepository.sendLiveNotificationToFollowers(user)
-        } else if (!user.isLiveNow) {
+        } else if (user.presenceState != com.example.model.UserPresenceState.LIVE) {
             wasLive = false
         }
     }
@@ -1074,7 +1091,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             _uiState.update { it.copy(activeStoryUserIndex = index) }
         } else {
             val updatedFeed = if (_uiState.value.feedUsers.none { it.id == user.id } && !user.isCurrentUser) {
-                listOf(user.copy(isLiveNow = true)) + _uiState.value.feedUsers
+                listOf(user.copy(presenceState = com.example.model.UserPresenceState.LIVE)) + _uiState.value.feedUsers
             } else _uiState.value.feedUsers
             val refreshedStories = if (user.isCurrentUser) listOf(_uiState.value.currentUser) + updatedFeed
                                    else updatedFeed
@@ -1258,7 +1275,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 email = email ?: "",
                 avatarUrl = photoUrl?.toString() ?: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400",
                 isCurrentUser = true,
-                isLiveNow = false,
+                presenceState = com.example.model.UserPresenceState.OFFLINE,
                 currentTrack = null,
                 sharedTracks = emptyList(),
                 stats = UserStats(sharedCount = 0, topArtist = "", totalMinutesOrGenres = "")

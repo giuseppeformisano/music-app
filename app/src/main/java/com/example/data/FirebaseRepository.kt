@@ -65,7 +65,9 @@ object FirebaseRepository {
             .update(
                 mapOf(
                     "updatedAt" to System.currentTimeMillis(),
+                    "presenceState" to com.example.model.UserPresenceState.LIVE.value,
                     "isLiveNow" to true,
+                    "isOnline" to true,
                     "trackProgressMs" to progressMs,
                     "trackProgressAt" to progressAt
                 )
@@ -91,19 +93,31 @@ object FirebaseRepository {
             )
             db.collection(USERS_COLLECTION).document(userId).get()
                 .addOnSuccessListener { doc ->
-                    val wasLiveAlready = doc?.getBoolean("isLiveNow") ?: false
+                    val rawState = doc?.getString("presenceState")
+                    val currentPresence = if (rawState != null) {
+                        com.example.model.UserPresenceState.fromString(rawState)
+                    } else if (doc?.getBoolean("isLiveNow") == true) {
+                        com.example.model.UserPresenceState.LIVE
+                    } else {
+                        com.example.model.UserPresenceState.OFFLINE
+                    }
+
+                    val wasAlreadyLive = currentPresence == com.example.model.UserPresenceState.LIVE
+
                     db.collection(USERS_COLLECTION).document(userId)
                         .update(
                             mapOf(
                                 "currentTrack" to trackMap,
+                                "presenceState" to com.example.model.UserPresenceState.LIVE.value,
                                 "isLiveNow" to true,
+                                "isOnline" to true,
                                 "trackProgressMs" to positionMs,
                                 "trackProgressAt" to System.currentTimeMillis(),
                                 "updatedAt" to System.currentTimeMillis()
                             )
                         )
                         .addOnSuccessListener {
-                            if (!wasLiveAlready && doc != null) {
+                            if (!wasAlreadyLive && doc != null) {
                                 val u = mapDocToUser(doc.data, doc.id)
                                 if (u != null) {
                                     val liveUser = u.copy(
@@ -116,7 +130,7 @@ object FirebaseRepository {
                                             durationMs = durationMs,
                                             source = source
                                         ),
-                                        isLiveNow = true
+                                        presenceState = com.example.model.UserPresenceState.LIVE
                                     )
                                     sendLiveNotificationToFollowers(liveUser)
                                 }
@@ -127,13 +141,15 @@ object FirebaseRepository {
         }
     }
 
-    fun clearLiveTrack(userId: String) {
+    fun clearLiveTrack(userId: String, fallbackState: com.example.model.UserPresenceState = com.example.model.UserPresenceState.OFFLINE) {
         val db = firestore ?: return
         db.collection(USERS_COLLECTION).document(userId)
             .update(
                 mapOf(
                     "currentTrack" to null,
+                    "presenceState" to fallbackState.value,
                     "isLiveNow" to false,
+                    "isOnline" to (fallbackState == com.example.model.UserPresenceState.ONLINE),
                     "updatedAt" to System.currentTimeMillis()
                 )
             )
@@ -143,9 +159,34 @@ object FirebaseRepository {
     /** Aggiorna solo lo stato di presenza (app aperta/connessa). */
     fun setOnline(userId: String, online: Boolean) {
         val db = firestore ?: return
-        db.collection(USERS_COLLECTION).document(userId)
-            .update(mapOf("isOnline" to online, "updatedAt" to System.currentTimeMillis()))
-            .addOnFailureListener { }
+        db.collection(USERS_COLLECTION).document(userId).get()
+            .addOnSuccessListener { doc ->
+                val rawState = doc?.getString("presenceState")
+                val isCurrentlyLive = if (rawState != null) {
+                    com.example.model.UserPresenceState.fromString(rawState) == com.example.model.UserPresenceState.LIVE
+                } else {
+                    doc?.getBoolean("isLiveNow") == true
+                }
+
+                // Se l'utente è in LIVE, non sovrascrivere lo stato con solo ONLINE/OFFLINE
+                val newState = if (isCurrentlyLive) {
+                    com.example.model.UserPresenceState.LIVE
+                } else if (online) {
+                    com.example.model.UserPresenceState.ONLINE
+                } else {
+                    com.example.model.UserPresenceState.OFFLINE
+                }
+
+                db.collection(USERS_COLLECTION).document(userId)
+                    .update(
+                        mapOf(
+                            "presenceState" to newState.value,
+                            "isOnline" to (newState == com.example.model.UserPresenceState.ONLINE || newState == com.example.model.UserPresenceState.LIVE),
+                            "updatedAt" to System.currentTimeMillis()
+                        )
+                    )
+                    .addOnFailureListener { }
+            }
     }
 
     fun saveFcmToken(userId: String, token: String) {
@@ -203,6 +244,7 @@ object FirebaseRepository {
                 "name" to user.name,
                 "username" to user.username,
                 "bio" to user.bio,
+                "presenceState" to user.presenceState.value,
                 "isOnline" to user.isOnline,
                 "isLiveNow" to user.isLiveNow,
                 "currentTrack" to user.currentTrack?.let { trackToMap(it) },
@@ -606,8 +648,19 @@ object FirebaseRepository {
         }
 
         val bio = data["bio"] as? String ?: ""
-        val isOnline = data["isOnline"] as? Boolean ?: false
-        val isLiveNow = data["isLiveNow"] as? Boolean ?: false
+        val rawPresence = data["presenceState"] as? String
+        val isOnlineLegacy = data["isOnline"] as? Boolean ?: false
+        val isLiveNowLegacy = data["isLiveNow"] as? Boolean ?: false
+        val presenceState = if (!rawPresence.isNullOrBlank()) {
+            com.example.model.UserPresenceState.fromString(rawPresence)
+        } else if (isLiveNowLegacy) {
+            com.example.model.UserPresenceState.LIVE
+        } else if (isOnlineLegacy) {
+            com.example.model.UserPresenceState.ONLINE
+        } else {
+            com.example.model.UserPresenceState.OFFLINE
+        }
+
         val trackProgressMs = (data["trackProgressMs"] as? Number)?.toLong() ?: 0L
         val trackProgressAt = (data["trackProgressAt"] as? Number)?.toLong() ?: 0L
         val updatedAt = (data["updatedAt"] as? Number)?.toLong() ?: 0L
@@ -647,8 +700,7 @@ object FirebaseRepository {
             avatarUrl = cleanAvatar,
             coverUrl = cleanCover,
             bio = bio,
-            isOnline = isOnline,
-            isLiveNow = isLiveNow,
+            presenceState = presenceState,
             currentTrack = currentTrack,
             trackProgressMs = trackProgressMs,
             trackProgressAt = trackProgressAt,

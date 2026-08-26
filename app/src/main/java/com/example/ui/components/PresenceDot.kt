@@ -29,6 +29,22 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun PresenceDot(
+    presenceState: com.example.model.UserPresenceState,
+    modifier: Modifier = Modifier,
+    size: Dp = 16.dp,
+    borderColor: Color = Color(0xFF080808)
+) {
+    PresenceDot(
+        isOnline = presenceState == com.example.model.UserPresenceState.ONLINE || presenceState == com.example.model.UserPresenceState.LIVE,
+        isLive = presenceState == com.example.model.UserPresenceState.LIVE,
+        modifier = modifier,
+        size = size,
+        borderColor = borderColor
+    )
+}
+
+@Composable
+fun PresenceDot(
     isOnline: Boolean,
     isLive: Boolean,
     modifier: Modifier = Modifier,
