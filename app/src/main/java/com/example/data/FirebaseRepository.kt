@@ -75,7 +75,16 @@ object FirebaseRepository {
             .addOnFailureListener { /* documento non ancora presente: ignora */ }
     }
 
-    fun updateLiveTrack(userId: String, title: String, artist: String, durationMs: Long, positionMs: Long, artUrl: String, source: String) {
+    fun updateLiveTrack(
+        userId: String,
+        title: String,
+        artist: String,
+        durationMs: Long,
+        positionMs: Long,
+        artUrl: String,
+        source: String,
+        sendPush: Boolean = false
+    ) {
         val db = firestore ?: return
         CoroutineScope(Dispatchers.IO).launch {
             val resolvedCover = CoverResolver.resolveCoverUrl(artist, title, artUrl)
@@ -91,51 +100,42 @@ object FirebaseRepository {
                 "deviceType" to "Smartphone",
                 "deviceName" to ""
             )
-            db.collection(USERS_COLLECTION).document(userId).get()
-                .addOnSuccessListener { doc ->
-                    val rawState = doc?.getString("presenceState")
-                    val currentPresence = if (rawState != null) {
-                        com.example.model.UserPresenceState.fromString(rawState)
-                    } else if (doc?.getBoolean("isLiveNow") == true) {
-                        com.example.model.UserPresenceState.LIVE
-                    } else {
-                        com.example.model.UserPresenceState.OFFLINE
-                    }
-
-                    val wasAlreadyLive = currentPresence == com.example.model.UserPresenceState.LIVE
-
-                    db.collection(USERS_COLLECTION).document(userId)
-                        .update(
-                            mapOf(
-                                "currentTrack" to trackMap,
-                                "presenceState" to com.example.model.UserPresenceState.LIVE.value,
-                                "isLiveNow" to true,
-                                "isOnline" to true,
-                                "trackProgressMs" to positionMs,
-                                "trackProgressAt" to System.currentTimeMillis(),
-                                "updatedAt" to System.currentTimeMillis()
-                            )
-                        )
-                        .addOnSuccessListener {
-                            if (!wasAlreadyLive && doc != null) {
-                                val u = mapDocToUser(doc.data, doc.id)
-                                if (u != null) {
-                                    val liveUser = u.copy(
-                                        currentTrack = com.example.model.Track(
-                                            id = "${title}_${artist}",
-                                            title = title,
-                                            artist = artist,
-                                            album = "",
-                                            coverUrl = resolvedCover,
-                                            durationMs = durationMs,
-                                            source = source
-                                        ),
-                                        presenceState = com.example.model.UserPresenceState.LIVE
-                                    )
-                                    sendLiveNotificationToFollowers(liveUser)
+            db.collection(USERS_COLLECTION).document(userId)
+                .update(
+                    mapOf(
+                        "currentTrack" to trackMap,
+                        "presenceState" to com.example.model.UserPresenceState.LIVE.value,
+                        "isLiveNow" to true,
+                        "isOnline" to true,
+                        "trackProgressMs" to positionMs,
+                        "trackProgressAt" to System.currentTimeMillis(),
+                        "updatedAt" to System.currentTimeMillis()
+                    )
+                )
+                .addOnSuccessListener {
+                    if (sendPush) {
+                        db.collection(USERS_COLLECTION).document(userId).get()
+                            .addOnSuccessListener { doc ->
+                                if (doc != null) {
+                                    val u = mapDocToUser(doc.data, doc.id)
+                                    if (u != null) {
+                                        val liveUser = u.copy(
+                                            currentTrack = com.example.model.Track(
+                                                id = "${title}_${artist}",
+                                                title = title,
+                                                artist = artist,
+                                                album = "",
+                                                coverUrl = resolvedCover,
+                                                durationMs = durationMs,
+                                                source = source
+                                            ),
+                                            presenceState = com.example.model.UserPresenceState.LIVE
+                                        )
+                                        sendLiveNotificationToFollowers(liveUser)
+                                    }
                                 }
                             }
-                        }
+                    }
                 }
                 .addOnFailureListener { }
         }

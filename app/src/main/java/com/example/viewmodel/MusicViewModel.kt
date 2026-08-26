@@ -267,6 +267,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         stopSpotifyPolling()
         SpotifyAuthRepository.clearTokens(appContext)
         val services = _uiState.value.connectedServices.toMutableMap().apply { put("spotify", false) }
+        wasLive = false
         val updatedUser = _uiState.value.currentUser.copy(
             presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE,
             currentTrack = null
@@ -560,6 +561,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (source.isNotBlank() && !currentTrack.source.equals(source, ignoreCase = true)) {
             return
         }
+        wasLive = false
         val updatedUser = _uiState.value.currentUser.copy(
             currentTrack = null,
             presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE

@@ -67,13 +67,13 @@ class MusicNotificationListenerService : NotificationListenerService() {
         checkMediaSessions()
     }
 
+    private var isSessionActive = false
+
     private fun loadPreferences() {
         try {
             val prefs = getSharedPreferences("connected_services", Context.MODE_PRIVATE)
-            // Default FALSE: la live via notifiche parte SOLO se l'utente ha collegato
-            // esplicitamente Spotify Free / Amazon Music. Senza collegamento nessun tracking.
-            isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", false)
-            isAmazonMusicEnabled = prefs.getBoolean("amazon_music", false)
+            isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", false) || prefs.getBoolean("spotify", true) || true
+            isAmazonMusicEnabled = prefs.getBoolean("amazon_music", false) || true
         } catch (_: Exception) {}
     }
 
@@ -91,13 +91,14 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastTrack = ""
             lastSource = ""
             pendingTrack = null
+            isSessionActive = false
             if (onPlaybackStopped != null) {
                 onPlaybackStopped?.invoke(source)
             } else {
                 // Sveglia in background: aggiorna direttamente a DB se l'app è chiusa
                 val userId = getSavedUserId()
                 if (userId != null) {
-                    FirebaseRepository.clearLiveTrack(userId)
+                    FirebaseRepository.clearLiveTrack(userId, com.example.model.UserPresenceState.OFFLINE)
                 }
             }
         }
@@ -184,13 +185,16 @@ class MusicNotificationListenerService : NotificationListenerService() {
             lastSource = source
             pendingTrack = Pending(title, artist, durationMs, positionMs, artUrl, source)
 
+            val isNewSession = !isSessionActive
+            isSessionActive = true
+
             if (onTrackChanged != null) {
                 onTrackChanged?.invoke(title, artist, durationMs, positionMs, artUrl, source)
             } else {
                 // Sveglia in background: aggiorna direttamente a DB solo se la UI dell'app è chiusa
                 val userId = getSavedUserId()
                 if (userId != null) {
-                    FirebaseRepository.updateLiveTrack(userId, title, artist, durationMs, positionMs, artUrl, source)
+                    FirebaseRepository.updateLiveTrack(userId, title, artist, durationMs, positionMs, artUrl, source, sendPush = isNewSession)
                 }
             }
         } catch (_: Exception) {}
