@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -98,10 +99,17 @@ fun PulseWavePlayer(
 
     LaunchedEffect(playTrigger) {
         if (playTrigger <= 0) return@LaunchedEffect
+        val totalMs = samples.length * PulseHaptics.SAMPLE_MS
+        // Vibrazione e onda partono dallo STESSO istante e l'indice del campione è ricavato
+        // dal TEMPO REALE trascorso (non da delay accumulati) → nessuna deriva, sync perfetta.
         PulseHaptics.play(context, samples)
-        for (c in samples) {
-            intensity = if (c == '1') 1f else intensity * 0.6f
-            kotlinx.coroutines.delay(PulseHaptics.SAMPLE_MS)
+        val startNanos = System.nanoTime()
+        while (true) {
+            val frame = withFrameNanos { it }
+            val elapsedMs = (frame - startNanos) / 1_000_000L
+            if (elapsedMs >= totalMs) break
+            val idx = (elapsedMs / PulseHaptics.SAMPLE_MS).toInt().coerceIn(0, samples.length - 1)
+            intensity = if (samples[idx] == '1') 1f else intensity * 0.55f
         }
         intensity = 0f
     }

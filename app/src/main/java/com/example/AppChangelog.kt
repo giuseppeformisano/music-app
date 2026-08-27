@@ -5,9 +5,8 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.12.5"
+    const val TITLE = "Novità · 0.12.6"
     val LINES = listOf(
-        "Notifica live di nuovo corretta: parte solo all'inizio effettivo di un brano, non quando riapri l'app.",
-        "Pulse più personale: al posto del cuoricino ora compare la foto del mittente (notifica, chat e schermata dedicata)."
+        "Pulse: onda e vibrazione ora perfettamente sincronizzate (niente più sfasamento durante la riproduzione)."
     )
 }
