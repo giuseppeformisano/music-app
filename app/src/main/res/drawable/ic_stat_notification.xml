@@ -3,9 +3,22 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- Icona status bar: silhouette monocromatica (nota musicale). Android renderizza solo
-         il canale alpha come bianco, quindi va disegnata come forma piena su sfondo trasparente. -->
+    <!-- Logo app (disco in vinile + barre equalizzatore) come silhouette monocromatica.
+         La status bar usa solo il canale alpha e lo rende bianco. -->
+    <!-- Disco: anello esterno -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.9"
+        android:pathData="M12,3.6 a8.4,8.4 0 1,0 0.01,0 Z" />
+    <!-- Perno centrale -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M12,3v10.55c-0.59,-0.34 -1.27,-0.55 -2,-0.55 -2.21,0 -4,1.79 -4,4s1.79,4 4,4 4,-1.79 4,-4V7h4V3h-6z" />
+        android:pathData="M12,9.6 a2.4,2.4 0 1,0 0.01,0 Z" />
+    <!-- Barre equalizzatore ai lati -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M2.6,10.4 h1.5 v3.2 h-1.5 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M19.9,9.2 h1.5 v5.6 h-1.5 Z" />
 </vector>

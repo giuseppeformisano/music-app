@@ -337,10 +337,10 @@ private fun MessageBubble(message: ChatMessage) {
                         bottomEnd = if (isMe) 4.dp else 18.dp
                     )
                 )
-                .background(if (isMe) DarkGraphite else BlackCard)
+                .background(if (isMe) Color(0xFF16351F) else BlackCard)
                 .border(
                     width = 1.dp,
-                    color = if (isMe) PureWhite.copy(alpha = 0.25f) else CharcoalBorder,
+                    color = if (isMe) SpotifyGreen.copy(alpha = 0.40f) else CharcoalBorder,
                     shape = RoundedCornerShape(
                         topStart = 18.dp,
                         topEnd = 18.dp,
