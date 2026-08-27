@@ -358,12 +358,8 @@ fun MusicApp(viewModel: MusicViewModel) {
             )
         }
 
-        // Overlay: Chat Screen (Flusso E)
-        AnimatedVisibility(
-            visible = uiState.activeChatUser != null,
-            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
-        ) {
+        // Dialog: Chat Screen (con swipe-down per chiudere)
+        if (uiState.activeChatUser != null) {
             uiState.activeChatUser?.let { recipient ->
                 val messages = uiState.chatMessages[recipient.id] ?: emptyList()
                 ChatScreen(
@@ -371,7 +367,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     currentUser = uiState.currentUser,
                     messages = messages,
                     onSendMessage = { text -> viewModel.sendMessage(recipient.id, text) },
-                    onBack = { viewModel.closeChat() },
+                    onDismiss = { viewModel.closeChat() },
                     onOpenProfile = { user -> viewModel.openProfile(user) },
                     applyCoverToFeed = uiState.applyCoverToFeed,
                     backgroundCoverUrl = uiState.currentUser.coverUrl

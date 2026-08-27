@@ -76,7 +76,7 @@ fun ChatScreen(
     currentUser: User,
     messages: List<ChatMessage>,
     onSendMessage: (String) -> Unit,
-    onBack: () -> Unit,
+    onDismiss: () -> Unit,
     onOpenProfile: (User) -> Unit,
     applyCoverToFeed: Boolean = false,
     backgroundCoverUrl: String? = null,
@@ -102,7 +102,7 @@ fun ChatScreen(
     // Scroll verso l'alto → carica un altro blocco più vecchio
     LaunchedEffect(recipient.id) {
         snapshotFlow { listState.firstVisibleItemIndex }
-        .collect { idx -> if (idx <= 1 && visibleCount < messages.size) visibleCount += pageSize }
+            .collect { idx -> if (idx <= 1 && visibleCount < messages.size) visibleCount += pageSize }
     }
 
     val myPalette = remember(currentUser.id, currentUser.coverUrl) {
@@ -112,194 +112,179 @@ fun ChatScreen(
         paletteForUser(recipient, isCurrent = false)
     }
 
-    Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
-        // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
-        if (applyCoverToFeed && !backgroundCoverUrl.isNullOrBlank()) {
-            AsyncImage(
-                model = backgroundCoverUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f }
-                    .blur(radius = 12.dp)
-            )
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                BlackPitch.copy(alpha = 0.55f),
-                                BlackPitch.copy(alpha = 0.78f),
-                                BlackPitch.copy(alpha = 0.92f)
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+        Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
+            // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
+            if (applyCoverToFeed && !backgroundCoverUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = backgroundCoverUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f }
+                        .blur(radius = 12.dp)
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    BlackPitch.copy(alpha = 0.55f),
+                                    BlackPitch.copy(alpha = 0.78f),
+                                    BlackPitch.copy(alpha = 0.92f)
+                                )
                             )
                         )
-                    )
-            )
-        }
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .imePadding()
-                .testTag("chat_screen_${recipient.id}")
-        ) {
-        // Top Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(DarkGraphite)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Torna indietro",
-                    tint = PureWhite,
-                    modifier = Modifier.size(20.dp)
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(8.dp))
-                    .clickable { onOpenProfile(recipient) }
-                    .padding(4.dp)
+                    .fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .testTag("chat_screen_${recipient.id}")
             ) {
-                AsyncImage(
-                    model = recipient.avatarUrl,
-                    contentDescription = "Avatar",
-                    contentScale = ContentScale.Crop,
+                // Top Header minimale: senza pulsante indietro (si chiude con lo slide down)
+                Row(
                     modifier = Modifier
-                        .size(38.dp)
-                        .clip(CircleShape)
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column {
-                    Text(
-                        text = recipient.name,
-                        color = PureWhite,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { onOpenProfile(recipient) }
+                            .padding(vertical = 4.dp, horizontal = 2.dp)
                     ) {
-                        if (recipient.isLiveNow) {
-                            LiveEqualizerBadge(color = SpotifyGreen, height = 8.dp)
+                        AsyncImage(
+                            model = recipient.avatarUrl,
+                            contentDescription = "Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                        )
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        Column {
                             Text(
-                                text = "Live su Spotify",
-                                color = SpotifyGreen,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
+                                text = recipient.name,
+                                color = PureWhite,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold
                             )
-                        } else {
-                            Text(
-                                text = "@${recipient.username}",
-                                color = SubtitleGray,
-                                fontSize = 11.sp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                if (recipient.isLiveNow) {
+                                    LiveEqualizerBadge(color = SpotifyGreen, height = 8.dp)
+                                    Text(
+                                        text = "Live su Spotify",
+                                        color = SpotifyGreen,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                } else {
+                                    Text(
+                                        text = "@${recipient.username}",
+                                        color = SubtitleGray,
+                                        fontSize = 12.sp
+                                    )
+                                }
+                            }
                         }
                     }
                 }
-            }
-        }
 
-        // Messages List
-        LazyColumn(
-            state = listState,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(shown, key = { it.id }) { message ->
-                MessageBubble(
-                    message = message,
-                    palette = if (message.isFromMe) myPalette else otherPalette
-                )
-            }
-        }
-
-        // Bottom Pure Text Input Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                value = inputText,
-                onValueChange = { inputText = it },
-                placeholder = {
-                    Text("Commenta la musica...", color = SubtitleGray, fontSize = 13.sp)
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                keyboardActions = KeyboardActions(
-                    onSend = {
-                        if (inputText.isNotBlank()) {
-                            onSendMessage(inputText)
-                            inputText = ""
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                        }
+                // Messages List
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(shown, key = { it.id }) { message ->
+                        MessageBubble(
+                            message = message,
+                            palette = if (message.isFromMe) myPalette else otherPalette
+                        )
                     }
-                ),
-                modifier = Modifier
-                    .weight(1f)
-                    .testTag("chat_text_input"),
-                shape = RoundedCornerShape(24.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = PureWhite,
-                    unfocusedBorderColor = CharcoalBorder,
-                    focusedContainerColor = DarkGraphite,
-                    unfocusedContainerColor = DarkGraphite,
-                    focusedTextColor = PureWhite,
-                    unfocusedTextColor = PureWhite,
-                    cursorColor = SpotifyGreen
-                )
-            )
+                }
 
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(CircleShape)
-                    .background(if (inputText.isNotBlank()) PureWhite else DarkGraphite)
-                    .clickable(enabled = inputText.isNotBlank()) {
-                        onSendMessage(inputText)
-                        inputText = ""
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Send,
-                    contentDescription = "Invia messaggio",
-                    tint = if (inputText.isNotBlank()) BlackPitch else SubtitleGray,
-                    modifier = Modifier.size(18.dp)
-                )
+                // Bottom Pure Text Input Bar (posizionato dinamicamente sopra la barra di navigazione e tastiera)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedTextField(
+                        value = inputText,
+                        onValueChange = { inputText = it },
+                        placeholder = {
+                            Text("Commenta la musica...", color = SubtitleGray, fontSize = 13.sp)
+                        },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(
+                            onSend = {
+                                if (inputText.isNotBlank()) {
+                                    onSendMessage(inputText)
+                                    inputText = ""
+                                    keyboardController?.hide()
+                                    focusManager.clearFocus()
+                                }
+                            }
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("chat_text_input"),
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = PureWhite,
+                            unfocusedBorderColor = CharcoalBorder,
+                            focusedContainerColor = DarkGraphite,
+                            unfocusedContainerColor = DarkGraphite,
+                            focusedTextColor = PureWhite,
+                            unfocusedTextColor = PureWhite,
+                            cursorColor = SpotifyGreen
+                        )
+                    )
+
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clip(CircleShape)
+                            .background(if (inputText.isNotBlank()) PureWhite else DarkGraphite)
+                            .clickable(enabled = inputText.isNotBlank()) {
+                                onSendMessage(inputText)
+                                inputText = ""
+                                keyboardController?.hide()
+                                focusManager.clearFocus()
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Send,
+                            contentDescription = "Invia messaggio",
+                            tint = if (inputText.isNotBlank()) BlackPitch else SubtitleGray,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
             }
-        }
         }
     }
 }
