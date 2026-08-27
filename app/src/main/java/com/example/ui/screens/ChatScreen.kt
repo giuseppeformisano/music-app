@@ -350,21 +350,23 @@ private fun MessageBubble(message: ChatMessage) {
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {
-            Text(
-                text = message.text,
-                color = PureWhite,
-                fontSize = 14.sp,
-                lineHeight = 19.sp
-            )
+            // Orario accorpato DENTRO la bubble, in basso a destra (stile WhatsApp)
+            Column(horizontalAlignment = Alignment.Start) {
+                Text(
+                    text = message.text,
+                    color = PureWhite,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp
+                )
+                Text(
+                    text = message.formattedTime,
+                    color = PureWhite.copy(alpha = 0.45f),
+                    fontSize = 9.sp,
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 3.dp, start = 20.dp)
+                )
+            }
         }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Text(
-            text = message.formattedTime,
-            color = SubtitleGray.copy(alpha = 0.6f),
-            fontSize = 10.sp,
-            modifier = Modifier.padding(horizontal = 4.dp)
-        )
     }
 }
