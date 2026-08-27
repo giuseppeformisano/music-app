@@ -26,9 +26,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Wallpaper
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -195,8 +197,13 @@ fun TrackDetailDialog(
                             modifier = Modifier.fillMaxSize()
                         )
 
-                        // Pulsante modesto "Imposta come copertina" in basso a destra della cover
+                        // Pulsante modesto "Imposta come copertina" in basso a destra della cover.
+                        // Dopo il tap conferma con "✓ Fatto" per ~1.4s, poi torna allo stato normale.
                         if (onSetAsCover != null) {
+                            var coverSet by remember(track.id) { mutableStateOf(false) }
+                            LaunchedEffect(coverSet) {
+                                if (coverSet) { delay(1400); coverSet = false }
+                            }
                             Row(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
@@ -207,20 +214,25 @@ fun TrackDetailDialog(
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
-                                        onClick = { onSetAsCover(track) }
+                                        onClick = {
+                                            if (!coverSet) {
+                                                onSetAsCover(track)
+                                                coverSet = true
+                                            }
+                                        }
                                     )
                                     .padding(horizontal = 10.dp, vertical = 6.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.Wallpaper,
+                                    imageVector = if (coverSet) Icons.Default.Check else Icons.Default.Wallpaper,
                                     contentDescription = null,
                                     tint = PureWhite.copy(alpha = 0.9f),
                                     modifier = Modifier.size(14.dp)
                                 )
                                 Spacer(modifier = Modifier.width(5.dp))
                                 Text(
-                                    text = "Copertina",
+                                    text = if (coverSet) "Fatto" else "Imposta copertina",
                                     color = PureWhite.copy(alpha = 0.9f),
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.SemiBold
