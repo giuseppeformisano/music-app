@@ -142,6 +142,7 @@ fun ChatScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .statusBarsPadding()
                     .padding(top = 28.dp)
                     .navigationBarsPadding()
                     .testTag("chat_screen_${recipient.id}")
