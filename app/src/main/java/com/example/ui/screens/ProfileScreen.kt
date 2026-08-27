@@ -165,6 +165,7 @@ fun ProfileScreen(
     onToggleApplyCoverToFeed: (Boolean) -> Unit = {},
     liveNotificationsEnabled: Boolean = true,
     onToggleLiveNotifications: (Boolean) -> Unit = {},
+    onOpenChatList: () -> Unit = {},
     onShareTrack: (Track) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -235,7 +236,8 @@ fun ProfileScreen(
                 notificationCount = notificationCount,
                 isCurrentUser = isCurrentUser,
                 onLogout = onLogout,
-                onOpenSettings = { showSettingsSheet = true }
+                onOpenSettings = { showSettingsSheet = true },
+                onOpenChatList = onOpenChatList
             )
 
             // Tutti i blocchi della pagina equidistanziati verticalmente entro lo spazio disponibile (Zero Scrolling)
@@ -374,6 +376,7 @@ private fun ProfileTopHeader(
     isCurrentUser: Boolean,
     onLogout: () -> Unit,
     onOpenSettings: () -> Unit = {},
+    onOpenChatList: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -440,11 +443,27 @@ private fun ProfileTopHeader(
             )
         }
 
-        // Destra: notifiche + logout (solo utente corrente)
+        // Destra: chat + notifiche + logout (solo utente corrente)
         Row(
             modifier = Modifier.align(Alignment.CenterEnd),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isCurrentUser) {
+                IconButton(
+                    onClick = onOpenChatList,
+                    modifier = Modifier
+                        .size(44.dp)
+                        .testTag("profile_chat_list_button")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MailOutline,
+                        contentDescription = "Messaggi",
+                        tint = PureWhite,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            }
+
             // Box senza clip per permettere al badge di fuoriuscire senza essere tagliato
             Box(
                 modifier = Modifier

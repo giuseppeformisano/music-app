@@ -1,6 +1,7 @@
 package com.example.data
 
 import android.util.Log
+import com.example.model.ChatMessage
 import com.example.model.FriendRequest
 import com.example.model.RequestStatus
 import com.example.model.Track
@@ -32,6 +33,8 @@ object FirebaseRepository {
 
     private const val TAG = "FirebaseRepository"
     private const val USERS_COLLECTION = "users"
+    private const val CONVERSATIONS_COLLECTION = "conversations"
+    private const val MESSAGES_SUBCOLLECTION = "messages"
 
     private val firestore: FirebaseFirestore? by lazy {
         try {
@@ -764,5 +767,121 @@ object FirebaseRepository {
             deviceType = deviceType,
             deviceName = deviceName
         )
+    }
+
+    // ========================== CHAT / MESSAGGISTICA ==========================
+
+    /** ID deterministico: i due userId vengono ordinati e separati da '_' */
+    fun getConversationId(uid1: String, uid2: String): String {
+        return listOf(uid1, uid2).sorted().joinToString("_")
+    }
+
+    /** Invia un messaggio nella conversazione e aggiorna il documento padre con l'ultimo messaggio */
+    fun sendChatMessage(
+        conversationId: String,
+        senderId: String,
+        recipientId: String,
+        text: String,
+        attachedTrack: Track? = null
+    ) {
+        val db = firestore ?: return
+        val convRef = db.collection(CONVERSATIONS_COLLECTION).document(conversationId)
+        val now = System.currentTimeMillis()
+
+        val trackMap: Map<String, Any?>? = attachedTrack?.let {
+            mapOf(
+                "id" to it.id,
+                "title" to it.title,
+                "artist" to it.artist,
+                "coverUrl" to it.coverUrl
+            )
+        }
+
+        val messageMap = hashMapOf<String, Any?>(
+            "senderId" to senderId,
+            "text" to text.trim(),
+            "timestamp" to now,
+            "attachedTrack" to trackMap
+        )
+
+        // Scrivi il messaggio nella sottocollezione
+        convRef.collection(MESSAGES_SUBCOLLECTION).add(messageMap)
+            .addOnFailureListener { e -> Log.e(TAG, "Errore invio messaggio: ${e.message}") }
+
+        // Aggiorna (o crea) il documento conversazione con i metadati dell'ultimo messaggio
+        val convUpdate = hashMapOf<String, Any?>(
+            "participants" to listOf(senderId, recipientId).sorted(),
+            "lastMessageText" to text.trim(),
+            "lastMessageAt" to now,
+            "lastMessageSenderId" to senderId,
+            "lastAttachedTrack" to trackMap
+        )
+        convRef.set(convUpdate, SetOptions.merge())
+            .addOnFailureListener { e -> Log.e(TAG, "Errore aggiornamento conversazione: ${e.message}") }
+    }
+
+    /** Listener real-time sulla sottocollezione messaggi, ordinati per timestamp asc */
+    fun listenToMessages(
+        conversationId: String,
+        currentUserId: String,
+        onMessages: (List<ChatMessage>) -> Unit
+    ): ListenerRegistration? {
+        val db = firestore ?: return null
+        return db.collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .collection(MESSAGES_SUBCOLLECTION)
+            .orderBy("timestamp")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Errore listener messaggi: ${error.message}")
+                    return@addSnapshotListener
+                }
+                val messages = snapshot?.documents?.mapNotNull { doc ->
+                    val data = doc.data ?: return@mapNotNull null
+                    val senderId = data["senderId"] as? String ?: return@mapNotNull null
+                    val text = data["text"] as? String ?: ""
+                    val ts = (data["timestamp"] as? Number)?.toLong() ?: 0L
+                    val trackData = data["attachedTrack"] as? Map<*, *>
+                    val track = trackData?.let {
+                        Track(
+                            id = it["id"] as? String ?: "",
+                            title = it["title"] as? String ?: "",
+                            artist = it["artist"] as? String ?: "",
+                            coverUrl = it["coverUrl"] as? String ?: ""
+                        )
+                    }
+                    ChatMessage(
+                        id = doc.id,
+                        senderId = senderId,
+                        text = text,
+                        timestamp = ts,
+                        isFromMe = senderId == currentUserId,
+                        attachedTrack = track
+                    )
+                } ?: emptyList()
+                onMessages(messages)
+            }
+    }
+
+    /** Listener real-time su tutte le conversazioni di un utente, ordinato per ultimo messaggio */
+    fun listenToConversations(
+        userId: String,
+        onConversations: (List<Pair<String, Map<String, Any?>>>) -> Unit
+    ): ListenerRegistration? {
+        val db = firestore ?: return null
+        return db.collection(CONVERSATIONS_COLLECTION)
+            .whereArrayContains("participants", userId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    Log.e(TAG, "Errore listener conversazioni: ${error.message}")
+                    return@addSnapshotListener
+                }
+                val convList = snapshot?.documents?.mapNotNull { doc ->
+                    val data = doc.data ?: return@mapNotNull null
+                    doc.id to data
+                }?.sortedByDescending { (it.second["lastMessageAt"] as? Number)?.toLong() ?: 0L }
+                    ?: emptyList()
+                onConversations(convList)
+            }
     }
 }

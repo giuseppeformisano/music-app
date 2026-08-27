@@ -84,7 +84,23 @@ data class ChatMessage(
     val id: String,
     val senderId: String,
     val text: String,
-    val timestamp: String,
-    val isFromMe: Boolean,
+    val timestamp: Long = System.currentTimeMillis(),
+    val isFromMe: Boolean = false,
     val attachedTrack: Track? = null
+) {
+    /** Formatta il timestamp in "HH:mm" per la UI */
+    val formattedTime: String
+        get() {
+            val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
+            return sdf.format(java.util.Date(timestamp))
+        }
+}
+
+data class Conversation(
+    val id: String,
+    val recipientUser: User,
+    val lastMessageText: String = "",
+    val lastMessageAt: Long = 0L,
+    val lastMessageSenderId: String = "",
+    val lastAttachedTrack: Track? = null
 )

@@ -45,6 +45,7 @@ import com.example.ui.components.PeopleSearchDialog
 import com.example.ui.components.TrackDetailDialog
 import com.example.ui.components.UpdateBanner
 import com.example.ui.screens.ChatScreen
+import com.example.ui.screens.ChatListScreen
 import com.example.ui.screens.LiveDetailScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.MainFeedScreen
@@ -224,6 +225,7 @@ fun MusicApp(viewModel: MusicViewModel) {
         enabled = uiState.activeStoryUserIndex != null ||
                 uiState.activeProfileUser != null ||
                 uiState.activeChatUser != null ||
+                uiState.isChatListOpen ||
                 uiState.selectedTrackDetail != null ||
                 uiState.showPeopleSearch ||
                 uiState.showNotifications
@@ -234,6 +236,7 @@ fun MusicApp(viewModel: MusicViewModel) {
             uiState.selectedTrackDetail != null -> viewModel.closeTrackInspector()
             uiState.activeStoryUserIndex != null -> viewModel.closeStory()
             uiState.activeChatUser != null -> viewModel.closeChat()
+            uiState.isChatListOpen -> viewModel.closeChatList()
             uiState.activeProfileUser != null -> viewModel.closeProfile()
         }
     }
@@ -320,9 +323,24 @@ fun MusicApp(viewModel: MusicViewModel) {
                     applyCoverToFeed = uiState.applyCoverToFeed,
                     onToggleApplyCoverToFeed = { viewModel.setApplyCoverToFeed(it) },
                     liveNotificationsEnabled = uiState.liveNotificationsEnabled,
-                    onToggleLiveNotifications = { viewModel.setLiveNotificationsEnabled(it) }
+                    onToggleLiveNotifications = { viewModel.setLiveNotificationsEnabled(it) },
+                    onOpenChatList = { viewModel.openChatList() }
                 )
             }
+        }
+
+        // Overlay: Chat List Screen
+        AnimatedVisibility(
+            visible = uiState.isChatListOpen,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+        ) {
+            ChatListScreen(
+                conversations = uiState.conversations,
+                currentUserId = uiState.currentUser.id,
+                onOpenChat = { user -> viewModel.openChat(user) },
+                onBack = { viewModel.closeChatList() }
+            )
         }
 
         // Overlay: Chat Screen (Flusso E)

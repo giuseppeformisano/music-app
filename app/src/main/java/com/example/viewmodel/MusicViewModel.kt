@@ -14,6 +14,7 @@ import com.example.data.UpdateRepository
 import com.example.data.VersionInfo
 import java.io.File
 import com.example.model.ChatMessage
+import com.example.model.Conversation
 import com.example.model.FriendRequest
 import com.example.model.Track
 import com.example.model.User
@@ -67,6 +68,8 @@ data class MusicUiState(
     val activeProfileUser: User? = null,
     val activeChatUser: User? = null,
     val chatMessages: Map<String, List<ChatMessage>> = emptyMap(),
+    val conversations: List<Conversation> = emptyList(),
+    val isChatListOpen: Boolean = false,
     val selectedTrackDetail: Pair<Track, User?>? = null,
     val feedbackToast: String? = null,
     val spotifyError: String? = null,
@@ -111,6 +114,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     private var isAppInForeground = true
 
+    // Chat listeners
+    private var chatMessagesListener: com.google.firebase.firestore.ListenerRegistration? = null
+    private var conversationsListener: com.google.firebase.firestore.ListenerRegistration? = null
+
     init {
         val userSettingsPrefs = appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
         val initialApplyCover = userSettingsPrefs.getBoolean("apply_cover_to_feed", false)
@@ -141,6 +148,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 startFirebaseListener()
                 saveFcmToken(initialUser.id)
+                startConversationsListener(initialUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }
         }
@@ -211,6 +219,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 startFirebaseListener()
                 saveFcmToken(loggedUser.id)
+                startConversationsListener(loggedUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }.onFailure { error ->
                 _uiState.update {
@@ -1235,28 +1244,92 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun closeProfile() { _uiState.update { it.copy(activeProfileUser = null) } }
 
     fun openChat(user: User, initialTrack: Track? = null) {
-        _uiState.update { it.copy(activeChatUser = user, activeStoryUserIndex = null) }
+        _uiState.update { it.copy(activeChatUser = user, activeStoryUserIndex = null, isChatListOpen = false) }
+
+        val currentUserId = _uiState.value.currentUser.id
+        if (currentUserId.isBlank()) return
+
+        val convId = FirebaseRepository.getConversationId(currentUserId, user.id)
+
+        // Rimuovi il listener precedente se presente
+        chatMessagesListener?.remove()
+        chatMessagesListener = FirebaseRepository.listenToMessages(convId, currentUserId) { messages ->
+            val updatedMap = _uiState.value.chatMessages.toMutableMap().apply { put(user.id, messages) }
+            _uiState.update { it.copy(chatMessages = updatedMap) }
+        }
+
+        // Se c'è una traccia iniziale, invia subito un messaggio con la traccia allegata
         if (initialTrack != null) {
             sendMessage(user.id, "Ho visto che stavi ascoltando \"${initialTrack.title}\"!", initialTrack)
         }
     }
 
-    fun closeChat() { _uiState.update { it.copy(activeChatUser = null) } }
+    fun closeChat() {
+        chatMessagesListener?.remove()
+        chatMessagesListener = null
+        _uiState.update { it.copy(activeChatUser = null) }
+    }
 
     fun sendMessage(recipientId: String, text: String, attachedTrack: Track? = null) {
         if (text.isBlank()) return
-        val newMessage = ChatMessage(
-            id = UUID.randomUUID().toString(),
-            senderId = "me",
-            text = text.trim(),
-            timestamp = MusicRepository.getCurrentTimestamp(),
-            isFromMe = true,
+        val currentUserId = _uiState.value.currentUser.id
+        if (currentUserId.isBlank()) return
+
+        val convId = FirebaseRepository.getConversationId(currentUserId, recipientId)
+        FirebaseRepository.sendChatMessage(
+            conversationId = convId,
+            senderId = currentUserId,
+            recipientId = recipientId,
+            text = text,
             attachedTrack = attachedTrack
         )
-        val currentList = _uiState.value.chatMessages[recipientId]?.toMutableList() ?: mutableListOf()
-        currentList.add(newMessage)
-        val updatedMap = _uiState.value.chatMessages.toMutableMap().apply { put(recipientId, currentList) }
-        _uiState.update { it.copy(chatMessages = updatedMap) }
+    }
+
+    fun openChatList() {
+        _uiState.update { it.copy(isChatListOpen = true) }
+    }
+
+    fun closeChatList() {
+        _uiState.update { it.copy(isChatListOpen = false) }
+    }
+
+    private fun startConversationsListener(userId: String) {
+        conversationsListener?.remove()
+        conversationsListener = FirebaseRepository.listenToConversations(userId) { rawConvList ->
+            viewModelScope.launch {
+                val conversations = rawConvList.mapNotNull { (convId, data) ->
+                    val participants = (data["participants"] as? List<*>)?.filterIsInstance<String>() ?: return@mapNotNull null
+                    val otherUserId = participants.firstOrNull { it != userId } ?: return@mapNotNull null
+
+                    // Cerca l'utente nella lista feedUsers già caricata
+                    val recipientUser = _uiState.value.feedUsers.firstOrNull { it.id == otherUserId }
+                        ?: User(id = otherUserId, name = otherUserId, username = "", avatarUrl = "")
+
+                    val lastText = data["lastMessageText"] as? String ?: ""
+                    val lastAt = (data["lastMessageAt"] as? Number)?.toLong() ?: 0L
+                    val lastSenderId = data["lastMessageSenderId"] as? String ?: ""
+                    val trackData = data["lastAttachedTrack"] as? Map<*, *>
+                    val lastTrack = trackData?.let {
+                        Track(
+                            id = it["id"] as? String ?: "",
+                            title = it["title"] as? String ?: "",
+                            artist = it["artist"] as? String ?: "",
+                            coverUrl = it["coverUrl"] as? String ?: ""
+                        )
+                    }
+
+                    Conversation(
+                        id = convId,
+                        recipientUser = recipientUser,
+                        lastMessageText = lastText,
+                        lastMessageAt = lastAt,
+                        lastMessageSenderId = lastSenderId,
+                        lastAttachedTrack = lastTrack
+                    )
+                }
+                _uiState.update { it.copy(conversations = conversations) }
+            }
+        }
     }
 
     fun inspectTrack(track: Track, user: User? = null) {

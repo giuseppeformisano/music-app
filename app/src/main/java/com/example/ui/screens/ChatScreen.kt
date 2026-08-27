@@ -361,7 +361,7 @@ private fun MessageBubble(message: ChatMessage) {
         Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = message.timestamp,
+            text = message.formattedTime,
             color = SubtitleGray.copy(alpha = 0.6f),
             fontSize = 10.sp,
             modifier = Modifier.padding(horizontal = 4.dp)
