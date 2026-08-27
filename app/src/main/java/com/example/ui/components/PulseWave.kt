@@ -96,10 +96,11 @@ fun PulseWavePlayer(
 ) {
     val context = LocalContext.current
     var intensity by remember { mutableFloatStateOf(0f) }
+    val envelope = remember(samples) { PulseHaptics.decodeEnvelope(samples) }
 
     LaunchedEffect(playTrigger) {
-        if (playTrigger <= 0) return@LaunchedEffect
-        val totalMs = samples.length * PulseHaptics.SAMPLE_MS
+        if (playTrigger <= 0 || envelope.isEmpty()) return@LaunchedEffect
+        val totalMs = envelope.size * PulseHaptics.SAMPLE_MS
         // Vibrazione e onda partono dallo STESSO istante e l'indice del campione è ricavato
         // dal TEMPO REALE trascorso (non da delay accumulati) → nessuna deriva, sync perfetta.
         PulseHaptics.play(context, samples)
@@ -108,8 +109,10 @@ fun PulseWavePlayer(
             val frame = withFrameNanos { it }
             val elapsedMs = (frame - startNanos) / 1_000_000L
             if (elapsedMs >= totalMs) break
-            val idx = (elapsedMs / PulseHaptics.SAMPLE_MS).toInt().coerceIn(0, samples.length - 1)
-            intensity = if (samples[idx] == '1') 1f else intensity * 0.55f
+            val idx = (elapsedMs / PulseHaptics.SAMPLE_MS).toInt().coerceIn(0, envelope.size - 1)
+            // Intensità = ampiezza del campione (voce), con salita immediata e discesa morbida.
+            val target = envelope[idx] / 255f
+            intensity = if (target >= intensity) target else intensity * 0.6f
         }
         intensity = 0f
     }

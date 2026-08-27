@@ -26,8 +26,27 @@ object PulseHaptics {
         }
     } catch (_: Exception) { null }
 
-    /** true se la stringa contiene almeno un tocco (evita l'invio di un Pulse "vuoto"). */
-    fun hasContent(samples: String?): Boolean = samples?.any { it == '1' } == true
+    /**
+     * Decodifica l'inviluppo in ampiezze 0..255 per campione.
+     * - Vecchio formato "on/off": stringa di '0'/'1' (lunghezza ≤ SAMPLE_COUNT) → 0 o 255.
+     * - Nuovo formato "voce": 2 cifre hex per campione (ampiezza 0..255).
+     */
+    fun decodeEnvelope(samples: String?): IntArray {
+        if (samples.isNullOrEmpty()) return IntArray(0)
+        if (samples.length <= SAMPLE_COUNT && samples.all { it == '0' || it == '1' }) {
+            return IntArray(samples.length) { if (samples[it] == '1') 255 else 0 }
+        }
+        val n = samples.length / 2
+        return IntArray(n) { i ->
+            samples.substring(i * 2, i * 2 + 2).toIntOrNull(16)?.coerceIn(0, 255) ?: 0
+        }
+    }
+
+    fun encodeEnvelope(amps: IntArray): String =
+        amps.joinToString("") { "%02x".format(it.coerceIn(0, 255)) }
+
+    /** true se l'inviluppo ha contenuto reale (evita l'invio di un Pulse "vuoto"). */
+    fun hasContent(samples: String?): Boolean = decodeEnvelope(samples).any { it > 24 }
 
     /**
      * Converte i campioni in timings alternati per createWaveform:
@@ -50,15 +69,24 @@ object PulseHaptics {
     }
 
     fun play(context: Context, samples: String?) {
-        if (!hasContent(samples)) return
+        val amps = decodeEnvelope(samples)
+        if (amps.isEmpty() || amps.none { it > 24 }) return
         val vib = vibrator(context) ?: return
-        val timings = toTimings(samples!!)
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                vib.vibrate(VibrationEffect.createWaveform(timings, -1))
+                if (vib.hasAmplitudeControl()) {
+                    // Ampiezza reale della voce: 0 = pausa, 1..255 = intensità
+                    val timings = LongArray(amps.size) { SAMPLE_MS }
+                    vib.vibrate(VibrationEffect.createWaveform(timings, amps, -1))
+                } else {
+                    // Nessun controllo ampiezza → on/off da soglia
+                    val binary = amps.joinToString("") { if (it > 60) "1" else "0" }
+                    vib.vibrate(VibrationEffect.createWaveform(toTimings(binary), -1))
+                }
             } else {
+                val binary = amps.joinToString("") { if (it > 60) "1" else "0" }
                 @Suppress("DEPRECATION")
-                vib.vibrate(timings, -1)
+                vib.vibrate(toTimings(binary), -1)
             }
         } catch (_: Exception) {}
     }

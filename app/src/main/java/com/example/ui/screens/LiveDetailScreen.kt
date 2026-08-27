@@ -49,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -165,25 +166,35 @@ fun LiveDetailScreen(
     val platformTextColor = if (isAmazon) Color(0xFF25D1DA) else Color(0xFF1DB954)
     val deviceIconVec = deviceIcon(track.deviceType)
 
-    // ===== PULSE: registrazione tattile toccando la foto (5s, ritmo dei tocchi) =====
+    // ===== PULSE VOCALE: tieni premuta la foto e parla; vibrazione e onda seguono la tua voce =====
     val pulseAccent = com.example.ui.components.pulseAccentFor(user.id)
     var pulseRecording by remember { mutableStateOf(false) }
     val pulsePressed = remember { mutableStateOf(false) }
-    val pulseIntensity by androidx.compose.animation.core.animateFloatAsState(
-        targetValue = if (pulsePressed.value) 1f else 0f,
-        animationSpec = androidx.compose.animation.core.tween(140),
-        label = "pulsePress"
-    )
+    // Intensità delle barre durante la registrazione = livello reale della voce dal microfono
+    var pulseIntensity by remember { mutableFloatStateOf(0f) }
     LaunchedEffect(pulseRecording) {
         if (!pulseRecording) return@LaunchedEffect
-        val sb = StringBuilder()
-        repeat(com.example.data.PulseHaptics.SAMPLE_COUNT) {
-            sb.append(if (pulsePressed.value) '1' else '0')
-            kotlinx.coroutines.delay(com.example.data.PulseHaptics.SAMPLE_MS)
+        val recorder = com.example.data.PulseRecorder()
+        val started = recorder.start(context)
+        val amps = ArrayList<Int>()
+        try {
+            for (i in 0 until com.example.data.PulseHaptics.SAMPLE_COUNT) {
+                kotlinx.coroutines.delay(com.example.data.PulseHaptics.SAMPLE_MS)
+                // Se rilasci prima dei 5s, la registrazione termina.
+                if (!pulsePressed.value && i > 2) break
+                val level = if (started) recorder.level() else 0f
+                pulseIntensity = level
+                amps.add((level * 255f).toInt().coerceIn(0, 255))
+            }
+        } finally {
+            recorder.stop()
         }
+        pulseIntensity = 0f
         pulseRecording = false
-        val s = sb.toString()
-        if (com.example.data.PulseHaptics.hasContent(s)) onSendPulse(user, s)
+        // Pad fino a lunghezza piena (silenzio finale) e invia se c'è voce.
+        while (amps.size < com.example.data.PulseHaptics.SAMPLE_COUNT) amps.add(0)
+        val env = com.example.data.PulseHaptics.encodeEnvelope(amps.toIntArray())
+        if (com.example.data.PulseHaptics.hasContent(env)) onSendPulse(user, env)
     }
 
     // Minutaggio REALE: durata dal brano; posizione estrapolata dalla posizione
