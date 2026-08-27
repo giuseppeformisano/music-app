@@ -166,6 +166,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        AppFirebaseMessagingService.isAppForeground = true
         viewModel.onAppForeground()
         viewModel.setOnline(true)
         viewModel.checkNotificationListenerEnabled()
@@ -179,6 +180,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        AppFirebaseMessagingService.isAppForeground = false
         try { unregisterReceiver(spotifyReceiver) } catch (e: Exception) { /* receiver was not registered */ }
     }
 

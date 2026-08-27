@@ -1244,6 +1244,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun closeProfile() { _uiState.update { it.copy(activeProfileUser = null) } }
 
     fun openChat(user: User, initialTrack: Track? = null) {
+        // Segnala al servizio FCM che stai guardando questa chat → niente notifica per i suoi messaggi.
+        com.example.AppFirebaseMessagingService.openChatUserId = user.id
         _uiState.update { it.copy(activeChatUser = user, activeStoryUserIndex = null, isChatListOpen = false) }
 
         val currentUserId = _uiState.value.currentUser.id
@@ -1265,6 +1267,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun closeChat() {
+        com.example.AppFirebaseMessagingService.openChatUserId = null
         chatMessagesListener?.remove()
         chatMessagesListener = null
         _uiState.update { it.copy(activeChatUser = null) }
