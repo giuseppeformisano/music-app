@@ -162,14 +162,28 @@ fun ChatScreen(
                             .clickable { onOpenProfile(recipient) }
                             .padding(vertical = 4.dp, horizontal = 2.dp)
                     ) {
-                        AsyncImage(
-                            model = recipient.avatarUrl,
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
+                        Box(
                             modifier = Modifier
                                 .size(42.dp)
                                 .clip(CircleShape)
-                        )
+                                .background(Color(0xFF1E1E24)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Avatar",
+                                tint = PureWhite.copy(alpha = 0.8f),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            if (recipient.avatarUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = recipient.avatarUrl,
+                                    contentDescription = "Avatar ${recipient.name}",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.width(12.dp))
 

@@ -1288,7 +1288,27 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun openChat(user: User, initialTrack: Track? = null) {
         // Segnala al servizio FCM che stai guardando questa chat → niente notifica per i suoi messaggi.
         com.example.AppFirebaseMessagingService.openChatUserId = user.id
-        _uiState.update { it.copy(activeChatUser = user, activeStoryUserIndex = null, isChatListOpen = false) }
+        
+        // Trova l'utente più aggiornato dalla cache locale
+        val freshUser = _uiState.value.feedUsers.firstOrNull { it.id == user.id }
+            ?: _uiState.value.followerDetails.firstOrNull { it.id == user.id }
+            ?: _uiState.value.followingDetails.firstOrNull { it.id == user.id }
+            ?: user
+
+        _uiState.update { it.copy(activeChatUser = freshUser, activeStoryUserIndex = null, isChatListOpen = false) }
+
+        // Se mancano dati (es. avatar), richiedili a Firestore in background per aggiornare la chat
+        if (freshUser.avatarUrl.isBlank() || freshUser.name == "Utente") {
+            FirebaseRepository.getUsersByIds(listOf(user.id)) { fetchedList ->
+                fetchedList.firstOrNull()?.let { fetched ->
+                    _uiState.update { state ->
+                        if (state.activeChatUser?.id == fetched.id) {
+                            state.copy(activeChatUser = fetched)
+                        } else state
+                    }
+                }
+            }
+        }
 
         val currentUserId = _uiState.value.currentUser.id
         if (currentUserId.isBlank()) return
