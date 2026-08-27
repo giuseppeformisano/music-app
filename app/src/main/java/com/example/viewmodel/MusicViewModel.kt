@@ -1364,7 +1364,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             pulse = samples,
             pulseAudioBase64 = audioBase64
         )
-        _uiState.update { it.copy(feedbackToast = "Pulse inviato") }
+        // DIAGNOSTICA: dimmi se la voce è stata registrata e quanto pesa.
+        val diag = if (audioBase64.isNullOrBlank()) "Pulse inviato · voce ASSENTE"
+                   else "Pulse inviato · voce ~${audioBase64.length * 3 / 4 / 1024}KB"
+        _uiState.update { it.copy(feedbackToast = diag) }
     }
 
     fun openPulseFromNotification(senderId: String, senderName: String, avatarUrl: String, samples: String, audioId: String? = null) {

@@ -113,7 +113,10 @@ fun PulseWavePlayer(
                         prepare()
                         start()
                     }
-                } catch (_: Exception) { null }
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(context, "Pulse: voce non riproducibile (${e.javaClass.simpleName})", android.widget.Toast.LENGTH_SHORT).show()
+                    null
+                }
             }
             PulseHaptics.play(context, samples)
             val startNanos = System.nanoTime()

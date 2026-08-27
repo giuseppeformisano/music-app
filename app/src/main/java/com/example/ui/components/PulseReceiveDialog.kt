@@ -52,9 +52,11 @@ fun PulseReceiveDialog(pulse: ActivePulse, onDismiss: () -> Unit) {
         if (!pulse.audioId.isNullOrBlank()) {
             com.example.data.FirebaseRepository.fetchPulseAudioToFile(context, pulse.audioId) { path ->
                 audioPath = path
+                if (path == null) android.widget.Toast.makeText(context, "Pulse: voce non scaricata", android.widget.Toast.LENGTH_SHORT).show()
                 trigger += 1
             }
         } else {
+            android.widget.Toast.makeText(context, "Pulse: nessuna voce allegata", android.widget.Toast.LENGTH_SHORT).show()
             trigger += 1
         }
     }
