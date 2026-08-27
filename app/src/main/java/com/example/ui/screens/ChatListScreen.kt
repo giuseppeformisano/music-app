@@ -8,12 +8,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
@@ -39,7 +39,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,8 +48,7 @@ import coil.compose.AsyncImage
 import com.example.model.Conversation
 import com.example.model.User
 import com.example.ui.components.PresenceDot
-import com.example.ui.theme.BlackPitch
-import com.example.ui.theme.DarkGraphite
+import com.example.ui.components.UtilityDialog
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
 
@@ -58,123 +56,98 @@ import com.example.ui.theme.SubtitleGray
 fun ChatListScreen(
     conversations: List<Conversation>,
     currentUserId: String,
+    followingIds: Set<String>,
     searchQuery: String,
     searchResults: List<User>,
     onSearchQueryChanged: (String) -> Unit,
     onOpenChat: (User) -> Unit,
-    onBack: () -> Unit,
-    modifier: Modifier = Modifier
+    onDismiss: () -> Unit
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val isSearching = searchQuery.isNotBlank()
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(BlackPitch)
-            .padding(top = 28.dp)
-            .navigationBarsPadding()
-            .testTag("chat_list_screen")
-    ) {
-        // Header
-        Row(
+    UtilityDialog(onDismiss = onDismiss) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.92f)
+                .statusBarsPadding()
+                .padding(top = 8.dp, bottom = 12.dp)
         ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(DarkGraphite)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Torna indietro",
-                    tint = PureWhite,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
             Text(
                 text = "Messaggi",
                 color = PureWhite,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.4).sp
+                letterSpacing = (-0.4).sp,
+                modifier = Modifier.padding(start = 4.dp, bottom = 14.dp)
             )
-        }
 
-        // Barra di ricerca: cerca una persona a cui scrivere (click → apre la chat)
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchQueryChanged,
-            placeholder = { Text("Cerca una persona a cui scrivere", color = SubtitleGray.copy(alpha = 0.6f), fontSize = 14.sp) },
-            leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null, tint = SubtitleGray.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
-            },
-            trailingIcon = {
-                if (isSearching) {
-                    IconButton(onClick = { onSearchQueryChanged("") }) {
-                        Icon(Icons.Default.Close, contentDescription = "Cancella", tint = SubtitleGray, modifier = Modifier.size(16.dp))
+            // Barra di ricerca: cerca una persona a cui scrivere (click → apre la chat)
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChanged,
+                placeholder = { Text("Cerca una persona a cui scrivere", color = SubtitleGray.copy(alpha = 0.6f), fontSize = 14.sp) },
+                leadingIcon = {
+                    Icon(Icons.Default.Search, contentDescription = null, tint = SubtitleGray.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+                },
+                trailingIcon = {
+                    if (isSearching) {
+                        IconButton(onClick = { onSearchQueryChanged("") }) {
+                            Icon(Icons.Default.Close, contentDescription = "Cancella", tint = SubtitleGray, modifier = Modifier.size(16.dp))
+                        }
                     }
-                }
-            },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide(); focusManager.clearFocus() }),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = PureWhite.copy(alpha = 0.15f),
-                unfocusedBorderColor = Color.Transparent,
-                focusedContainerColor = PureWhite.copy(alpha = 0.06f),
-                unfocusedContainerColor = PureWhite.copy(alpha = 0.06f),
-                focusedTextColor = PureWhite,
-                unfocusedTextColor = PureWhite,
-                cursorColor = PureWhite
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide(); focusManager.clearFocus() }),
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = PureWhite.copy(alpha = 0.15f),
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = PureWhite.copy(alpha = 0.06f),
+                    unfocusedContainerColor = PureWhite.copy(alpha = 0.06f),
+                    focusedTextColor = PureWhite,
+                    unfocusedTextColor = PureWhite,
+                    cursorColor = PureWhite
+                )
             )
-        )
 
-        Spacer(modifier = Modifier.height(6.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-        when {
-            // Modalità ricerca: mostra gli utenti trovati, click → apri chat
-            isSearching -> {
-                if (searchResults.isEmpty()) {
-                    EmptyState(title = "Nessuna persona trovata", subtitle = "Prova con un altro nome o @username")
-                } else {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
-                        items(searchResults, key = { it.id }) { user ->
-                            UserResultRow(user = user, onClick = { onOpenChat(user) })
+            when {
+                isSearching -> {
+                    if (searchResults.isEmpty()) {
+                        EmptyState(title = "Nessuna persona trovata", subtitle = "Prova con un altro nome o @username")
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                            items(searchResults, key = { it.id }) { user ->
+                                UserResultRow(
+                                    user = user,
+                                    showStatus = followingIds.contains(user.id),
+                                    onClick = { onOpenChat(user) }
+                                )
+                            }
                         }
                     }
                 }
-            }
-            conversations.isEmpty() -> {
-                EmptyState(
-                    title = "Nessuna conversazione",
-                    subtitle = "Cerca una persona qui sopra, oppure rispondi a un brano o a una live"
-                )
-            }
-            else -> {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    items(conversations, key = { it.id }) { conversation ->
-                        ConversationRow(
-                            conversation = conversation,
-                            currentUserId = currentUserId,
-                            onClick = { onOpenChat(conversation.recipientUser) }
-                        )
+                conversations.isEmpty() -> {
+                    EmptyState(
+                        title = "Nessuna conversazione",
+                        subtitle = "Cerca una persona qui sopra, oppure rispondi a un brano o a una live"
+                    )
+                }
+                else -> {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(conversations, key = { it.id }) { conversation ->
+                            ConversationRow(
+                                conversation = conversation,
+                                currentUserId = currentUserId,
+                                onClick = { onOpenChat(conversation.recipientUser) }
+                            )
+                        }
                     }
                 }
             }
@@ -187,7 +160,7 @@ private fun EmptyState(title: String, subtitle: String) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
+            .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -205,7 +178,7 @@ private fun EmptyState(title: String, subtitle: String) {
 }
 
 @Composable
-private fun UserResultRow(user: User, onClick: () -> Unit) {
+private fun UserResultRow(user: User, showStatus: Boolean, onClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -214,7 +187,7 @@ private fun UserResultRow(user: User, onClick: () -> Unit) {
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(modifier = Modifier.size(48.dp)) {
@@ -226,11 +199,14 @@ private fun UserResultRow(user: User, onClick: () -> Unit) {
                     .size(48.dp)
                     .clip(CircleShape)
             )
-            PresenceDot(
-                presenceState = user.presenceState,
-                size = 13.dp,
-                modifier = Modifier.align(Alignment.BottomEnd)
-            )
+            // Lo stato è visibile SOLO se segui la persona.
+            if (showStatus) {
+                PresenceDot(
+                    presenceState = user.presenceState,
+                    size = 13.dp,
+                    modifier = Modifier.align(Alignment.BottomEnd)
+                )
+            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -277,7 +253,7 @@ private fun ConversationRow(
                 indication = null,
                 onClick = onClick
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         AsyncImage(
@@ -291,9 +267,7 @@ private fun ConversationRow(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(
-            modifier = Modifier.weight(1f)
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,

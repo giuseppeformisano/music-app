@@ -575,11 +575,14 @@ private fun UserIdentityBlock(
                             )
                         }
                     }
-                    com.example.ui.components.PresenceDot(
-                        presenceState = user.presenceState,
-                        size = 20.dp,
-                        modifier = Modifier.align(Alignment.BottomEnd)
-                    )
+                    // Lo stato è visibile SOLO se è il proprio profilo o se segui la persona.
+                    if (isCurrentUser || isFollowing) {
+                        com.example.ui.components.PresenceDot(
+                            presenceState = user.presenceState,
+                            size = 20.dp,
+                            modifier = Modifier.align(Alignment.BottomEnd)
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Text(

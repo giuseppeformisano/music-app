@@ -13,8 +13,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -68,10 +73,13 @@ import com.example.ui.theme.SubtitleGray
 @Composable
 fun ChatScreen(
     recipient: User,
+    currentUserId: String,
     messages: List<ChatMessage>,
     onSendMessage: (String) -> Unit,
     onBack: () -> Unit,
     onOpenProfile: (User) -> Unit,
+    applyCoverToFeed: Boolean = false,
+    backgroundCoverUrl: String? = null,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -97,14 +105,44 @@ fun ChatScreen(
             .collect { idx -> if (idx <= 1 && visibleCount < messages.size) visibleCount += pageSize }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(BlackPitch)
-            .padding(top = 28.dp)
-            .navigationBarsPadding()
-            .testTag("chat_screen_${recipient.id}")
-    ) {
+    val myAccent = accentForUserId(currentUserId)
+    val otherAccent = accentForUserId(recipient.id)
+
+    Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
+        // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
+        if (applyCoverToFeed && !backgroundCoverUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = backgroundCoverUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f }
+                    .blur(radius = 12.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                BlackPitch.copy(alpha = 0.55f),
+                                BlackPitch.copy(alpha = 0.78f),
+                                BlackPitch.copy(alpha = 0.92f)
+                            )
+                        )
+                    )
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .imePadding()
+                .testTag("chat_screen_${recipient.id}")
+        ) {
         // Top Header
         Row(
             modifier = Modifier
@@ -189,7 +227,10 @@ fun ChatScreen(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             items(shown, key = { it.id }) { message ->
-                MessageBubble(message = message)
+                MessageBubble(
+                    message = message,
+                    accent = if (message.isFromMe) myAccent else otherAccent
+                )
             }
         }
 
@@ -255,11 +296,19 @@ fun ChatScreen(
                 )
             }
         }
+        }
     }
 }
 
+/** Colore d'accento stabile e distinto per ogni persona, derivato dal suo id (tonalità). */
+private fun accentForUserId(id: String): Color {
+    if (id.isBlank()) return Color(0xFF9AA0A6)
+    val hue = (kotlin.math.abs(id.hashCode()) % 360).toFloat()
+    return Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0.62f, 0.95f)))
+}
+
 @Composable
-private fun MessageBubble(message: ChatMessage) {
+private fun MessageBubble(message: ChatMessage, accent: Color) {
     val isMe = message.isFromMe
 
     Column(
@@ -313,10 +362,10 @@ private fun MessageBubble(message: ChatMessage) {
                         bottomEnd = if (isMe) 4.dp else 18.dp
                     )
                 )
-                .background(if (isMe) Color(0xFF16351F) else BlackCard)
+                .background(if (isMe) DarkGraphite else BlackCard)
                 .border(
-                    width = 1.dp,
-                    color = if (isMe) SpotifyGreen.copy(alpha = 0.40f) else CharcoalBorder,
+                    width = 1.2.dp,
+                    color = accent.copy(alpha = 0.65f),
                     shape = RoundedCornerShape(
                         topStart = 18.dp,
                         topEnd = 18.dp,

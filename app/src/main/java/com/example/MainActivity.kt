@@ -344,20 +344,17 @@ fun MusicApp(viewModel: MusicViewModel) {
             }
         }
 
-        // Overlay: Chat List Screen
-        AnimatedVisibility(
-            visible = uiState.isChatListOpen,
-            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
-        ) {
+        // Dialog: Chat List (Messaggi) — stile dialog immersivo con swipe-down per chiudere
+        if (uiState.isChatListOpen) {
             ChatListScreen(
                 conversations = uiState.conversations,
                 currentUserId = uiState.currentUser.id,
+                followingIds = uiState.currentUser.followingIds.toSet(),
                 searchQuery = uiState.userSearchQuery,
                 searchResults = uiState.userSearchResults,
                 onSearchQueryChanged = { viewModel.onUserSearchQueryChanged(it) },
                 onOpenChat = { user -> viewModel.openChat(user) },
-                onBack = { viewModel.closeChatList() }
+                onDismiss = { viewModel.closeChatList() }
             )
         }
 
@@ -371,10 +368,13 @@ fun MusicApp(viewModel: MusicViewModel) {
                 val messages = uiState.chatMessages[recipient.id] ?: emptyList()
                 ChatScreen(
                     recipient = recipient,
+                    currentUserId = uiState.currentUser.id,
                     messages = messages,
                     onSendMessage = { text -> viewModel.sendMessage(recipient.id, text) },
                     onBack = { viewModel.closeChat() },
-                    onOpenProfile = { user -> viewModel.openProfile(user) }
+                    onOpenProfile = { user -> viewModel.openProfile(user) },
+                    applyCoverToFeed = uiState.applyCoverToFeed,
+                    backgroundCoverUrl = uiState.currentUser.coverUrl
                 )
             }
         }
