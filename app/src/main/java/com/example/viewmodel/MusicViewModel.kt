@@ -138,7 +138,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 val user = applyUserLocalPrefs(rawUser)
                 val spotifyConnected = SpotifyAuthRepository.isAuthorized
                 val services = mapOf("spotify" to spotifyConnected) + loadPersistedServices()
-                val initialUser = user.copy(presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE)
+                // liveNotificationsEnabled viene dalle SharedPrefs (fonte locale di verità), NON
+                // da Firestore: evita che syncCurrentUser sovrascriva il flag con il default remoto.
+                val initialUser = user.copy(
+                    presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE,
+                    liveNotificationsEnabled = initialLiveNotifs
+                )
                 _uiState.update {
                     it.copy(
                         currentUser = initialUser,
@@ -603,6 +608,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         wasLive = false
+        wasLiveClearTimeMs = System.currentTimeMillis()
         val updatedUser = _uiState.value.currentUser.copy(
             currentTrack = null,
             presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE
@@ -1155,6 +1161,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var wasLive = false
+    // Timestamp dell'ultimo azzeramento di wasLive (stop/pausa traccia). Usato per distinguere
+    // cambio traccia (gap breve, < 45s) da nuova sessione live (gap lungo o app riaperta).
+    private var wasLiveClearTimeMs = 0L
     // Finestra dopo il rientro in foreground in cui NON si notifica la live: il resync/polling
     // iniziale ri-emette la traccia già in corso, ma NON è un nuovo ascolto → niente push.
     private var suppressLivePushUntilMs = 0L
@@ -1163,10 +1172,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val isLive = user.presenceState == com.example.model.UserPresenceState.LIVE
         if (!isLive) {
             wasLive = false
+            wasLiveClearTimeMs = System.currentTimeMillis()
             return
         }
         if (wasLive) return // già live in questa sessione → nessuna re-notifica
         wasLive = true
+        // Gap < 45s tra stop e play = cambio traccia (Amazon Music, Spotify Free tra brani):
+        // non è una nuova sessione live → nessuna notifica.
+        if (System.currentTimeMillis() - wasLiveClearTimeMs < 45_000L && wasLiveClearTimeMs > 0L) return
         // Se è solo il resync all'apertura dell'app (traccia già in riproduzione), non notificare:
         // la notifica live è SOLO per l'inizio effettivo di un brano.
         if (System.currentTimeMillis() < suppressLivePushUntilMs) return
