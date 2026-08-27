@@ -1275,6 +1275,21 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val currentUserId = _uiState.value.currentUser.id
         if (currentUserId.isBlank()) return
 
+        // 1. Aggiornamento ottimistico locale per feedback immediato a 0ms
+        val localMessage = ChatMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            senderId = currentUserId,
+            text = text.trim(),
+            timestamp = System.currentTimeMillis(),
+            isFromMe = true,
+            attachedTrack = attachedTrack
+        )
+        val currentList = _uiState.value.chatMessages[recipientId]?.toMutableList() ?: mutableListOf()
+        currentList.add(localMessage)
+        val updatedMap = _uiState.value.chatMessages.toMutableMap().apply { put(recipientId, currentList) }
+        _uiState.update { it.copy(chatMessages = updatedMap) }
+
+        // 2. Persistenza atomica su Firestore
         val convId = FirebaseRepository.getConversationId(currentUserId, recipientId)
         FirebaseRepository.sendChatMessage(
             conversationId = convId,
@@ -1297,13 +1312,18 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         conversationsListener?.remove()
         conversationsListener = FirebaseRepository.listenToConversations(userId) { rawConvList ->
             viewModelScope.launch {
-                val conversations = rawConvList.mapNotNull { (convId, data) ->
+                val missingUserIds = mutableListOf<String>()
+                val initialConversations = rawConvList.mapNotNull { (convId, data) ->
                     val participants = (data["participants"] as? List<*>)?.filterIsInstance<String>() ?: return@mapNotNull null
                     val otherUserId = participants.firstOrNull { it != userId } ?: return@mapNotNull null
 
-                    // Cerca l'utente nella lista feedUsers già caricata
                     val recipientUser = _uiState.value.feedUsers.firstOrNull { it.id == otherUserId }
-                        ?: User(id = otherUserId, name = otherUserId, username = "", avatarUrl = "")
+                        ?: _uiState.value.followerDetails.firstOrNull { it.id == otherUserId }
+                        ?: _uiState.value.followingDetails.firstOrNull { it.id == otherUserId }
+
+                    if (recipientUser == null) {
+                        missingUserIds.add(otherUserId)
+                    }
 
                     val lastText = data["lastMessageText"] as? String ?: ""
                     val lastAt = (data["lastMessageAt"] as? Number)?.toLong() ?: 0L
@@ -1320,14 +1340,30 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
                     Conversation(
                         id = convId,
-                        recipientUser = recipientUser,
+                        recipientUser = recipientUser ?: User(id = otherUserId, name = "Utente", username = "", avatarUrl = ""),
                         lastMessageText = lastText,
                         lastMessageAt = lastAt,
                         lastMessageSenderId = lastSenderId,
                         lastAttachedTrack = lastTrack
                     )
                 }
-                _uiState.update { it.copy(conversations = conversations) }
+                _uiState.update { it.copy(conversations = initialConversations) }
+
+                // Se ci sono utenti non ancora in cache locale, caricali da Firestore
+                if (missingUserIds.isNotEmpty()) {
+                    FirebaseRepository.getUsersByIds(missingUserIds.distinct()) { fetchedUsers ->
+                        if (fetchedUsers.isNotEmpty()) {
+                            val userMap = fetchedUsers.associateBy { it.id }
+                            _uiState.update { state ->
+                                val updatedConv = state.conversations.map { conv ->
+                                    val fetched = userMap[conv.recipientUser.id]
+                                    if (fetched != null) conv.copy(recipientUser = fetched) else conv
+                                }
+                                state.copy(conversations = updatedConv)
+                            }
+                        }
+                    }
+                }
             }
         }
     }

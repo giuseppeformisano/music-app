@@ -776,7 +776,7 @@ object FirebaseRepository {
         return listOf(uid1, uid2).sorted().joinToString("_")
     }
 
-    /** Invia un messaggio nella conversazione e aggiorna il documento padre con l'ultimo messaggio */
+    /** Invia un messaggio nella conversazione e aggiorna il documento con l'array dei messaggi */
     fun sendChatMessage(
         conversationId: String,
         senderId: String,
@@ -787,6 +787,7 @@ object FirebaseRepository {
         val db = firestore ?: return
         val convRef = db.collection(CONVERSATIONS_COLLECTION).document(conversationId)
         val now = System.currentTimeMillis()
+        val messageId = java.util.UUID.randomUUID().toString()
 
         val trackMap: Map<String, Any?>? = attachedTrack?.let {
             mapOf(
@@ -798,29 +799,29 @@ object FirebaseRepository {
         }
 
         val messageMap = hashMapOf<String, Any?>(
+            "id" to messageId,
             "senderId" to senderId,
             "text" to text.trim(),
             "timestamp" to now,
             "attachedTrack" to trackMap
         )
 
-        // Scrivi il messaggio nella sottocollezione
-        convRef.collection(MESSAGES_SUBCOLLECTION).add(messageMap)
-            .addOnFailureListener { e -> Log.e(TAG, "Errore invio messaggio: ${e.message}") }
-
-        // Aggiorna (o crea) il documento conversazione con i metadati dell'ultimo messaggio
         val convUpdate = hashMapOf<String, Any?>(
             "participants" to listOf(senderId, recipientId).sorted(),
             "lastMessageText" to text.trim(),
             "lastMessageAt" to now,
             "lastMessageSenderId" to senderId,
-            "lastAttachedTrack" to trackMap
+            "lastAttachedTrack" to trackMap,
+            "messages" to FieldValue.arrayUnion(messageMap)
         )
         convRef.set(convUpdate, SetOptions.merge())
-            .addOnFailureListener { e -> Log.e(TAG, "Errore aggiornamento conversazione: ${e.message}") }
+            .addOnSuccessListener {
+                Log.d(TAG, "Messaggio chat inviato con successo.")
+            }
+            .addOnFailureListener { e -> Log.e(TAG, "Errore invio messaggio: ${e.message}") }
     }
 
-    /** Listener real-time sulla sottocollezione messaggi, ordinati per timestamp asc */
+    /** Listener real-time sulla conversazione: legge l'array messaggi in tempo reale */
     fun listenToMessages(
         conversationId: String,
         currentUserId: String,
@@ -829,15 +830,13 @@ object FirebaseRepository {
         val db = firestore ?: return null
         return db.collection(CONVERSATIONS_COLLECTION)
             .document(conversationId)
-            .collection(MESSAGES_SUBCOLLECTION)
-            .orderBy("timestamp")
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     Log.e(TAG, "Errore listener messaggi: ${error.message}")
                     return@addSnapshotListener
                 }
-                val messages = snapshot?.documents?.mapNotNull { doc ->
-                    val data = doc.data ?: return@mapNotNull null
+                val rawMessages = (snapshot?.get("messages") as? List<*>)?.filterIsInstance<Map<String, Any?>>() ?: emptyList()
+                val messages = rawMessages.mapNotNull { data ->
                     val senderId = data["senderId"] as? String ?: return@mapNotNull null
                     val text = data["text"] as? String ?: ""
                     val ts = (data["timestamp"] as? Number)?.toLong() ?: 0L
@@ -851,14 +850,14 @@ object FirebaseRepository {
                         )
                     }
                     ChatMessage(
-                        id = doc.id,
+                        id = data["id"] as? String ?: "${senderId}_$ts",
                         senderId = senderId,
                         text = text,
                         timestamp = ts,
                         isFromMe = senderId == currentUserId,
                         attachedTrack = track
                     )
-                } ?: emptyList()
+                }.sortedBy { it.timestamp }
                 onMessages(messages)
             }
     }
