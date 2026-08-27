@@ -5,9 +5,9 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.12.2"
+    const val TITLE = "Novità · 0.12.3"
     val LINES = listOf(
-        "Colori chat bicolore: i bordi a sfumatura doppia ora sono nettamente più definiti e contrastanti tra chi invia e chi riceve.",
-        "Fusione intelligente: i colori si armonizzano con lo sfondo della chat e sono calcolati in modo indipendente su ogni dispositivo."
+        "PULSE 💓 ora vibra davvero (mancava un permesso). Nel dettaglio live tieni premuta la foto 5s per inviarne uno.",
+        "Chi lo riceve tocca la notifica e risente vibrazione + onda; resta anche nella chat, risentibile quando vuoi."
     )
 }
