@@ -886,8 +886,13 @@ object FirebaseRepository {
 
     /** Scarica la voce di un Pulse (base64 su Firestore) e la scrive in un file temporaneo. */
     fun fetchPulseAudioToFile(context: android.content.Context, audioId: String, onFile: (String?) -> Unit) {
+        if (audioId.isBlank()) { onFile(null); return }
+        // CACHE LOCALE: se l'audio è già stato scaricato una volta, lo riusiamo dal file locale
+        // → nessuna nuova lettura su Firestore ad ogni riproduzione (1 sola lettura per Pulse).
+        val cached = java.io.File(context.cacheDir, "pulse_play_$audioId.m4a")
+        if (cached.exists() && cached.length() > 0L) { onFile(cached.absolutePath); return }
         val db = firestore
-        if (db == null || audioId.isBlank()) { onFile(null); return }
+        if (db == null) { onFile(null); return }
         db.collection(PULSE_AUDIO_COLLECTION).document(audioId).get()
             .addOnSuccessListener { doc ->
                 val b64 = doc?.getString("data")
