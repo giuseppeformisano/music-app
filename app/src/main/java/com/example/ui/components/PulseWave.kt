@@ -26,6 +26,10 @@ import com.example.data.PulseHaptics
 import kotlin.math.cos
 import kotlin.math.sin
 
+/** Compensazione (ms) per la latenza di avvio audio: ritarda vibrazione+onda per allinearle
+ *  alla voce. Valore indicativo, da tarare per dispositivo. */
+private const val AUDIO_LATENCY_COMP_MS = 300L
+
 /** Colore d'accento stabile e distinto per persona, derivato dall'id (tonalità HSV). */
 fun pulseAccentFor(id: String): Color {
     if (id.isBlank()) return Color(0xFF7C4DFF)
@@ -118,6 +122,9 @@ fun PulseWavePlayer(
                     null
                 }
             }
+            // Compensa la latenza di avvio audio (output device + priming AAC): ritarda
+            // vibrazione + onda così combaciano con la voce percepita. Tarabile.
+            if (mp != null) kotlinx.coroutines.delay(AUDIO_LATENCY_COMP_MS)
             PulseHaptics.play(context, samples)
             val startNanos = System.nanoTime()
             while (true) {
