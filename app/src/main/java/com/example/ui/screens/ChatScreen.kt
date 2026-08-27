@@ -73,7 +73,7 @@ import com.example.ui.theme.SubtitleGray
 @Composable
 fun ChatScreen(
     recipient: User,
-    currentUserId: String,
+    currentUser: User,
     messages: List<ChatMessage>,
     onSendMessage: (String) -> Unit,
     onBack: () -> Unit,
@@ -102,11 +102,15 @@ fun ChatScreen(
     // Scroll verso l'alto → carica un altro blocco più vecchio
     LaunchedEffect(recipient.id) {
         snapshotFlow { listState.firstVisibleItemIndex }
-            .collect { idx -> if (idx <= 1 && visibleCount < messages.size) visibleCount += pageSize }
+        .collect { idx -> if (idx <= 1 && visibleCount < messages.size) visibleCount += pageSize }
     }
 
-    val myAccent = accentForUserId(currentUserId)
-    val otherAccent = accentForUserId(recipient.id)
+    val myPalette = remember(currentUser.id, currentUser.coverUrl) {
+        paletteForUser(currentUser, isCurrent = true)
+    }
+    val otherPalette = remember(recipient.id, recipient.coverUrl) {
+        paletteForUser(recipient, isCurrent = false)
+    }
 
     Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
         // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
@@ -229,7 +233,7 @@ fun ChatScreen(
             items(shown, key = { it.id }) { message ->
                 MessageBubble(
                     message = message,
-                    accent = if (message.isFromMe) myAccent else otherAccent
+                    palette = if (message.isFromMe) myPalette else otherPalette
                 )
             }
         }
@@ -300,15 +304,57 @@ fun ChatScreen(
     }
 }
 
-/** Colore d'accento stabile e distinto per ogni persona, derivato dal suo id (tonalità). */
-private fun accentForUserId(id: String): Color {
-    if (id.isBlank()) return Color(0xFF9AA0A6)
-    val hue = (kotlin.math.abs(id.hashCode()) % 360).toFloat()
-    return Color(android.graphics.Color.HSVToColor(floatArrayOf(hue, 0.62f, 0.95f)))
+/**
+ * Palette cromatica per l'utente (coppia di colori contrastanti ed eleganti):
+ * - Se l'utente ha la copertina: i due colori sono derivati dalla copertina per creare armonia visiva.
+ * - Se l'utente NON ha la copertina: genera due colori sobri, non troppo accesi (saturazione e luminosità bilanciate)
+ *   ma nettamente contrastanti tra i due interlocutori (spostamento angolare garantito).
+ */
+data class UserChatPalette(
+    val primaryBorder: Color,
+    val secondaryBorder: Color,
+    val bubbleBackground: Color
+)
+
+private fun paletteForUser(user: User, isCurrent: Boolean): UserChatPalette {
+    val cover = user.coverUrl
+    if (!cover.isNullOrBlank()) {
+        // Deriva tonalità primaria e secondaria dalla copertina (tramite hash deterministico del path/URL o contenuto)
+        val coverHash = kotlin.math.abs(cover.hashCode())
+        val baseHue = (coverHash % 360).toFloat()
+        val contrastHue = (baseHue + 140f) % 360f // Angolo contrastante ma armonico
+
+        val color1 = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, 0.55f, 0.90f)))
+        val color2 = Color(android.graphics.Color.HSVToColor(floatArrayOf(contrastHue, 0.48f, 0.85f)))
+        val bg = if (isCurrent) DarkGraphite.copy(alpha = 0.95f) else BlackCard.copy(alpha = 0.95f)
+
+        return UserChatPalette(
+            primaryBorder = color1,
+            secondaryBorder = color2,
+            bubbleBackground = bg
+        )
+    }
+
+    // Utente SENZA copertina: colori procedurali non troppo accesi ma contrastanti
+    val idHash = kotlin.math.abs(user.id.ifBlank { if (isCurrent) "me" else "other" }.hashCode())
+    // Se è l'utente corrente o l'altro, garantiamo un offset cromatico distinto di 150°
+    val baseHue = ((idHash + if (isCurrent) 0 else 150) % 360).toFloat()
+    val contrastHue = (baseHue + 160f) % 360f
+
+    // Saturazione moderata (0.42f - 0.50f) e luminosità non abbagliante (0.80f - 0.88f)
+    val color1 = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, 0.46f, 0.84f)))
+    val color2 = Color(android.graphics.Color.HSVToColor(floatArrayOf(contrastHue, 0.40f, 0.78f)))
+    val bg = if (isCurrent) DarkGraphite else BlackCard
+
+    return UserChatPalette(
+        primaryBorder = color1,
+        secondaryBorder = color2,
+        bubbleBackground = bg
+    )
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage, accent: Color) {
+private fun MessageBubble(message: ChatMessage, palette: UserChatPalette) {
     val isMe = message.isFromMe
 
     Column(
@@ -322,7 +368,7 @@ private fun MessageBubble(message: ChatMessage, accent: Color) {
                     .padding(bottom = 6.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(BlackCard)
-                    .border(1.dp, CharcoalBorder, RoundedCornerShape(12.dp))
+                    .border(0.7.dp, CharcoalBorder, RoundedCornerShape(12.dp))
                     .padding(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -351,27 +397,27 @@ private fun MessageBubble(message: ChatMessage, accent: Color) {
             }
         }
 
-        // Pure Minimalist Text Bubble
+        // Pure Minimalist Text Bubble con bordi ultra-sottili (0.7.dp) e colori dedicati
+        val bubbleShape = RoundedCornerShape(
+            topStart = 18.dp,
+            topEnd = 18.dp,
+            bottomStart = if (isMe) 18.dp else 4.dp,
+            bottomEnd = if (isMe) 4.dp else 18.dp
+        )
+
         Box(
             modifier = Modifier
-                .clip(
-                    RoundedCornerShape(
-                        topStart = 18.dp,
-                        topEnd = 18.dp,
-                        bottomStart = if (isMe) 18.dp else 4.dp,
-                        bottomEnd = if (isMe) 4.dp else 18.dp
-                    )
-                )
-                .background(if (isMe) DarkGraphite else BlackCard)
+                .clip(bubbleShape)
+                .background(palette.bubbleBackground)
                 .border(
-                    width = 1.2.dp,
-                    color = accent.copy(alpha = 0.65f),
-                    shape = RoundedCornerShape(
-                        topStart = 18.dp,
-                        topEnd = 18.dp,
-                        bottomStart = if (isMe) 18.dp else 4.dp,
-                        bottomEnd = if (isMe) 4.dp else 18.dp
-                    )
+                    width = 0.7.dp,
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            palette.primaryBorder.copy(alpha = 0.65f),
+                            palette.secondaryBorder.copy(alpha = 0.50f)
+                        )
+                    ),
+                    shape = bubbleShape
                 )
                 .padding(horizontal = 14.dp, vertical = 10.dp)
         ) {

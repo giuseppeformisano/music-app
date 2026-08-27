@@ -368,7 +368,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                 val messages = uiState.chatMessages[recipient.id] ?: emptyList()
                 ChatScreen(
                     recipient = recipient,
-                    currentUserId = uiState.currentUser.id,
+                    currentUser = uiState.currentUser,
                     messages = messages,
                     onSendMessage = { text -> viewModel.sendMessage(recipient.id, text) },
                     onBack = { viewModel.closeChat() },
