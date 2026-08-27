@@ -56,6 +56,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -456,7 +457,7 @@ private fun ProfileTopHeader(
                         .testTag("profile_chat_list_button")
                 ) {
                     Icon(
-                        imageVector = Icons.Default.MailOutline,
+                        imageVector = Icons.Default.Email,
                         contentDescription = "Messaggi",
                         tint = PureWhite,
                         modifier = Modifier.size(22.dp)
