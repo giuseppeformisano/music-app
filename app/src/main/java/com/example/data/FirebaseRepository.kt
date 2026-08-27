@@ -787,7 +787,8 @@ object FirebaseRepository {
         text: String,
         attachedTrack: Track? = null,
         pulse: String? = null,
-        pulseAudioBase64: String? = null
+        pulseAudioBase64: String? = null,
+        onAudioSaved: ((Boolean) -> Unit)? = null
     ) {
         val db = firestore ?: return
         val convRef = db.collection(CONVERSATIONS_COLLECTION).document(conversationId)
@@ -877,8 +878,12 @@ object FirebaseRepository {
         if (!pulseAudioBase64.isNullOrBlank()) {
             db.collection(PULSE_AUDIO_COLLECTION)
                 .add(mapOf("data" to pulseAudioBase64, "createdAt" to now))
-                .addOnSuccessListener { ref -> proceed(ref.id) }
-                .addOnFailureListener { proceed(null) }
+                .addOnSuccessListener { ref -> onAudioSaved?.invoke(true); proceed(ref.id) }
+                .addOnFailureListener { e ->
+                    Log.e(TAG, "Scrittura pulseAudio FALLITA: ${e.message}")
+                    onAudioSaved?.invoke(false)
+                    proceed(null)
+                }
         } else {
             proceed(null)
         }

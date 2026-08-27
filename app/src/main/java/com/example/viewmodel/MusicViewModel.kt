@@ -1382,11 +1382,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             text = "",
             attachedTrack = null,
             pulse = samples,
-            pulseAudioBase64 = audioBase64
+            pulseAudioBase64 = audioBase64,
+            onAudioSaved = { ok ->
+                _uiState.update {
+                    it.copy(feedbackToast = if (ok) "Voce salvata sul cloud ✓" else "Voce NON salvata (regole Firestore?)")
+                }
+            }
         )
         // DIAGNOSTICA: dimmi se la voce è stata registrata e quanto pesa.
-        val diag = if (audioBase64.isNullOrBlank()) "Pulse inviato · voce ASSENTE"
-                   else "Pulse inviato · voce ~${audioBase64.length * 3 / 4 / 1024}KB"
+        val diag = if (audioBase64.isNullOrBlank()) "Pulse · voce ASSENTE (registra più a lungo)"
+                   else "Pulse · voce ~${audioBase64.length * 3 / 4 / 1024}KB, salvo…"
         _uiState.update { it.copy(feedbackToast = diag) }
     }
 

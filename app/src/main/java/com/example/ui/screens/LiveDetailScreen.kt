@@ -179,8 +179,9 @@ fun LiveDetailScreen(
         try {
             for (i in 0 until com.example.data.PulseHaptics.SAMPLE_COUNT) {
                 kotlinx.coroutines.delay(com.example.data.PulseHaptics.SAMPLE_MS)
-                // Se rilasci prima dei 5s, la registrazione termina.
-                if (!pulsePressed.value && i > 2) break
+                // Se rilasci, termina — ma solo dopo ~1.2s minimi (i clip troppo corti non
+                // producono un file AAC valido).
+                if (!pulsePressed.value && i > 24) break
                 val level = if (started) recorder.level() else 0f
                 pulseIntensity = level
                 amps.add((level * 255f).toInt().coerceIn(0, 255))
