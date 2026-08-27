@@ -170,7 +170,8 @@ class MainActivity : ComponentActivity() {
                     senderId = senderId ?: "",
                     senderName = intent.getStringExtra("senderName") ?: "",
                     avatarUrl = intent.getStringExtra("avatarUrl") ?: "",
-                    samples = samples
+                    samples = samples,
+                    audioId = intent.getStringExtra("pulseAudioId")?.takeIf { it.isNotBlank() }
                 )
             }
             return
@@ -415,7 +416,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                         viewModel.closeStory()
                         viewModel.openProfile(user)
                     },
-                    onSendPulse = { u, samples -> viewModel.sendPulse(u.id, samples) }
+                    onSendPulse = { u, samples, audio -> viewModel.sendPulse(u.id, samples, audio) }
                 )
             }
         }

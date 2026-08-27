@@ -125,7 +125,7 @@ fun LiveDetailScreen(
     onClose: () -> Unit,
     onSendLiveReply: (User, String, Track) -> Unit,
     onOpenUserProfile: (User) -> Unit,
-    onSendPulse: (User, String) -> Unit = { _, _ -> },
+    onSendPulse: (User, String, String?) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val track = user.currentTrack ?: return
@@ -186,15 +186,15 @@ fun LiveDetailScreen(
                 pulseIntensity = level
                 amps.add((level * 255f).toInt().coerceIn(0, 255))
             }
-        } finally {
-            recorder.stop()
-        }
+        } catch (_: Exception) {}
+        // Ferma e ottieni la voce in AAC base64 (verrà salvata su Firestore).
+        val audioB64 = recorder.stopAndGetBase64()
         pulseIntensity = 0f
         pulseRecording = false
         // Pad fino a lunghezza piena (silenzio finale) e invia se c'è voce.
         while (amps.size < com.example.data.PulseHaptics.SAMPLE_COUNT) amps.add(0)
         val env = com.example.data.PulseHaptics.encodeEnvelope(amps.toIntArray())
-        if (com.example.data.PulseHaptics.hasContent(env)) onSendPulse(user, env)
+        if (com.example.data.PulseHaptics.hasContent(env)) onSendPulse(user, env, audioB64)
     }
 
     // Minutaggio REALE: durata dal brano; posizione estrapolata dalla posizione

@@ -395,8 +395,10 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, sender
         )
 
         if (message.pulse != null) {
-            // Bubble PULSE: tocca per risentire onda + vibrazione
+            // Bubble PULSE: tocca per risentire voce + onda + vibrazione
             var pulseTrigger by remember(message.id) { mutableStateOf(0) }
+            var pulseAudioPath by remember(message.id) { mutableStateOf<String?>(null) }
+            val ctx = androidx.compose.ui.platform.LocalContext.current
             Box(
                 modifier = Modifier
                     .clip(bubbleShape)
@@ -414,7 +416,17 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, sender
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
-                        onClick = { pulseTrigger++ }
+                        onClick = {
+                            val aid = message.pulseAudioId
+                            if (!aid.isNullOrBlank() && pulseAudioPath == null) {
+                                com.example.data.FirebaseRepository.fetchPulseAudioToFile(ctx, aid) { path ->
+                                    pulseAudioPath = path
+                                    pulseTrigger++
+                                }
+                            } else {
+                                pulseTrigger++
+                            }
+                        }
                     )
                     .padding(horizontal = 12.dp, vertical = 10.dp)
             ) {
@@ -424,7 +436,8 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, sender
                         accent = palette.primaryBorder,
                         playTrigger = pulseTrigger,
                         modifier = Modifier.size(56.dp),
-                        barCount = 28
+                        barCount = 28,
+                        audioFilePath = pulseAudioPath
                     ) {
                         AsyncImage(
                             model = senderAvatarUrl,

@@ -1348,7 +1348,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Invia un Pulse tattile (registrazione di 5s come stringa di campioni). */
-    fun sendPulse(recipientId: String, samples: String) {
+    fun sendPulse(recipientId: String, samples: String, audioBase64: String? = null) {
         if (!com.example.data.PulseHaptics.hasContent(samples)) return
         val me = _uiState.value.currentUser
         if (me.id.isBlank() || recipientId.isBlank()) return
@@ -1361,15 +1361,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             recipientId = recipientId,
             text = "",
             attachedTrack = null,
-            pulse = samples
+            pulse = samples,
+            pulseAudioBase64 = audioBase64
         )
         _uiState.update { it.copy(feedbackToast = "Pulse inviato") }
     }
 
-    fun openPulseFromNotification(senderId: String, senderName: String, avatarUrl: String, samples: String) {
+    fun openPulseFromNotification(senderId: String, senderName: String, avatarUrl: String, samples: String, audioId: String? = null) {
         if (samples.isBlank()) return
         _uiState.update {
-            it.copy(activePulse = com.example.model.ActivePulse(senderId, senderName, avatarUrl, samples))
+            it.copy(activePulse = com.example.model.ActivePulse(senderId, senderName, avatarUrl, samples, audioId))
         }
     }
 

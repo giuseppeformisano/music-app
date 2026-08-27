@@ -35,6 +35,7 @@ object FirebaseRepository {
     private const val USERS_COLLECTION = "users"
     private const val CONVERSATIONS_COLLECTION = "conversations"
     private const val MESSAGES_SUBCOLLECTION = "messages"
+    private const val PULSE_AUDIO_COLLECTION = "pulseAudio"
 
     private val firestore: FirebaseFirestore? by lazy {
         try {
@@ -785,7 +786,8 @@ object FirebaseRepository {
         recipientId: String,
         text: String,
         attachedTrack: Track? = null,
-        pulse: String? = null
+        pulse: String? = null,
+        pulseAudioBase64: String? = null
     ) {
         val db = firestore ?: return
         val convRef = db.collection(CONVERSATIONS_COLLECTION).document(conversationId)
@@ -802,13 +804,16 @@ object FirebaseRepository {
         }
 
         val isPulse = !pulse.isNullOrBlank()
+
+        fun proceed(pulseAudioId: String?) {
         val messageMap = hashMapOf<String, Any?>(
             "id" to messageId,
             "senderId" to senderId,
             "text" to text.trim(),
             "timestamp" to now,
             "attachedTrack" to trackMap,
-            "pulse" to pulse
+            "pulse" to pulse,
+            "pulseAudioId" to pulseAudioId
         )
 
         val convUpdate = hashMapOf<String, Any?>(
@@ -839,7 +844,8 @@ object FirebaseRepository {
                                         "senderId" to senderId,
                                         "senderName" to senderName,
                                         "avatarUrl" to pushAvatar,
-                                        "pulse" to (pulse ?: "")
+                                        "pulse" to (pulse ?: ""),
+                                        "pulseAudioId" to (pulseAudioId ?: "")
                                     )
                                 )
                             } else {
@@ -865,6 +871,35 @@ object FirebaseRepository {
                     }
             }
             .addOnFailureListener { e -> Log.e(TAG, "Errore invio messaggio: ${e.message}") }
+        } // fine proceed
+
+        // Se c'è la voce, salvala prima su Firestore (doc a parte) e usane l'id nel messaggio.
+        if (!pulseAudioBase64.isNullOrBlank()) {
+            db.collection(PULSE_AUDIO_COLLECTION)
+                .add(mapOf("data" to pulseAudioBase64, "createdAt" to now))
+                .addOnSuccessListener { ref -> proceed(ref.id) }
+                .addOnFailureListener { proceed(null) }
+        } else {
+            proceed(null)
+        }
+    }
+
+    /** Scarica la voce di un Pulse (base64 su Firestore) e la scrive in un file temporaneo. */
+    fun fetchPulseAudioToFile(context: android.content.Context, audioId: String, onFile: (String?) -> Unit) {
+        val db = firestore
+        if (db == null || audioId.isBlank()) { onFile(null); return }
+        db.collection(PULSE_AUDIO_COLLECTION).document(audioId).get()
+            .addOnSuccessListener { doc ->
+                val b64 = doc?.getString("data")
+                if (b64.isNullOrBlank()) { onFile(null); return@addOnSuccessListener }
+                try {
+                    val bytes = android.util.Base64.decode(b64, android.util.Base64.NO_WRAP)
+                    val f = java.io.File(context.cacheDir, "pulse_play_$audioId.m4a")
+                    f.writeBytes(bytes)
+                    onFile(f.absolutePath)
+                } catch (_: Exception) { onFile(null) }
+            }
+            .addOnFailureListener { onFile(null) }
     }
 
     /** Listener real-time sulla conversazione: legge l'array messaggi in tempo reale */
@@ -902,7 +937,8 @@ object FirebaseRepository {
                         timestamp = ts,
                         isFromMe = senderId == currentUserId,
                         attachedTrack = track,
-                        pulse = data["pulse"] as? String
+                        pulse = data["pulse"] as? String,
+                        pulseAudioId = data["pulseAudioId"] as? String
                     )
                 }.sortedBy { it.timestamp }
                 onMessages(messages)

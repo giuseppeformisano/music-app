@@ -92,6 +92,7 @@ fun PulseWavePlayer(
     playTrigger: Int,
     modifier: Modifier = Modifier,
     barCount: Int = 44,
+    audioFilePath: String? = null,
     content: @Composable BoxScope.() -> Unit
 ) {
     val context = LocalContext.current
@@ -101,20 +102,34 @@ fun PulseWavePlayer(
     LaunchedEffect(playTrigger) {
         if (playTrigger <= 0 || envelope.isEmpty()) return@LaunchedEffect
         val totalMs = envelope.size * PulseHaptics.SAMPLE_MS
-        // Vibrazione e onda partono dallo STESSO istante e l'indice del campione è ricavato
-        // dal TEMPO REALE trascorso (non da delay accumulati) → nessuna deriva, sync perfetta.
-        PulseHaptics.play(context, samples)
-        val startNanos = System.nanoTime()
-        while (true) {
-            val frame = withFrameNanos { it }
-            val elapsedMs = (frame - startNanos) / 1_000_000L
-            if (elapsedMs >= totalMs) break
-            val idx = (elapsedMs / PulseHaptics.SAMPLE_MS).toInt().coerceIn(0, envelope.size - 1)
-            // Intensità = ampiezza del campione (voce), con salita immediata e discesa morbida.
-            val target = envelope[idx] / 255f
-            intensity = if (target >= intensity) target else intensity * 0.6f
+        // Audio (voce) + vibrazione + onda partono dallo STESSO istante; l'indice del campione
+        // è ricavato dal TEMPO REALE trascorso → nessuna deriva, tutto sincronizzato.
+        var mp: android.media.MediaPlayer? = null
+        try {
+            if (audioFilePath != null) {
+                mp = try {
+                    android.media.MediaPlayer().apply {
+                        setDataSource(audioFilePath)
+                        prepare()
+                        start()
+                    }
+                } catch (_: Exception) { null }
+            }
+            PulseHaptics.play(context, samples)
+            val startNanos = System.nanoTime()
+            while (true) {
+                val frame = withFrameNanos { it }
+                val elapsedMs = (frame - startNanos) / 1_000_000L
+                if (elapsedMs >= totalMs) break
+                val idx = (elapsedMs / PulseHaptics.SAMPLE_MS).toInt().coerceIn(0, envelope.size - 1)
+                // Intensità = ampiezza del campione (voce), salita immediata e discesa morbida.
+                val target = envelope[idx] / 255f
+                intensity = if (target >= intensity) target else intensity * 0.6f
+            }
+        } finally {
+            intensity = 0f
+            mp?.let { try { it.stop() } catch (_: Exception) {}; try { it.release() } catch (_: Exception) {} }
         }
-        intensity = 0f
     }
 
     PulseCircleWave(

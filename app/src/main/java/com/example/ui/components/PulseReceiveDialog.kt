@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -42,7 +43,21 @@ import com.example.ui.theme.SubtitleGray
 @Composable
 fun PulseReceiveDialog(pulse: ActivePulse, onDismiss: () -> Unit) {
     val accent = pulseAccentFor(pulse.senderId)
-    var trigger by remember(pulse.samples) { mutableIntStateOf(1) } // auto-play all'apertura
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var trigger by remember(pulse.samples) { mutableIntStateOf(0) }
+    var audioPath by remember(pulse.audioId) { androidx.compose.runtime.mutableStateOf<String?>(null) }
+
+    // Scarica la voce (se presente) e poi avvia: audio + vibrazione + onda insieme.
+    LaunchedEffect(pulse.audioId, pulse.samples) {
+        if (!pulse.audioId.isNullOrBlank()) {
+            com.example.data.FirebaseRepository.fetchPulseAudioToFile(context, pulse.audioId) { path ->
+                audioPath = path
+                trigger += 1
+            }
+        } else {
+            trigger += 1
+        }
+    }
 
     UtilityDialog(onDismiss = onDismiss) {
         Column(
@@ -74,7 +89,8 @@ fun PulseReceiveDialog(pulse: ActivePulse, onDismiss: () -> Unit) {
                 samples = pulse.samples,
                 accent = accent,
                 playTrigger = trigger,
-                modifier = Modifier.size(280.dp)
+                modifier = Modifier.size(280.dp),
+                audioFilePath = audioPath
             ) {
                 AsyncImage(
                     model = pulse.avatarUrl,
