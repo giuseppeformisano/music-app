@@ -24,6 +24,8 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
         val data = message.data
         val isLive = data["type"] == "live_start" || data["open_live"] == "true"
         val isChat = data["type"] == "new_message" || data["open_chat"] == "true"
+        val isPulse = data["type"] == "new_pulse" || data["open_pulse"] == "true"
+        val pulse = data["pulse"] ?: ""
         if (isLive) {
             val liveNotifsEnabled = try {
                 getSharedPreferences("user_settings", android.content.Context.MODE_PRIVATE)
@@ -42,6 +44,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
 
         val defaultTitle = when {
             isLive -> "Diretta Live 🎵"
+            isPulse -> "Nuovo Pulse 💓"
             isChat -> "Nuovo messaggio"
             else -> "Nuova richiesta di follow"
         }
@@ -67,6 +70,15 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
                         putExtra("open_live", "true")
                         putExtra("type", "live_start")
                         putExtra("hostUserId", hostUserId)
+                    }
+                    isPulse -> {
+                        putExtra(MainActivity.EXTRA_OPEN_PULSE, true)
+                        putExtra("open_pulse", "true")
+                        putExtra("type", "new_pulse")
+                        putExtra("senderId", senderId)
+                        putExtra("senderName", data["senderName"] ?: "")
+                        putExtra("avatarUrl", avatarUrl)
+                        putExtra("pulse", pulse)
                     }
                     isChat -> {
                         putExtra(MainActivity.EXTRA_OPEN_CHAT, true)

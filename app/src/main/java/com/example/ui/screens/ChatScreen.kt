@@ -390,6 +390,39 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette) {
             bottomEnd = if (isMe) 4.dp else 18.dp
         )
 
+        if (message.pulse != null) {
+            // Bubble PULSE: tocca per risentire onda + vibrazione
+            var pulseTrigger by remember(message.id) { mutableStateOf(0) }
+            Box(
+                modifier = Modifier
+                    .clip(bubbleShape)
+                    .background(palette.bubbleBackground)
+                    .border(0.7.dp, palette.primaryBorder.copy(alpha = 0.65f), bubbleShape)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { pulseTrigger++ }
+                    )
+                    .padding(horizontal = 12.dp, vertical = 10.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    com.example.ui.components.PulseWavePlayer(
+                        samples = message.pulse,
+                        accent = palette.primaryBorder,
+                        playTrigger = pulseTrigger,
+                        modifier = Modifier.size(56.dp),
+                        barCount = 28
+                    ) {
+                        Text(text = "💓", fontSize = 15.sp)
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(text = "Pulse", color = PureWhite, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Text(text = "tocca per risentire", color = PureWhite.copy(alpha = 0.5f), fontSize = 10.sp)
+                    }
+                }
+            }
+        } else {
         Box(
             modifier = Modifier
                 .clip(bubbleShape)
@@ -423,6 +456,7 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette) {
                         .padding(top = 3.dp, start = 20.dp)
                 )
             }
+        }
         }
     }
 }

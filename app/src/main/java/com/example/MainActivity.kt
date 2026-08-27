@@ -147,13 +147,30 @@ class MainActivity : ComponentActivity() {
         val openLiveString = intent.getStringExtra("open_live")
         val openChatBool = intent.getBooleanExtra(EXTRA_OPEN_CHAT, false)
         val openChatString = intent.getStringExtra("open_chat")
+        val openPulseBool = intent.getBooleanExtra(EXTRA_OPEN_PULSE, false)
+        val openPulseString = intent.getStringExtra("open_pulse")
         val notifType = intent.getStringExtra("type")
         val hostUserId = intent.getStringExtra("hostUserId")
         val senderId = intent.getStringExtra("senderId")
 
         val isLiveNav = openLiveBool || openLiveString == "true" || notifType == "live_start"
         val isChatNav = openChatBool || openChatString == "true" || notifType == "new_message"
+        val isPulseNav = openPulseBool || openPulseString == "true" || notifType == "new_pulse"
         val isFollowNav = openBool || openString == "true" || notifType == "follow_request"
+
+        if (isPulseNav) {
+            // Dialog dedicata al Pulse: non azzera gli overlay (è a sé, con swipe-down).
+            val samples = intent.getStringExtra("pulse") ?: ""
+            if (samples.isNotBlank()) {
+                viewModel.openPulseFromNotification(
+                    senderId = senderId ?: "",
+                    senderName = intent.getStringExtra("senderName") ?: "",
+                    avatarUrl = intent.getStringExtra("avatarUrl") ?: "",
+                    samples = samples
+                )
+            }
+            return
+        }
 
         // Porta SEMPRE al punto della notifica, da qualsiasi sezione: prima azzera gli overlay.
         if (isLiveNav || isChatNav || isFollowNav) {
@@ -227,6 +244,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
         const val EXTRA_OPEN_LIVE = "open_live"
         const val EXTRA_OPEN_CHAT = "open_chat"
+        const val EXTRA_OPEN_PULSE = "open_pulse"
     }
 }
 
@@ -392,7 +410,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onOpenUserProfile = { user ->
                         viewModel.closeStory()
                         viewModel.openProfile(user)
-                    }
+                    },
+                    onSendPulse = { u, samples -> viewModel.sendPulse(u.id, samples) }
                 )
             }
         }
@@ -454,6 +473,14 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onShareToMyFeed = { trk -> viewModel.shareTrack(trk) },
                 isMyTrack = isMyTrack,
                 onDeleteTrack = { trk -> viewModel.deleteSharedTrack(trk) }
+            )
+        }
+
+        // Dialog: Pulse ricevuto (dedicata, swipe-down)
+        uiState.activePulse?.let { pulse ->
+            com.example.ui.components.PulseReceiveDialog(
+                pulse = pulse,
+                onDismiss = { viewModel.dismissPulse() }
             )
         }
 

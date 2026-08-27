@@ -62,6 +62,9 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import android.graphics.drawable.BitmapDrawable
@@ -121,6 +124,7 @@ fun LiveDetailScreen(
     onClose: () -> Unit,
     onSendLiveReply: (User, String, Track) -> Unit,
     onOpenUserProfile: (User) -> Unit,
+    onSendPulse: (User, String) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val track = user.currentTrack ?: return
@@ -160,6 +164,27 @@ fun LiveDetailScreen(
     val platformLogoRes = if (isAmazon) R.drawable.ic_amazon_music else R.drawable.ic_spotify
     val platformTextColor = if (isAmazon) Color(0xFF25D1DA) else Color(0xFF1DB954)
     val deviceIconVec = deviceIcon(track.deviceType)
+
+    // ===== PULSE: registrazione tattile toccando la foto (5s, ritmo dei tocchi) =====
+    val pulseAccent = com.example.ui.components.pulseAccentFor(user.id)
+    var pulseRecording by remember { mutableStateOf(false) }
+    val pulsePressed = remember { mutableStateOf(false) }
+    val pulseIntensity by androidx.compose.animation.core.animateFloatAsState(
+        targetValue = if (pulsePressed.value) 1f else 0f,
+        animationSpec = androidx.compose.animation.core.tween(140),
+        label = "pulsePress"
+    )
+    LaunchedEffect(pulseRecording) {
+        if (!pulseRecording) return@LaunchedEffect
+        val sb = StringBuilder()
+        repeat(com.example.data.PulseHaptics.SAMPLE_COUNT) {
+            sb.append(if (pulsePressed.value) '1' else '0')
+            kotlinx.coroutines.delay(com.example.data.PulseHaptics.SAMPLE_MS)
+        }
+        pulseRecording = false
+        val s = sb.toString()
+        if (com.example.data.PulseHaptics.hasContent(s)) onSendPulse(user, s)
+    }
 
     // Minutaggio REALE: durata dal brano; posizione estrapolata dalla posizione
     // catturata (trackProgressMs) + tempo trascorso da trackProgressAt.
@@ -297,11 +322,17 @@ fun LiveDetailScreen(
                             .padding(4.dp)
                             .clip(CircleShape)
                             .background(Color(0xFF141418))
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { onOpenUserProfile(user) }
-                            ),
+                            // Tocca/tieni premuto la foto per INCIDERE un Pulse (5s). Il profilo
+                            // si apre dal @username in alto.
+                            .pointerInput(user.id) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    pulsePressed.value = true
+                                    if (!pulseRecording) pulseRecording = true
+                                    waitForUpOrCancellation()
+                                    pulsePressed.value = false
+                                }
+                            },
                         contentAlignment = Alignment.Center
                     ) {
                         AsyncImage(
@@ -314,6 +345,15 @@ fun LiveDetailScreen(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
+                    }
+
+                    // Onda circolare di registrazione Pulse (visibile solo mentre incidi)
+                    if (pulseRecording) {
+                        com.example.ui.components.PulseCircleWave(
+                            intensity = pulseIntensity,
+                            accent = pulseAccent,
+                            modifier = Modifier.size(250.dp)
+                        ) {}
                     }
                 }
 

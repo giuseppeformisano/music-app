@@ -784,7 +784,8 @@ object FirebaseRepository {
         senderAvatarUrl: String,
         recipientId: String,
         text: String,
-        attachedTrack: Track? = null
+        attachedTrack: Track? = null,
+        pulse: String? = null
     ) {
         val db = firestore ?: return
         val convRef = db.collection(CONVERSATIONS_COLLECTION).document(conversationId)
@@ -800,17 +801,19 @@ object FirebaseRepository {
             )
         }
 
+        val isPulse = !pulse.isNullOrBlank()
         val messageMap = hashMapOf<String, Any?>(
             "id" to messageId,
             "senderId" to senderId,
             "text" to text.trim(),
             "timestamp" to now,
-            "attachedTrack" to trackMap
+            "attachedTrack" to trackMap,
+            "pulse" to pulse
         )
 
         val convUpdate = hashMapOf<String, Any?>(
             "participants" to listOf(senderId, recipientId).sorted(),
-            "lastMessageText" to text.trim(),
+            "lastMessageText" to if (isPulse) "💓 Pulse" else text.trim(),
             "lastMessageAt" to now,
             "lastMessageSenderId" to senderId,
             "lastAttachedTrack" to trackMap,
@@ -825,23 +828,39 @@ object FirebaseRepository {
                         val fcmToken = doc?.getString("fcmToken")
                         if (!fcmToken.isNullOrBlank()) {
                             val pushAvatar = if (senderAvatarUrl.startsWith("http", ignoreCase = true)) senderAvatarUrl else ""
-                            val preview = when {
-                                text.isNotBlank() -> text.trim()
-                                attachedTrack != null -> "🎵 ${attachedTrack.title}"
-                                else -> "Nuovo messaggio"
-                            }
-                            PushNotificationSender.sendPushNotification(
-                                targetToken = fcmToken,
-                                title = senderName.ifBlank { "Nuovo messaggio" },
-                                body = preview,
-                                data = mapOf(
-                                    "type" to "new_message",
-                                    "open_chat" to "true",
-                                    "senderId" to senderId,
-                                    "senderName" to senderName,
-                                    "avatarUrl" to pushAvatar
+                            if (isPulse) {
+                                PushNotificationSender.sendPushNotification(
+                                    targetToken = fcmToken,
+                                    title = senderName.ifBlank { "Nuovo Pulse" },
+                                    body = "💓 ti ha inviato un Pulse",
+                                    data = mapOf(
+                                        "type" to "new_pulse",
+                                        "open_pulse" to "true",
+                                        "senderId" to senderId,
+                                        "senderName" to senderName,
+                                        "avatarUrl" to pushAvatar,
+                                        "pulse" to (pulse ?: "")
+                                    )
                                 )
-                            )
+                            } else {
+                                val preview = when {
+                                    text.isNotBlank() -> text.trim()
+                                    attachedTrack != null -> "🎵 ${attachedTrack.title}"
+                                    else -> "Nuovo messaggio"
+                                }
+                                PushNotificationSender.sendPushNotification(
+                                    targetToken = fcmToken,
+                                    title = senderName.ifBlank { "Nuovo messaggio" },
+                                    body = preview,
+                                    data = mapOf(
+                                        "type" to "new_message",
+                                        "open_chat" to "true",
+                                        "senderId" to senderId,
+                                        "senderName" to senderName,
+                                        "avatarUrl" to pushAvatar
+                                    )
+                                )
+                            }
                         }
                     }
             }
@@ -882,7 +901,8 @@ object FirebaseRepository {
                         text = text,
                         timestamp = ts,
                         isFromMe = senderId == currentUserId,
-                        attachedTrack = track
+                        attachedTrack = track,
+                        pulse = data["pulse"] as? String
                     )
                 }.sortedBy { it.timestamp }
                 onMessages(messages)

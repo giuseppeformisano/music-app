@@ -90,7 +90,8 @@ data class MusicUiState(
     val liveTick: Long = 0L,
     val applyCoverToFeed: Boolean = false,
     val liveNotificationsEnabled: Boolean = true,
-    val showChangelog: Boolean = false
+    val showChangelog: Boolean = false,
+    val activePulse: com.example.model.ActivePulse? = null
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -1334,6 +1335,36 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             text = text,
             attachedTrack = attachedTrack
         )
+    }
+
+    /** Invia un Pulse tattile (registrazione di 5s come stringa di campioni). */
+    fun sendPulse(recipientId: String, samples: String) {
+        if (!com.example.data.PulseHaptics.hasContent(samples)) return
+        val me = _uiState.value.currentUser
+        if (me.id.isBlank() || recipientId.isBlank()) return
+        val convId = FirebaseRepository.getConversationId(me.id, recipientId)
+        FirebaseRepository.sendChatMessage(
+            conversationId = convId,
+            senderId = me.id,
+            senderName = me.name,
+            senderAvatarUrl = me.avatarUrl,
+            recipientId = recipientId,
+            text = "",
+            attachedTrack = null,
+            pulse = samples
+        )
+        _uiState.update { it.copy(feedbackToast = "Pulse inviato 💓") }
+    }
+
+    fun openPulseFromNotification(senderId: String, senderName: String, avatarUrl: String, samples: String) {
+        if (samples.isBlank()) return
+        _uiState.update {
+            it.copy(activePulse = com.example.model.ActivePulse(senderId, senderName, avatarUrl, samples))
+        }
+    }
+
+    fun dismissPulse() {
+        _uiState.update { it.copy(activePulse = null) }
     }
 
     fun openChatFromNotification(senderId: String) {

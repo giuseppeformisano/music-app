@@ -86,7 +86,9 @@ data class ChatMessage(
     val text: String,
     val timestamp: Long = System.currentTimeMillis(),
     val isFromMe: Boolean = false,
-    val attachedTrack: Track? = null
+    val attachedTrack: Track? = null,
+    // "Pulse" tattile: stringa di 100 campioni '0'/'1' (5s @ 50ms). Se presente, il messaggio è un Pulse.
+    val pulse: String? = null
 ) {
     /** Formatta il timestamp in "HH:mm" per la UI */
     val formattedTime: String
@@ -95,6 +97,14 @@ data class ChatMessage(
             return sdf.format(java.util.Date(timestamp))
         }
 }
+
+/** Pulse ricevuto e mostrato nella dialog dedicata. */
+data class ActivePulse(
+    val senderId: String,
+    val senderName: String,
+    val avatarUrl: String,
+    val samples: String
+)
 
 data class Conversation(
     val id: String,
