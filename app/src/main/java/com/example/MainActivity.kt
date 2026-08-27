@@ -416,7 +416,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                         viewModel.closeStory()
                         viewModel.openProfile(user)
                     },
-                    onSendPulse = { u, samples, audio -> viewModel.sendPulse(u.id, samples, audio) }
+                    onSendPulse = { u, samples, audio -> viewModel.sendPulse(u.id, samples, audio) },
+                    onSetTrackAsCover = { trk -> viewModel.setTrackAsCover(trk) }
                 )
             }
         }
@@ -477,7 +478,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onOpenUserProfile = { user -> viewModel.openProfile(user) },
                 onShareToMyFeed = { trk -> viewModel.shareTrack(trk) },
                 isMyTrack = isMyTrack,
-                onDeleteTrack = { trk -> viewModel.deleteSharedTrack(trk) }
+                onDeleteTrack = { trk -> viewModel.deleteSharedTrack(trk) },
+                onSetAsCover = { trk -> viewModel.setTrackAsCover(trk) }
             )
         }
 

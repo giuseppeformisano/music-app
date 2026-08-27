@@ -1002,6 +1002,30 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Imposta la copertina di un brano (artwork dell'album) come immagine di copertina/sfondo
+     * atmosferico del profilo dell'utente corrente. L'URL è HTTP → nessuna conversione Base64.
+     */
+    fun setTrackAsCover(track: com.example.model.Track) {
+        val cover = track.coverUrl.trim()
+        if (cover.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val updatedUser = _uiState.value.currentUser.copy(coverUrl = cover, isCurrentUser = true)
+            saveUserLocalPrefs(updatedUser)
+            withContext(Dispatchers.Main) {
+                _uiState.update { state ->
+                    state.copy(
+                        currentUser = updatedUser,
+                        activeProfileUser = if (state.activeProfileUser?.id == updatedUser.id) updatedUser else state.activeProfileUser,
+                        feedbackToast = "Copertina profilo aggiornata"
+                    )
+                }
+            }
+            val firestoreCover = com.example.data.ImageUtils.fileUriToBase64(updatedUser.coverUrl) ?: updatedUser.coverUrl
+            FirebaseRepository.syncCurrentUser(updatedUser.copy(coverUrl = firestoreCover))
+        }
+    }
+
     // ===================== NAVIGATION =====================
 
     fun toggleFollowUser(targetUser: User) {

@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -83,7 +84,8 @@ fun TrackDetailDialog(
     onOpenUserProfile: (User) -> Unit = {},
     onShareToMyFeed: (Track) -> Unit = {},
     isMyTrack: Boolean = false,
-    onDeleteTrack: ((Track) -> Unit)? = null
+    onDeleteTrack: ((Track) -> Unit)? = null,
+    onSetAsCover: ((Track) -> Unit)? = null
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -192,6 +194,39 @@ fun TrackDetailDialog(
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.fillMaxSize()
                         )
+
+                        // Pulsante modesto "Imposta come copertina" in basso a destra della cover
+                        if (onSetAsCover != null) {
+                            Row(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(8.dp)
+                                    .clip(RoundedCornerShape(20.dp))
+                                    .background(Color.Black.copy(alpha = 0.5f))
+                                    .border(0.7.dp, PureWhite.copy(alpha = 0.25f), RoundedCornerShape(20.dp))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { onSetAsCover(track) }
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Wallpaper,
+                                    contentDescription = null,
+                                    tint = PureWhite.copy(alpha = 0.9f),
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Text(
+                                    text = "Copertina",
+                                    color = PureWhite.copy(alpha = 0.9f),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
                     }
 
                     // 3. TITOLO, ARTISTA / ALBUM E PILL GENERE / ANNO

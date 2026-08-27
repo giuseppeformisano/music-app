@@ -125,9 +125,12 @@ fun LiveDetailScreen(
     onSendLiveReply: (User, String, Track) -> Unit,
     onOpenUserProfile: (User) -> Unit,
     onSendPulse: (User, String, String?) -> Unit = { _, _, _ -> },
+    onSetTrackAsCover: (Track) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val track = user.currentTrack ?: return
+    // Dettaglio brano (identico al dettaglio feed) aperto toccando la copertina dell'album
+    var showTrackDetail by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -389,7 +392,13 @@ fun LiveDetailScreen(
                                     spotColor = Color.Black.copy(alpha = 0.8f)
                                 )
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(Color(0xFF141418)),
+                                .background(Color(0xFF141418))
+                                // Tocca la copertina per aprire il dettaglio brano (come nel feed)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = { showTrackDetail = true }
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             AsyncImage(
@@ -633,6 +642,18 @@ fun LiveDetailScreen(
             )
         }
       }
+    }
+
+    // Dettaglio brano identico al dettaglio feed (stesse info + pulsante "Imposta come copertina")
+    if (showTrackDetail) {
+        com.example.ui.components.TrackDetailDialog(
+            track = track,
+            user = user,
+            onDismiss = { showTrackDetail = false },
+            onSendTextMessage = { u, text, trk -> onSendLiveReply(u, text, trk) },
+            onOpenUserProfile = { u -> onOpenUserProfile(u) },
+            onSetAsCover = { trk -> onSetTrackAsCover(trk) }
+        )
     }
 }
 

@@ -46,8 +46,8 @@ private const val DISMISS_THRESHOLD = 240f
  * Contenitore comune per TUTTE le dialog:
  * - backdrop a tutto schermo, GIÀ fullscreen dietro status bar/barra di navigazione
  *   sin dal primo frame (niente "scatto")
- * - chiusura con swipe verso il basso DA QUALSIASI PUNTO (anche sopra le liste, via
- *   nested scroll), o tap sullo sfondo
+ * - chiusura con swipe verso il basso O verso l'alto DA QUALSIASI PUNTO (anche sopra le
+ *   liste, via nested scroll), o tap sullo sfondo
  * - durante la discesa il backdrop si dissolve/sfoca in modo LINEARE, rivelando la
  *   schermata sottostante
  * - niente pulsante X; contenuto centrato
@@ -97,20 +97,26 @@ private fun ImmersiveScaffold(
 
         fun settle() {
             scope.launch {
-                if (offsetY.value > DISMISS_THRESHOLD) onDismiss()
+                if (kotlin.math.abs(offsetY.value) > DISMISS_THRESHOLD) onDismiss()
                 else offsetY.animateTo(0f, tween(220))
             }
         }
 
-        // Nested scroll: consente lo swipe-giù-per-chiudere anche partendo SOPRA una lista
-        // scrollabile (quando la lista è in cima e non può più scrollare verso l'alto).
+        // Nested scroll: consente lo swipe-per-chiudere (giù O su) anche partendo SOPRA una
+        // lista scrollabile (quando la lista è a un estremo e non può scrollare oltre).
         val nested = remember {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // Se il pannello è già sceso e si trascina verso l'alto, prima lo si riporta su
+                    // Se il pannello è già spostato, il primo scroll opposto lo riporta a riposo
                     val dy = available.y
-                    if (dy < 0f && offsetY.value > 0f) {
+                    if (offsetY.value > 0f && dy < 0f) {
                         val target = (offsetY.value + dy).coerceAtLeast(0f)
+                        val consumed = target - offsetY.value
+                        scope.launch { offsetY.snapTo(target) }
+                        return Offset(0f, consumed)
+                    }
+                    if (offsetY.value < 0f && dy > 0f) {
+                        val target = (offsetY.value + dy).coerceAtMost(0f)
                         val consumed = target - offsetY.value
                         scope.launch { offsetY.snapTo(target) }
                         return Offset(0f, consumed)
@@ -119,8 +125,9 @@ private fun ImmersiveScaffold(
                 }
 
                 override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // La lista non ha consumato lo scroll verso il basso -> abbassa il pannello
-                    if (available.y > 0f) {
+                    // La lista non ha consumato lo scroll (è a un estremo) -> sposta il pannello
+                    // giù (available.y > 0) o su (available.y < 0)
+                    if (available.y != 0f) {
                         scope.launch { offsetY.snapTo(offsetY.value + available.y) }
                         return Offset(0f, available.y)
                     }
@@ -128,25 +135,25 @@ private fun ImmersiveScaffold(
                 }
 
                 override suspend fun onPreFling(available: Velocity): Velocity {
-                    if (offsetY.value > 0f) { settle(); return available }
+                    if (offsetY.value != 0f) { settle(); return available }
                     return Velocity.Zero
                 }
             }
         }
 
-        val dragFraction = (offsetY.value / DISMISS_DISTANCE).coerceIn(0f, 1f)
+        val dragFraction = (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f)
 
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .nestedScroll(nested)
-                // Swipe verso il basso da QUALSIASI punto (aree non scrollabili)
+                // Swipe verso il basso O verso l'alto da QUALSIASI punto (aree non scrollabili)
                 .pointerInput(Unit) {
                     detectVerticalDragGestures(
                         onDragEnd = { settle() },
                         onDragCancel = { settle() },
                         onVerticalDrag = { _, dy ->
-                            scope.launch { offsetY.snapTo((offsetY.value + dy).coerceAtLeast(0f)) }
+                            scope.launch { offsetY.snapTo(offsetY.value + dy) }
                         }
                     )
                 },
