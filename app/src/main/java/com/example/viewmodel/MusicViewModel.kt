@@ -1294,10 +1294,19 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         FirebaseRepository.sendChatMessage(
             conversationId = convId,
             senderId = currentUserId,
+            senderName = _uiState.value.currentUser.name,
+            senderAvatarUrl = _uiState.value.currentUser.avatarUrl,
             recipientId = recipientId,
             text = text,
             attachedTrack = attachedTrack
         )
+    }
+
+    fun openChatFromNotification(senderId: String) {
+        if (senderId.isBlank()) return
+        FirebaseRepository.getUsersByIds(listOf(senderId)) { users ->
+            users.firstOrNull()?.let { openChat(it) }
+        }
     }
 
     fun openChatList() {

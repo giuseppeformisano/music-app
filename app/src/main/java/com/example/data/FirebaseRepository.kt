@@ -780,6 +780,8 @@ object FirebaseRepository {
     fun sendChatMessage(
         conversationId: String,
         senderId: String,
+        senderName: String,
+        senderAvatarUrl: String,
         recipientId: String,
         text: String,
         attachedTrack: Track? = null
@@ -817,6 +819,31 @@ object FirebaseRepository {
         convRef.set(convUpdate, SetOptions.merge())
             .addOnSuccessListener {
                 Log.d(TAG, "Messaggio chat inviato con successo.")
+                // Push al destinatario (stesso meccanismo di live/richieste follow → backend Render)
+                db.collection(USERS_COLLECTION).document(recipientId).get()
+                    .addOnSuccessListener { doc ->
+                        val fcmToken = doc?.getString("fcmToken")
+                        if (!fcmToken.isNullOrBlank()) {
+                            val pushAvatar = if (senderAvatarUrl.startsWith("http", ignoreCase = true)) senderAvatarUrl else ""
+                            val preview = when {
+                                text.isNotBlank() -> text.trim()
+                                attachedTrack != null -> "🎵 ${attachedTrack.title}"
+                                else -> "Nuovo messaggio"
+                            }
+                            PushNotificationSender.sendPushNotification(
+                                targetToken = fcmToken,
+                                title = senderName.ifBlank { "Nuovo messaggio" },
+                                body = preview,
+                                data = mapOf(
+                                    "type" to "new_message",
+                                    "open_chat" to "true",
+                                    "senderId" to senderId,
+                                    "senderName" to senderName,
+                                    "avatarUrl" to pushAvatar
+                                )
+                            )
+                        }
+                    }
             }
             .addOnFailureListener { e -> Log.e(TAG, "Errore invio messaggio: ${e.message}") }
     }

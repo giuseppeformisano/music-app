@@ -21,6 +21,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val data = message.data
         val isLive = data["type"] == "live_start" || data["open_live"] == "true"
+        val isChat = data["type"] == "new_message" || data["open_chat"] == "true"
         if (isLive) {
             val liveNotifsEnabled = try {
                 getSharedPreferences("user_settings", android.content.Context.MODE_PRIVATE)
@@ -30,12 +31,18 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         val hostUserId = data["hostUserId"] ?: ""
+        val senderId = data["senderId"] ?: ""
 
-        val defaultTitle = if (isLive) "Diretta Live 🎵" else "Nuova richiesta di follow"
+        val defaultTitle = when {
+            isLive -> "Diretta Live 🎵"
+            isChat -> "Nuovo messaggio"
+            else -> "Nuova richiesta di follow"
+        }
         val title = data["title"] ?: message.notification?.title ?: defaultTitle
         val body = data["body"] ?: message.notification?.body ?: ""
 
-        val notifKey = data["requestId"] ?: data["fromUserId"] ?: hostUserId.ifBlank { "${title}_$body" }
+        val notifKey = data["requestId"] ?: data["fromUserId"]
+            ?: (if (isChat) senderId else hostUserId).ifBlank { "${title}_$body" }
         val avatarUrl = data["avatarUrl"] ?: data["fromUserAvatarUrl"] ?: ""
 
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
@@ -47,15 +54,24 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
             val avatarBitmap = if (avatarUrl.isNotBlank()) com.example.data.ImageUtils.loadAvatarBitmap(this@AppFirebaseMessagingService, avatarUrl) else null
 
             val intent = android.content.Intent(this@AppFirebaseMessagingService, MainActivity::class.java).apply {
-                if (isLive) {
-                    putExtra(MainActivity.EXTRA_OPEN_LIVE, true)
-                    putExtra("open_live", "true")
-                    putExtra("type", "live_start")
-                    putExtra("hostUserId", hostUserId)
-                } else {
-                    putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
-                    putExtra("open_notifications", "true")
-                    putExtra("type", "follow_request")
+                when {
+                    isLive -> {
+                        putExtra(MainActivity.EXTRA_OPEN_LIVE, true)
+                        putExtra("open_live", "true")
+                        putExtra("type", "live_start")
+                        putExtra("hostUserId", hostUserId)
+                    }
+                    isChat -> {
+                        putExtra(MainActivity.EXTRA_OPEN_CHAT, true)
+                        putExtra("open_chat", "true")
+                        putExtra("type", "new_message")
+                        putExtra("senderId", senderId)
+                    }
+                    else -> {
+                        putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
+                        putExtra("open_notifications", "true")
+                        putExtra("type", "follow_request")
+                    }
                 }
                 flags = android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
             }

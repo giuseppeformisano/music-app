@@ -145,12 +145,19 @@ class MainActivity : ComponentActivity() {
         val openString = intent.getStringExtra("open_notifications")
         val openLiveBool = intent.getBooleanExtra(EXTRA_OPEN_LIVE, false)
         val openLiveString = intent.getStringExtra("open_live")
+        val openChatBool = intent.getBooleanExtra(EXTRA_OPEN_CHAT, false)
+        val openChatString = intent.getStringExtra("open_chat")
         val notifType = intent.getStringExtra("type")
         val hostUserId = intent.getStringExtra("hostUserId")
+        val senderId = intent.getStringExtra("senderId")
 
         if (openLiveBool || openLiveString == "true" || notifType == "live_start") {
             if (!hostUserId.isNullOrBlank()) {
                 viewModel.openLiveFromNotification(hostUserId)
+            }
+        } else if (openChatBool || openChatString == "true" || notifType == "new_message") {
+            if (!senderId.isNullOrBlank()) {
+                viewModel.openChatFromNotification(senderId)
             }
         } else if (openBool || openString == "true" || notifType == "follow_request") {
             viewModel.openNotifications()
@@ -212,6 +219,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
         const val EXTRA_OPEN_LIVE = "open_live"
+        const val EXTRA_OPEN_CHAT = "open_chat"
     }
 }
 
