@@ -576,8 +576,7 @@ private fun UserIdentityBlock(
                         }
                     }
                     com.example.ui.components.PresenceDot(
-                        isOnline = user.isOnline,
-                        isLive = user.currentTrack != null,
+                        presenceState = user.presenceState,
                         size = 20.dp,
                         modifier = Modifier.align(Alignment.BottomEnd)
                     )

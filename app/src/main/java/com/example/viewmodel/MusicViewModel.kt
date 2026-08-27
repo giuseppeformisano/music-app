@@ -672,7 +672,24 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         liveStaleTickerJob = viewModelScope.launch {
             while (isActive) {
                 kotlinx.coroutines.delay(30_000L)
-                _uiState.update { it.copy(liveTick = System.currentTimeMillis()) }
+                // Heartbeat presenza: in foreground rinfresca updatedAt del proprio documento,
+                // così NON si viene declassati per staleness (e gli online idle restano online).
+                val uid = _uiState.value.currentUser.id
+                if (isAppInForeground && uid.isNotBlank()) {
+                    FirebaseRepository.setOnline(uid, true)
+                }
+                // Declassa gli stati stantii: chi non aggiorna da oltre il TTL torna OFFLINE
+                // ovunque (presenceState è l'unica fonte di verità).
+                _uiState.update { current ->
+                    val ref = presenceRef(current.feedUsers)
+                    current.copy(
+                        feedUsers = current.feedUsers.map { demoteIfStale(it, ref) },
+                        activeProfileUser = current.activeProfileUser?.let {
+                            if (it.isCurrentUser) it else demoteIfStale(it, ref)
+                        },
+                        liveTick = System.currentTimeMillis()
+                    )
+                }
             }
         }
         firebaseObserverJob?.cancel()
@@ -691,9 +708,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         val freshIds = processed.map { it.id }.toSet()
                         val followed = current.currentUser.followingIds.toSet()
                         val retained = current.feedUsers.filter { it.id !in freshIds && it.id in followed }
-                        val merged = (processed + retained).distinctBy { it.id }
+                        val mergedRaw = (processed + retained).distinctBy { it.id }
+                        // Declassa gli stati stantii (presenceState = unica fonte di verità).
+                        val ref = presenceRef(mergedRaw)
+                        val merged = mergedRaw.map { demoteIfStale(it, ref) }
                         val updatedActiveProfile = if (current.activeProfileUser != null && !current.activeProfileUser.isCurrentUser) {
-                            processed.find { it.id == current.activeProfileUser.id } ?: current.activeProfileUser
+                            val fresh = processed.find { it.id == current.activeProfileUser.id } ?: current.activeProfileUser
+                            demoteIfStale(fresh, ref)
                         } else {
                             current.activeProfileUser
                         }
@@ -1343,11 +1364,11 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun openChatList() {
-        _uiState.update { it.copy(isChatListOpen = true) }
+        _uiState.update { it.copy(isChatListOpen = true, userSearchQuery = "", userSearchResults = emptyList()) }
     }
 
     fun closeChatList() {
-        _uiState.update { it.copy(isChatListOpen = false) }
+        _uiState.update { it.copy(isChatListOpen = false, userSearchQuery = "", userSearchResults = emptyList()) }
     }
 
     private fun startConversationsListener(userId: String) {
@@ -1419,6 +1440,24 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun clearToast() { _uiState.update { it.copy(feedbackToast = null) } }
 
     fun clearLoginError() { _uiState.update { it.copy(loginError = null) } }
+
+    /**
+     * Riferimento temporale robusto allo sfasamento di orologio: il timestamp più recente
+     * scritto da chiunque (ripiega sull'orologio locale se nessuno aggiorna da oltre il TTL).
+     */
+    private fun presenceRef(users: List<User>): Long {
+        val localNow = System.currentTimeMillis()
+        val maxUpdated = users.maxOfOrNull { it.updatedAt } ?: 0L
+        return if (localNow - maxUpdated > LIVE_STALE_TTL_MS) localNow else maxUpdated
+    }
+
+    /** Se il documento è stantio (nessun aggiornamento entro il TTL) l'utente torna OFFLINE. */
+    private fun demoteIfStale(u: User, ref: Long): User =
+        if (u.updatedAt > 0L && (ref - u.updatedAt) > LIVE_STALE_TTL_MS &&
+            u.presenceState != com.example.model.UserPresenceState.OFFLINE
+        ) {
+            u.copy(presenceState = com.example.model.UserPresenceState.OFFLINE, currentTrack = null)
+        } else u
 
     fun getStoriesList(): List<User> {
         val state = _uiState.value

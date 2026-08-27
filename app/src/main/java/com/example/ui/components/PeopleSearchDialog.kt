@@ -192,8 +192,7 @@ private fun PeopleResultRow(
             // Lo stato (online/live) è visibile SOLO se segui già la persona.
             if (alreadyFollowing) {
                 PresenceDot(
-                    isOnline = user.isOnline,
-                    isLive = user.currentTrack != null,
+                    presenceState = user.presenceState,
                     size = 13.dp,
                     modifier = Modifier.align(Alignment.BottomEnd)
                 )

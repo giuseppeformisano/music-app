@@ -353,6 +353,9 @@ fun MusicApp(viewModel: MusicViewModel) {
             ChatListScreen(
                 conversations = uiState.conversations,
                 currentUserId = uiState.currentUser.id,
+                searchQuery = uiState.userSearchQuery,
+                searchResults = uiState.userSearchResults,
+                onSearchQueryChanged = { viewModel.onUserSearchQueryChanged(it) },
                 onOpenChat = { user -> viewModel.openChat(user) },
                 onBack = { viewModel.closeChatList() }
             )

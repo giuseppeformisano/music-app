@@ -19,27 +19,37 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.model.Conversation
 import com.example.model.User
+import com.example.ui.components.PresenceDot
 import com.example.ui.theme.BlackPitch
-import com.example.ui.theme.CharcoalBorder
 import com.example.ui.theme.DarkGraphite
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
@@ -48,10 +58,17 @@ import com.example.ui.theme.SubtitleGray
 fun ChatListScreen(
     conversations: List<Conversation>,
     currentUserId: String,
+    searchQuery: String,
+    searchResults: List<User>,
+    onSearchQueryChanged: (String) -> Unit,
     onOpenChat: (User) -> Unit,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+    val isSearching = searchQuery.isNotBlank()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -93,44 +110,146 @@ fun ChatListScreen(
             )
         }
 
-        if (conversations.isEmpty()) {
-            // Stato vuoto
-            Box(
+        // Barra di ricerca: cerca una persona a cui scrivere (click → apre la chat)
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChanged,
+            placeholder = { Text("Cerca una persona a cui scrivere", color = SubtitleGray.copy(alpha = 0.6f), fontSize = 14.sp) },
+            leadingIcon = {
+                Icon(Icons.Default.Search, contentDescription = null, tint = SubtitleGray.copy(alpha = 0.5f), modifier = Modifier.size(18.dp))
+            },
+            trailingIcon = {
+                if (isSearching) {
+                    IconButton(onClick = { onSearchQueryChanged("") }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cancella", tint = SubtitleGray, modifier = Modifier.size(16.dp))
+                    }
+                }
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide(); focusManager.clearFocus() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 4.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = PureWhite.copy(alpha = 0.15f),
+                unfocusedBorderColor = Color.Transparent,
+                focusedContainerColor = PureWhite.copy(alpha = 0.06f),
+                unfocusedContainerColor = PureWhite.copy(alpha = 0.06f),
+                focusedTextColor = PureWhite,
+                unfocusedTextColor = PureWhite,
+                cursorColor = PureWhite
+            )
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        when {
+            // Modalità ricerca: mostra gli utenti trovati, click → apri chat
+            isSearching -> {
+                if (searchResults.isEmpty()) {
+                    EmptyState(title = "Nessuna persona trovata", subtitle = "Prova con un altro nome o @username")
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        items(searchResults, key = { it.id }) { user ->
+                            UserResultRow(user = user, onClick = { onOpenChat(user) })
+                        }
+                    }
+                }
+            }
+            conversations.isEmpty() -> {
+                EmptyState(
+                    title = "Nessuna conversazione",
+                    subtitle = "Cerca una persona qui sopra, oppure rispondi a un brano o a una live"
+                )
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    items(conversations, key = { it.id }) { conversation ->
+                        ConversationRow(
+                            conversation = conversation,
+                            currentUserId = currentUserId,
+                            onClick = { onOpenChat(conversation.recipientUser) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(title: String, subtitle: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = title, color = SubtitleGray, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = subtitle,
+                color = SubtitleGray.copy(alpha = 0.6f),
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+    }
+}
+
+@Composable
+private fun UserResultRow(user: User, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
+            )
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(modifier = Modifier.size(48.dp)) {
+            AsyncImage(
+                model = user.avatarUrl,
+                contentDescription = "Avatar di ${user.name}",
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "Nessuna conversazione",
-                        color = SubtitleGray,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Rispondi a un brano o a una live\nper iniziare una conversazione",
-                        color = SubtitleGray.copy(alpha = 0.6f),
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(0.dp)
-            ) {
-                items(conversations, key = { it.id }) { conversation ->
-                    ConversationRow(
-                        conversation = conversation,
-                        currentUserId = currentUserId,
-                        onClick = { onOpenChat(conversation.recipientUser) }
-                    )
-                }
-            }
+                    .size(48.dp)
+                    .clip(CircleShape)
+            )
+            PresenceDot(
+                presenceState = user.presenceState,
+                size = 13.dp,
+                modifier = Modifier.align(Alignment.BottomEnd)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = user.name,
+                color = PureWhite,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "@${user.username}",
+                color = SubtitleGray.copy(alpha = 0.7f),
+                fontSize = 12.sp,
+                maxLines = 1
+            )
         }
     }
 }
