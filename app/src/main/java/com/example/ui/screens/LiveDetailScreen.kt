@@ -5,6 +5,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -59,9 +60,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -103,6 +106,7 @@ import com.example.ui.theme.SubtitleGray
 import com.example.ui.theme.Zinc400
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 private data class FloatingReaction(
     val id: Long,
@@ -174,6 +178,28 @@ fun LiveDetailScreen(
     val pulsePressed = remember { mutableStateOf(false) }
     // Intensità delle barre durante la registrazione = livello reale della voce dal microfono
     var pulseIntensity by remember { mutableFloatStateOf(0f) }
+
+    // Effetto bottone 3D: la foto scende alla pressione (↓) e risale al rilascio (↑)
+    val avatarPressTranslation by animateFloatAsState(
+        targetValue = if (pulsePressed.value) 7f else 0f,
+        animationSpec = tween(if (pulsePressed.value) 70 else 190),
+        label = "avatarPress"
+    )
+    // Oscuramento radiale (bordi scuri, centro avatar trasparente) durante la registrazione
+    val pulseOverlayAlpha by animateFloatAsState(
+        targetValue = if (pulseRecording) 0.87f else 0f,
+        animationSpec = tween(if (pulseRecording) 750 else 420),
+        label = "pulseOverlay"
+    )
+    // Fase continua per le linee scan ondulate full-width
+    val scanTransition = rememberInfiniteTransition(label = "pulseScan")
+    val scanPhase by scanTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2f * Math.PI).toFloat(),
+        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart),
+        label = "scanPhase"
+    )
+
     LaunchedEffect(pulseRecording) {
         if (!pulseRecording) return@LaunchedEffect
         val recorder = com.example.data.PulseRecorder()
@@ -321,6 +347,8 @@ fun LiveDetailScreen(
                     // Cerchio Avatar Profilo al centro dell'onda
                     Box(
                         modifier = Modifier
+                            // Effetto bottone 3D: la foto scende alla pressione e risale al rilascio
+                            .graphicsLayer { translationY = avatarPressTranslation }
                             .size(150.dp)
                             .shadow(
                                 elevation = 22.dp,
@@ -640,6 +668,48 @@ fun LiveDetailScreen(
                 xRatio = item.initialXRatio,
                 onFinished = { floatingReactions.remove(item) }
             )
+        }
+
+        // Oscuramento radiale durante la registrazione del Pulse:
+        // gradiente trasparente al centro (avatar) → scuro ai bordi.
+        // Le linee scan e le barrette PulseCircleWave restano visibili sopra.
+        if (pulseOverlayAlpha > 0f) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val cx = size.width / 2f
+                val cy = size.height * 0.40f
+                drawRect(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.92f)),
+                        center = Offset(cx, cy),
+                        radius = size.minDimension * 0.54f
+                    ),
+                    alpha = pulseOverlayAlpha
+                )
+            }
+            // Linee scan ondulate full-width che attraversano l'area avatar
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val cy = size.height * 0.40f
+                val lineCount = 4
+                val spacing = 22f
+                for (i in 0 until lineCount) {
+                    val yOff = (i - (lineCount - 1) / 2f) * spacing
+                    val path = Path()
+                    val amp = 5f + pulseIntensity * 18f
+                    val steps = 100
+                    for (s in 0..steps) {
+                        val t = s.toFloat() / steps
+                        val x = size.width * t
+                        val y = cy + yOff + amp * kotlin.math.sin(scanPhase + t * 3f * Math.PI.toFloat() + i * 1.1f)
+                        if (s == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+                    val lineAlpha = (0.80f - abs(i - (lineCount - 1) / 2f) * 0.20f) * pulseOverlayAlpha
+                    drawPath(
+                        path = path,
+                        color = pulseAccent.copy(alpha = lineAlpha.coerceIn(0f, 1f)),
+                        style = Stroke(width = 1.8f, cap = StrokeCap.Round)
+                    )
+                }
+            }
         }
       }
     }
