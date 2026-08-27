@@ -466,6 +466,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     // dalla live (si resta live finché la music-app riproduce/è in pausa).
     fun onAppForeground() {
         isAppInForeground = true
+        // Il resync/polling che parte subito dopo il rientro non deve generare notifiche live.
+        suppressLivePushUntilMs = System.currentTimeMillis() + 5000L
         setOnline(true)
     }
 
@@ -1129,14 +1131,22 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var wasLive = false
+    // Finestra dopo il rientro in foreground in cui NON si notifica la live: il resync/polling
+    // iniziale ri-emette la traccia già in corso, ma NON è un nuovo ascolto → niente push.
+    private var suppressLivePushUntilMs = 0L
 
     private fun checkAndSendLiveNotification(user: User) {
-        if (user.presenceState == com.example.model.UserPresenceState.LIVE && !wasLive) {
-            wasLive = true
-            FirebaseRepository.sendLiveNotificationToFollowers(user)
-        } else if (user.presenceState != com.example.model.UserPresenceState.LIVE) {
+        val isLive = user.presenceState == com.example.model.UserPresenceState.LIVE
+        if (!isLive) {
             wasLive = false
+            return
         }
+        if (wasLive) return // già live in questa sessione → nessuna re-notifica
+        wasLive = true
+        // Se è solo il resync all'apertura dell'app (traccia già in riproduzione), non notificare:
+        // la notifica live è SOLO per l'inizio effettivo di un brano.
+        if (System.currentTimeMillis() < suppressLivePushUntilMs) return
+        FirebaseRepository.sendLiveNotificationToFollowers(user)
     }
 
     fun openLiveFromNotification(hostUserId: String) {
@@ -1353,7 +1363,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             attachedTrack = null,
             pulse = samples
         )
-        _uiState.update { it.copy(feedbackToast = "Pulse inviato 💓") }
+        _uiState.update { it.copy(feedbackToast = "Pulse inviato") }
     }
 
     fun openPulseFromNotification(senderId: String, senderName: String, avatarUrl: String, samples: String) {

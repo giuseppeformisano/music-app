@@ -813,7 +813,7 @@ object FirebaseRepository {
 
         val convUpdate = hashMapOf<String, Any?>(
             "participants" to listOf(senderId, recipientId).sorted(),
-            "lastMessageText" to if (isPulse) "💓 Pulse" else text.trim(),
+            "lastMessageText" to if (isPulse) "Pulse" else text.trim(),
             "lastMessageAt" to now,
             "lastMessageSenderId" to senderId,
             "lastAttachedTrack" to trackMap,
@@ -832,7 +832,7 @@ object FirebaseRepository {
                                 PushNotificationSender.sendPushNotification(
                                     targetToken = fcmToken,
                                     title = senderName.ifBlank { "Nuovo Pulse" },
-                                    body = "💓 ti ha inviato un Pulse",
+                                    body = "ti ha inviato un Pulse",
                                     data = mapOf(
                                         "type" to "new_pulse",
                                         "open_pulse" to "true",

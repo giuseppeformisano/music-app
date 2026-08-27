@@ -44,7 +44,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
 
         val defaultTitle = when {
             isLive -> "Diretta Live 🎵"
-            isPulse -> "Nuovo Pulse 💓"
+            isPulse -> "Nuovo Pulse"
             isChat -> "Nuovo messaggio"
             else -> "Nuova richiesta di follow"
         }

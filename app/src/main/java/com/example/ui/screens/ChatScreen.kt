@@ -216,7 +216,8 @@ fun ChatScreen(
                     items(shown, key = { it.id }) { message ->
                         MessageBubble(
                             message = message,
-                            palette = if (message.isFromMe) myPalette else otherPalette
+                            palette = if (message.isFromMe) myPalette else otherPalette,
+                            senderAvatarUrl = if (message.isFromMe) currentUser.avatarUrl else recipient.avatarUrl
                         )
                     }
                 }
@@ -342,7 +343,7 @@ private fun paletteForUser(user: User, isCurrent: Boolean): UserChatPalette {
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage, palette: UserChatPalette) {
+private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, senderAvatarUrl: String = "") {
     val isMe = message.isFromMe
 
     Column(
@@ -425,7 +426,14 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette) {
                         modifier = Modifier.size(56.dp),
                         barCount = 28
                     ) {
-                        Text(text = "💓", fontSize = 15.sp)
+                        AsyncImage(
+                            model = senderAvatarUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .clip(CircleShape)
+                        )
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Column {
