@@ -1146,7 +1146,6 @@ private fun FollowersFollowingDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .imePadding()
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp)
         ) {
@@ -1326,7 +1325,6 @@ private fun EditProfileDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .imePadding()
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -1676,7 +1674,6 @@ private fun ConnectAccountsDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .imePadding()
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp)
         ) {
@@ -1916,7 +1913,6 @@ private fun SettingsDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .imePadding()
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,

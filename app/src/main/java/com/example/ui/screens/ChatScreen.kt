@@ -143,16 +143,15 @@ fun ChatScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
+                    .padding(top = 28.dp)
                     .navigationBarsPadding()
-                    .imePadding()
                     .testTag("chat_screen_${recipient.id}")
             ) {
-                // Top Header minimale: senza pulsante indietro (si chiude con lo slide down)
+                // Top Header minimale: allineato ai pulsanti del profilo utente (si chiude con lo slide down)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
