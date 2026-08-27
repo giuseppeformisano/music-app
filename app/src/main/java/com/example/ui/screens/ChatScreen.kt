@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
@@ -39,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -79,18 +79,23 @@ fun ChatScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.size - 1)
-        }
+    // Paginazione lato client: si mostra solo un blocco di messaggi (i più recenti);
+    // scrollando verso l'alto se ne caricano altri, un blocco per volta.
+    val pageSize = 30
+    var visibleCount by remember(recipient.id) { mutableStateOf(pageSize) }
+    val shown = remember(messages, visibleCount) {
+        if (messages.size <= visibleCount) messages else messages.takeLast(visibleCount)
     }
 
-    val quickReplies = listOf(
-        "Che produzione incredibile! 🔥",
-        "Ascoltalo con le cuffie buone.",
-        "Aggiunto subito alla playlist!",
-        "Che album consigli di questo artista?"
-    )
+    // Nuovo messaggio (la lista totale cresce) → scorri in fondo
+    LaunchedEffect(messages.size) {
+        if (shown.isNotEmpty()) listState.animateScrollToItem(shown.size - 1)
+    }
+    // Scroll verso l'alto → carica un altro blocco più vecchio
+    LaunchedEffect(recipient.id) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { idx -> if (idx <= 1 && visibleCount < messages.size) visibleCount += pageSize }
+    }
 
     Column(
         modifier = modifier
@@ -183,37 +188,8 @@ fun ChatScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            items(messages, key = { it.id }) { message ->
+            items(shown, key = { it.id }) { message ->
                 MessageBubble(message = message)
-            }
-        }
-
-        // Quick Preset Reply Chips
-        LazyRow(
-            modifier = Modifier.fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(quickReplies) { prompt ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(DarkGraphite)
-                        .border(1.dp, CharcoalBorder, RoundedCornerShape(16.dp))
-                        .clickable {
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                            onSendMessage(prompt)
-                        }
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = prompt,
-                        color = PureWhite,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
             }
         }
 

@@ -89,7 +89,8 @@ data class MusicUiState(
     // anche quando non arrivano nuovi eventi da Firestore.
     val liveTick: Long = 0L,
     val applyCoverToFeed: Boolean = false,
-    val liveNotificationsEnabled: Boolean = true
+    val liveNotificationsEnabled: Boolean = true,
+    val showChangelog: Boolean = false
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -122,7 +123,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val userSettingsPrefs = appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
         val initialApplyCover = userSettingsPrefs.getBoolean("apply_cover_to_feed", false)
         val initialLiveNotifs = userSettingsPrefs.getBoolean("live_notifications_enabled", true)
-        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs) }
+        // Changelog: mostralo una sola volta dopo un aggiornamento (non al primissimo avvio).
+        val lastChangelogCode = userSettingsPrefs.getInt("last_changelog_code", 0)
+        val showChangelog = BuildConfig.VERSION_CODE > lastChangelogCode
+        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs, showChangelog = showChangelog) }
 
         SpotifyAuthRepository.loadTokens(appContext)
         checkForUpdate()
@@ -188,6 +192,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun dismissUpdate() {
         _uiState.update { it.copy(availableUpdate = null) }
+    }
+
+    fun dismissChangelog() {
+        appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
+            .edit().putInt("last_changelog_code", BuildConfig.VERSION_CODE).apply()
+        _uiState.update { it.copy(showChangelog = false) }
     }
 
     // ===================== AUTH =====================
@@ -1309,6 +1319,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (senderId.isBlank()) return
         FirebaseRepository.getUsersByIds(listOf(senderId)) { users ->
             users.firstOrNull()?.let { openChat(it) }
+        }
+    }
+
+    /**
+     * Azzera TUTTI gli overlay/dialog aperti, così la navigazione da notifica porta davvero
+     * al punto di riferimento indipendentemente da dove ci si trova nell'app.
+     */
+    fun clearOverlaysForNavigation() {
+        com.example.AppFirebaseMessagingService.openChatUserId = null
+        _uiState.update {
+            it.copy(
+                activeProfileUser = null,
+                isChatListOpen = false,
+                activeChatUser = null,
+                activeStoryUserIndex = null,
+                isShareSheetOpen = false,
+                showPeopleSearch = false,
+                showNotifications = false,
+                selectedTrackDetail = null
+            )
         }
     }
 

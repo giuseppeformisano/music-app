@@ -151,15 +151,20 @@ class MainActivity : ComponentActivity() {
         val hostUserId = intent.getStringExtra("hostUserId")
         val senderId = intent.getStringExtra("senderId")
 
-        if (openLiveBool || openLiveString == "true" || notifType == "live_start") {
-            if (!hostUserId.isNullOrBlank()) {
-                viewModel.openLiveFromNotification(hostUserId)
-            }
-        } else if (openChatBool || openChatString == "true" || notifType == "new_message") {
-            if (!senderId.isNullOrBlank()) {
-                viewModel.openChatFromNotification(senderId)
-            }
-        } else if (openBool || openString == "true" || notifType == "follow_request") {
+        val isLiveNav = openLiveBool || openLiveString == "true" || notifType == "live_start"
+        val isChatNav = openChatBool || openChatString == "true" || notifType == "new_message"
+        val isFollowNav = openBool || openString == "true" || notifType == "follow_request"
+
+        // Porta SEMPRE al punto della notifica, da qualsiasi sezione: prima azzera gli overlay.
+        if (isLiveNav || isChatNav || isFollowNav) {
+            viewModel.clearOverlaysForNavigation()
+        }
+
+        if (isLiveNav) {
+            if (!hostUserId.isNullOrBlank()) viewModel.openLiveFromNotification(hostUserId)
+        } else if (isChatNav) {
+            if (!senderId.isNullOrBlank()) viewModel.openChatFromNotification(senderId)
+        } else if (isFollowNav) {
             viewModel.openNotifications()
         }
     }
@@ -450,6 +455,15 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onShareToMyFeed = { trk -> viewModel.shareTrack(trk) },
                 isMyTrack = isMyTrack,
                 onDeleteTrack = { trk -> viewModel.deleteSharedTrack(trk) }
+            )
+        }
+
+        // Dialog: Changelog (mostrato una volta dopo un aggiornamento)
+        if (uiState.isLoggedIn && uiState.showChangelog) {
+            com.example.ui.components.ChangelogDialog(
+                title = com.example.AppChangelog.TITLE,
+                lines = com.example.AppChangelog.LINES,
+                onDismiss = { viewModel.dismissChangelog() }
             )
         }
     }
