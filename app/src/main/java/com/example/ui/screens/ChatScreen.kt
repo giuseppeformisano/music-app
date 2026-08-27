@@ -291,9 +291,10 @@ fun ChatScreen(
 
 /**
  * Palette cromatica per l'utente (coppia di colori contrastanti ed eleganti):
- * - Se l'utente ha la copertina: i due colori sono derivati dalla copertina per creare armonia visiva.
- * - Se l'utente NON ha la copertina: genera due colori sobri, non troppo accesi (saturazione e luminosità bilanciate)
- *   ma nettamente contrastanti tra i due interlocutori (spostamento angolare garantito).
+ * - Se l'utente ha la copertina/sfondo: i due colori sono derivati dallo sfondo ma con rotazioni
+ *   cromatiche e saturazioni ben distinte tra mittente e destinatario.
+ * - Se l'utente NON ha la copertina: genera due colori distinti e contrastanti con offset calibrati,
+ *   evitando colori troppo spenti o troppo uguali.
  */
 data class UserChatPalette(
     val primaryBorder: Color,
@@ -304,14 +305,17 @@ data class UserChatPalette(
 private fun paletteForUser(user: User, isCurrent: Boolean): UserChatPalette {
     val cover = user.coverUrl
     if (!cover.isNullOrBlank()) {
-        // Deriva tonalità primaria e secondaria dalla copertina (tramite hash deterministico del path/URL o contenuto)
+        // Deriva tonalità primaria e secondaria dalla copertina con forte contrasto angolare
         val coverHash = kotlin.math.abs(cover.hashCode())
         val baseHue = (coverHash % 360).toFloat()
-        val contrastHue = (baseHue + 140f) % 360f // Angolo contrastante ma armonico
+        // Se è l'utente corrente usiamo la dominante e l'accento analogo (+45°),
+        // se è l'altro usiamo il polo complementare (+180°) e il suo accento (+225°)
+        val h1 = if (isCurrent) baseHue else (baseHue + 180f) % 360f
+        val h2 = if (isCurrent) (baseHue + 55f) % 360f else (baseHue + 235f) % 360f
 
-        val color1 = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, 0.55f, 0.90f)))
-        val color2 = Color(android.graphics.Color.HSVToColor(floatArrayOf(contrastHue, 0.48f, 0.85f)))
-        val bg = if (isCurrent) DarkGraphite.copy(alpha = 0.95f) else BlackCard.copy(alpha = 0.95f)
+        val color1 = Color(android.graphics.Color.HSVToColor(floatArrayOf(h1, 0.65f, 0.95f)))
+        val color2 = Color(android.graphics.Color.HSVToColor(floatArrayOf(h2, 0.52f, 0.88f)))
+        val bg = if (isCurrent) DarkGraphite.copy(alpha = 0.96f) else BlackCard.copy(alpha = 0.96f)
 
         return UserChatPalette(
             primaryBorder = color1,
@@ -320,15 +324,15 @@ private fun paletteForUser(user: User, isCurrent: Boolean): UserChatPalette {
         )
     }
 
-    // Utente SENZA copertina: colori procedurali non troppo accesi ma contrastanti
+    // Utente SENZA copertina: palette a due colori nettamente separata per mittente e destinatario
     val idHash = kotlin.math.abs(user.id.ifBlank { if (isCurrent) "me" else "other" }.hashCode())
-    // Se è l'utente corrente o l'altro, garantiamo un offset cromatico distinto di 150°
-    val baseHue = ((idHash + if (isCurrent) 0 else 150) % 360).toFloat()
-    val contrastHue = (baseHue + 160f) % 360f
+    // Offset di 170° garantito tra i due interlocutori
+    val baseHue = ((idHash + if (isCurrent) 10 else 180) % 360).toFloat()
+    val contrastHue = (baseHue + 45f) % 360f
 
-    // Saturazione moderata (0.42f - 0.50f) e luminosità non abbagliante (0.80f - 0.88f)
-    val color1 = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, 0.46f, 0.84f)))
-    val color2 = Color(android.graphics.Color.HSVToColor(floatArrayOf(contrastHue, 0.40f, 0.78f)))
+    // Saturazione e luminosità vivaci ma armoniose (non fluo)
+    val color1 = Color(android.graphics.Color.HSVToColor(floatArrayOf(baseHue, 0.58f, 0.92f)))
+    val color2 = Color(android.graphics.Color.HSVToColor(floatArrayOf(contrastHue, 0.48f, 0.86f)))
     val bg = if (isCurrent) DarkGraphite else BlackCard
 
     return UserChatPalette(
@@ -397,7 +401,16 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette) {
                 modifier = Modifier
                     .clip(bubbleShape)
                     .background(palette.bubbleBackground)
-                    .border(0.7.dp, palette.primaryBorder.copy(alpha = 0.65f), bubbleShape)
+                    .border(
+                        width = 0.8.dp,
+                        brush = Brush.horizontalGradient(
+                            colors = listOf(
+                                palette.primaryBorder.copy(alpha = 0.90f),
+                                palette.secondaryBorder.copy(alpha = 0.75f)
+                            )
+                        ),
+                        shape = bubbleShape
+                    )
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -428,11 +441,11 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette) {
                 .clip(bubbleShape)
                 .background(palette.bubbleBackground)
                 .border(
-                    width = 0.7.dp,
+                    width = 0.8.dp,
                     brush = Brush.horizontalGradient(
                         colors = listOf(
-                            palette.primaryBorder.copy(alpha = 0.65f),
-                            palette.secondaryBorder.copy(alpha = 0.50f)
+                            palette.primaryBorder.copy(alpha = 0.90f),
+                            palette.secondaryBorder.copy(alpha = 0.75f)
                         )
                     ),
                     shape = bubbleShape
