@@ -471,18 +471,28 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     // dalla live (si resta live finché la music-app riproduce/è in pausa).
     fun onAppForeground() {
         isAppInForeground = true
-        // Il resync/polling che parte subito dopo il rientro non deve generare notifiche live.
         suppressLivePushUntilMs = System.currentTimeMillis() + 5000L
+        // Torna in foreground con Premium: il polling riprende, il listener non deve
+        // gestire Spotify (evita doppioni con il polling).
+        com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = false
         setOnline(true)
     }
 
     fun onAppStopped() {
         isAppInForeground = false
+        // App in background con solo Spotify Premium: attiva il listener come fallback
+        // al polling (che non gira senza app aperta) per tenere la live attiva.
+        val hasPremium = _uiState.value.connectedServices["spotify"] == true
+        val hasFree = _uiState.value.connectedServices["spotify_free"] == true
+        com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = hasPremium && !hasFree
         setOnline(false)
     }
 
     fun onAppDestroyed() {
         isAppInForeground = false
+        val hasPremium = _uiState.value.connectedServices["spotify"] == true
+        val hasFree = _uiState.value.connectedServices["spotify_free"] == true
+        com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = hasPremium && !hasFree
         setOnline(false)
     }
 

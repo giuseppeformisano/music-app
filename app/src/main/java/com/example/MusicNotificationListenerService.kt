@@ -120,7 +120,11 @@ class MusicNotificationListenerService : NotificationListenerService() {
             val notifs = try { activeNotifications } catch (_: Exception) { null }
             fun hasNotif(pkg: String): Boolean = notifs?.any { it.packageName == pkg } ?: true
 
-            val spotifyController = if (isSpotifyFreeEnabled && hasNotif(SPOTIFY_PACKAGE))
+            // isSpotifyFreeEnabled → Spotify Free collegato
+            // isSpotifyPremiumBackground → Premium collegato ma app in background: il listener
+            // sostituisce il polling (che non gira senza app aperta) per tenere la live attiva.
+            val spotifyListenerActive = isSpotifyFreeEnabled || isSpotifyPremiumBackground
+            val spotifyController = if (spotifyListenerActive && hasNotif(SPOTIFY_PACKAGE))
                 controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE } else null
             val amazonController = if (isAmazonMusicEnabled && hasNotif(AMAZON_MUSIC_PACKAGE))
                 controllers.firstOrNull { it.packageName == AMAZON_MUSIC_PACKAGE } else null
@@ -269,6 +273,9 @@ class MusicNotificationListenerService : NotificationListenerService() {
         @Volatile private var instance: MusicNotificationListenerService? = null
         @Volatile var isSpotifyFreeEnabled: Boolean = true
         @Volatile var isAmazonMusicEnabled: Boolean = true
+        // True quando l'utente ha solo Spotify Premium (no Free) e l'app è in background:
+        // il listener prende il posto del polling per tenere la live attiva a app chiusa.
+        @Volatile var isSpotifyPremiumBackground: Boolean = false
 
         var onTrackChanged: ((title: String, artist: String, durationMs: Long, positionMs: Long, artUrl: String, source: String) -> Unit)? = null
         var onProgressChanged: ((positionMs: Long, durationMs: Long, source: String) -> Unit)? = null
