@@ -5,7 +5,7 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.13.10"
+    const val TITLE = "Novità · 0.13.11"
     val LINES = listOf(
         "Fix: le notifiche live ora non arrivano ad ogni cambio traccia (Amazon Music / Spotify Free).",
         "Fix: il toggle \"Disattiva notifiche live\" ora funziona correttamente.",
