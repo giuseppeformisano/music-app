@@ -309,5 +309,21 @@ class MusicNotificationListenerService : NotificationListenerService() {
         fun resyncCurrentTrack() {
             try { instance?.forceResync() } catch (_: Exception) {}
         }
+
+        /**
+         * Ferma il battito cardiaco e resetta lastTrack/lastSource.
+         * Da chiamare quando l'app chiude la live o l'app viene chiusa:
+         * così il prossimo rilevamento della stessa canzone è trattato come "nuovo"
+         * e aggiorna correttamente presenceState + currentTrack su Firestore.
+         */
+        fun forceStop(source: String = "") {
+            val svc = instance ?: return
+            if (source.isEmpty() || svc.lastSource == source) {
+                svc.handler.removeCallbacks(svc.heartbeat)
+                svc.lastTrack = ""
+                svc.lastSource = ""
+                svc.pendingTrack = null
+            }
+        }
     }
 }

@@ -496,7 +496,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val hasFree = _uiState.value.connectedServices["spotify_free"] == true
         val premiumBackground = hasPremium && !hasFree
         com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = premiumBackground
-        if (premiumBackground) com.example.MusicNotificationListenerService.startListening(appContext)
+        if (premiumBackground) {
+            // Resetta lastTrack prima di startListening: se la stessa canzone stava già suonando
+            // viene rilevata come "nuova" → updateLiveTrack chiama Firestore in background.
+            com.example.MusicNotificationListenerService.forceStop()
+            com.example.MusicNotificationListenerService.startListening(appContext)
+        }
         setOnline(false)
     }
 
@@ -623,6 +628,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
         wasLive = false
         wasLiveClearTimeMs = System.currentTimeMillis()
+        // Ferma heartbeat del listener e resetta lastTrack: impedisce che il battito cardiaco
+        // del service tenga viva la live su Firestore dopo che la canzone è stata fermata,
+        // e fa sì che la stessa canzone venga rilevata come "nuova" alla prossima apertura.
+        com.example.MusicNotificationListenerService.forceStop(source)
         val updatedUser = _uiState.value.currentUser.copy(
             currentTrack = null,
             presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE
