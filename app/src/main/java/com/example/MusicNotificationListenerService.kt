@@ -322,7 +322,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
                 svc.handler.removeCallbacks(svc.heartbeat)
                 svc.lastTrack = ""
                 svc.lastSource = ""
-                svc.pendingTrack = null
+                pendingTrack = null
             }
         }
     }
