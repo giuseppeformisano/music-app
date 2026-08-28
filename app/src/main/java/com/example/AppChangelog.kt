@@ -5,9 +5,8 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.13.14"
+    const val TITLE = "Novità · 0.13.15"
     val LINES = listOf(
-        "Fix: Spotify Premium ora va live correttamente anche con l'app chiusa (stessa canzone).",
-        "Fix: la live si azzera subito quando si ferma o si chiude Spotify."
+        "Fix: non risulti più in live quando Spotify è chiuso o in pausa."
     )
 }

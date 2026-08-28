@@ -75,8 +75,8 @@ class MusicNotificationListenerService : NotificationListenerService() {
     private fun loadPreferences() {
         try {
             val prefs = getSharedPreferences("connected_services", Context.MODE_PRIVATE)
-            isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", false) || prefs.getBoolean("spotify", true) || true
-            isAmazonMusicEnabled = prefs.getBoolean("amazon_music", false) || true
+            isSpotifyFreeEnabled = prefs.getBoolean("spotify_free", false)
+            isAmazonMusicEnabled = prefs.getBoolean("amazon_music", false)
         } catch (_: Exception) {}
     }
 

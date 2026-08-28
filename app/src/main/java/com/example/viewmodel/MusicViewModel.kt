@@ -530,8 +530,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun syncNotificationListenerServiceFlags() {
-        com.example.MusicNotificationListenerService.isSpotifyFreeEnabled = _uiState.value.connectedServices["spotify_free"] ?: false
-        com.example.MusicNotificationListenerService.isAmazonMusicEnabled = _uiState.value.connectedServices["amazon_music"] ?: false
+        val spotifyFree = _uiState.value.connectedServices["spotify_free"] ?: false
+        val amazon = _uiState.value.connectedServices["amazon_music"] ?: false
+        com.example.MusicNotificationListenerService.isSpotifyFreeEnabled = spotifyFree
+        com.example.MusicNotificationListenerService.isAmazonMusicEnabled = amazon
+        // Persiste i flag su SharedPreferences: il service li legge anche quando l'app è chiusa
+        appContext.getSharedPreferences("connected_services", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("spotify_free", spotifyFree)
+            .putBoolean("amazon_music", amazon)
+            .apply()
     }
 
     fun openNotificationListenerSettings(context: Context) {
