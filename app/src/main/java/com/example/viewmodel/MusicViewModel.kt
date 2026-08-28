@@ -480,11 +480,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     fun onAppStopped() {
         isAppInForeground = false
-        // App in background con solo Spotify Premium: attiva il listener come fallback
-        // al polling (che non gira senza app aperta) per tenere la live attiva.
         val hasPremium = _uiState.value.connectedServices["spotify"] == true
         val hasFree = _uiState.value.connectedServices["spotify_free"] == true
-        com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = hasPremium && !hasFree
+        val premiumBackground = hasPremium && !hasFree
+        com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = premiumBackground
+        // Forza subito un check: se Spotify sta già suonando la notifica non verrà ripostata,
+        // quindi onNotificationPosted non scatta → bisogna controllare manualmente lo stato.
+        if (premiumBackground) com.example.MusicNotificationListenerService.startListening(appContext)
         setOnline(false)
     }
 
@@ -492,7 +494,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         isAppInForeground = false
         val hasPremium = _uiState.value.connectedServices["spotify"] == true
         val hasFree = _uiState.value.connectedServices["spotify_free"] == true
-        com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = hasPremium && !hasFree
+        val premiumBackground = hasPremium && !hasFree
+        com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = premiumBackground
+        if (premiumBackground) com.example.MusicNotificationListenerService.startListening(appContext)
         setOnline(false)
     }
 
