@@ -20,6 +20,12 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 
 /**
  * Gestore ultra-ottimizzato per Firebase Firestore.
@@ -36,6 +42,55 @@ object FirebaseRepository {
     private const val CONVERSATIONS_COLLECTION = "conversations"
     private const val MESSAGES_SUBCOLLECTION = "messages"
     private const val PULSE_AUDIO_COLLECTION = "pulseAudio"
+    private const val RENDER_BASE_URL = "https://cross-notify-hub.onrender.com"
+    private const val RENDER_API_KEY = "cross-notify-secret-key-2026"
+    private val httpClient by lazy { OkHttpClient() }
+
+    private suspend fun uploadFileToCloudinary(base64: String, mimeType: String, filename: String): String? =
+        withContext(Dispatchers.IO) {
+            try {
+                val json = JSONObject().apply {
+                    put("appName", "music-app")
+                    put("fileBase64", base64)
+                    put("mimeType", mimeType)
+                    put("filename", filename)
+                }
+                val body = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("$RENDER_BASE_URL/upload-file")
+                    .addHeader("x-api-key", RENDER_API_KEY)
+                    .post(body)
+                    .build()
+                val response = httpClient.newCall(request).execute()
+                val responseBody = response.body?.string()
+                if (response.isSuccessful && responseBody != null)
+                    JSONObject(responseBody).optString("url").takeIf { it.isNotBlank() }
+                else null
+            } catch (e: Exception) {
+                Log.w(TAG, "uploadFileToCloudinary fallita: ${e.message}")
+                null
+            }
+        }
+
+    private fun downloadToCache(context: android.content.Context, audioId: String, url: String, onFile: (String?) -> Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val file = File(context.cacheDir, "pulse_play_$audioId.m4a")
+                if (file.exists() && file.length() > 0L) { onFile(file.absolutePath); return@launch }
+                val request = Request.Builder().url(url).build()
+                val response = httpClient.newCall(request).execute()
+                if (response.isSuccessful) {
+                    response.body?.bytes()?.let { bytes ->
+                        file.writeBytes(bytes)
+                        onFile(file.absolutePath)
+                    } ?: onFile(null)
+                } else onFile(null)
+            } catch (e: Exception) {
+                Log.w(TAG, "downloadToCache fallita: ${e.message}")
+                onFile(null)
+            }
+        }
+    }
 
     private val firestore: FirebaseFirestore? by lazy {
         try {
@@ -806,7 +861,7 @@ object FirebaseRepository {
 
         val isPulse = !pulse.isNullOrBlank()
 
-        fun proceed(pulseAudioId: String?) {
+        fun proceed(pulseAudioId: String?, pulseAudioUrl: String? = null) {
         val messageMap = hashMapOf<String, Any?>(
             "id" to messageId,
             "senderId" to senderId,
@@ -814,7 +869,8 @@ object FirebaseRepository {
             "timestamp" to now,
             "attachedTrack" to trackMap,
             "pulse" to pulse,
-            "pulseAudioId" to pulseAudioId
+            "pulseAudioId" to pulseAudioId,
+            "pulseAudioUrl" to (pulseAudioUrl ?: "")
         )
 
         val convUpdate = hashMapOf<String, Any?>(
@@ -846,7 +902,8 @@ object FirebaseRepository {
                                         "senderName" to senderName,
                                         "avatarUrl" to pushAvatar,
                                         "pulse" to (pulse ?: ""),
-                                        "pulseAudioId" to (pulseAudioId ?: "")
+                                        "pulseAudioId" to (pulseAudioId ?: ""),
+                                        "pulseAudioUrl" to (pulseAudioUrl ?: "")
                                     )
                                 )
                             } else {
@@ -874,39 +931,54 @@ object FirebaseRepository {
             .addOnFailureListener { e -> Log.e(TAG, "Errore invio messaggio: ${e.message}") }
         } // fine proceed
 
-        // Se c'è la voce, salvala prima su Firestore (doc a parte) e usane l'id nel messaggio.
+        // Upload audio: prima tenta Cloudinary, fallback su Firestore.
         if (!pulseAudioBase64.isNullOrBlank()) {
-            db.collection(PULSE_AUDIO_COLLECTION)
-                .add(mapOf("data" to pulseAudioBase64, "createdAt" to now))
-                .addOnSuccessListener { ref -> onAudioSaved?.invoke(true); proceed(ref.id) }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "Scrittura pulseAudio FALLITA: ${e.message}")
-                    onAudioSaved?.invoke(false)
-                    proceed(null)
+            CoroutineScope(Dispatchers.IO).launch {
+                val url = uploadFileToCloudinary(pulseAudioBase64, "audio/mp4", "$messageId.m4a")
+                if (url != null) {
+                    onAudioSaved?.invoke(true)
+                    proceed(null, url)
+                } else {
+                    // Fallback: vecchio percorso Firestore.
+                    db.collection(PULSE_AUDIO_COLLECTION)
+                        .add(mapOf("data" to pulseAudioBase64, "createdAt" to now))
+                        .addOnSuccessListener { ref -> onAudioSaved?.invoke(true); proceed(ref.id, null) }
+                        .addOnFailureListener { e ->
+                            Log.e(TAG, "Scrittura pulseAudio FALLITA: ${e.message}")
+                            onAudioSaved?.invoke(false)
+                            proceed(null, null)
+                        }
                 }
+            }
         } else {
-            proceed(null)
+            proceed(null, null)
         }
     }
 
-    /** Scarica la voce di un Pulse (base64 su Firestore) e la scrive in un file temporaneo. */
-    fun fetchPulseAudioToFile(context: android.content.Context, audioId: String, onFile: (String?) -> Unit) {
-        if (audioId.isBlank()) { onFile(null); return }
-        // CACHE LOCALE: se l'audio è già stato scaricato una volta, lo riusiamo dal file locale
-        // → nessuna nuova lettura su Firestore ad ogni riproduzione (1 sola lettura per Pulse).
-        val cached = java.io.File(context.cacheDir, "pulse_play_$audioId.m4a")
+    /** Scarica la voce di un Pulse e la scrive in un file temporaneo.
+     *  Percorso nuovo: scarica da [audioUrl] (Cloudinary).
+     *  Fallback retrocompatibile: legge Base64 da Firestore tramite [audioId]. */
+    fun fetchPulseAudioToFile(context: android.content.Context, audioId: String, onFile: (String?) -> Unit, audioUrl: String? = null) {
+        val cacheKey = if (!audioUrl.isNullOrBlank()) audioId.ifBlank { audioUrl.hashCode().toString() } else audioId
+        if (cacheKey.isBlank() && audioUrl.isNullOrBlank()) { onFile(null); return }
+        val cached = java.io.File(context.cacheDir, "pulse_play_$cacheKey.m4a")
         if (cached.exists() && cached.length() > 0L) { onFile(cached.absolutePath); return }
-        val db = firestore
-        if (db == null) { onFile(null); return }
+        // Percorso nuovo: download diretto da Cloudinary URL.
+        if (!audioUrl.isNullOrBlank()) {
+            downloadToCache(context, cacheKey, audioUrl, onFile)
+            return
+        }
+        // Fallback: vecchio percorso Firestore.
+        if (audioId.isBlank()) { onFile(null); return }
+        val db = firestore ?: run { onFile(null); return }
         db.collection(PULSE_AUDIO_COLLECTION).document(audioId).get()
             .addOnSuccessListener { doc ->
                 val b64 = doc?.getString("data")
                 if (b64.isNullOrBlank()) { onFile(null); return@addOnSuccessListener }
                 try {
                     val bytes = android.util.Base64.decode(b64, android.util.Base64.NO_WRAP)
-                    val f = java.io.File(context.cacheDir, "pulse_play_$audioId.m4a")
-                    f.writeBytes(bytes)
-                    onFile(f.absolutePath)
+                    cached.writeBytes(bytes)
+                    onFile(cached.absolutePath)
                 } catch (_: Exception) { onFile(null) }
             }
             .addOnFailureListener { onFile(null) }
@@ -948,7 +1020,8 @@ object FirebaseRepository {
                         isFromMe = senderId == currentUserId,
                         attachedTrack = track,
                         pulse = data["pulse"] as? String,
-                        pulseAudioId = data["pulseAudioId"] as? String
+                        pulseAudioId = data["pulseAudioId"] as? String,
+                        pulseAudioUrl = (data["pulseAudioUrl"] as? String)?.takeIf { it.isNotBlank() }
                     )
                 }.sortedBy { it.timestamp }
                 onMessages(messages)

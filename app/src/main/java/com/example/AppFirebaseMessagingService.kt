@@ -80,6 +80,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
                         putExtra("avatarUrl", avatarUrl)
                         putExtra("pulse", pulse)
                         putExtra("pulseAudioId", data["pulseAudioId"] ?: "")
+                        putExtra("pulseAudioUrl", data["pulseAudioUrl"] ?: "")
                     }
                     isChat -> {
                         putExtra(MainActivity.EXTRA_OPEN_CHAT, true)

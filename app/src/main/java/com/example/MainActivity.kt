@@ -171,7 +171,8 @@ class MainActivity : ComponentActivity() {
                     senderName = intent.getStringExtra("senderName") ?: "",
                     avatarUrl = intent.getStringExtra("avatarUrl") ?: "",
                     samples = samples,
-                    audioId = intent.getStringExtra("pulseAudioId")?.takeIf { it.isNotBlank() }
+                    audioId = intent.getStringExtra("pulseAudioId")?.takeIf { it.isNotBlank() },
+                    audioUrl = intent.getStringExtra("pulseAudioUrl")?.takeIf { it.isNotBlank() }
                 )
             }
             return

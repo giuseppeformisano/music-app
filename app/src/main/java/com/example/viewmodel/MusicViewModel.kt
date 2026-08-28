@@ -1432,10 +1432,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(feedbackToast = diag) }
     }
 
-    fun openPulseFromNotification(senderId: String, senderName: String, avatarUrl: String, samples: String, audioId: String? = null) {
+    fun openPulseFromNotification(senderId: String, senderName: String, avatarUrl: String, samples: String, audioId: String? = null, audioUrl: String? = null) {
         if (samples.isBlank()) return
         _uiState.update {
-            it.copy(activePulse = com.example.model.ActivePulse(senderId, senderName, avatarUrl, samples, audioId))
+            it.copy(activePulse = com.example.model.ActivePulse(senderId, senderName, avatarUrl, samples, audioId, audioUrl))
         }
     }
 

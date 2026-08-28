@@ -90,7 +90,9 @@ data class ChatMessage(
     // "Pulse": inviluppo (ampiezze per campione). Se presente, il messaggio è un Pulse.
     val pulse: String? = null,
     // Id del documento pulseAudio (voce AAC base64 su Firestore). Null = Pulse solo tattile.
-    val pulseAudioId: String? = null
+    val pulseAudioId: String? = null,
+    // URL Cloudinary (nuovo percorso). Supera pulseAudioId per i messaggi nuovi.
+    val pulseAudioUrl: String? = null
 ) {
     /** Formatta il timestamp in "HH:mm" per la UI */
     val formattedTime: String
@@ -106,7 +108,8 @@ data class ActivePulse(
     val senderName: String,
     val avatarUrl: String,
     val samples: String,
-    val audioId: String? = null
+    val audioId: String? = null,
+    val audioUrl: String? = null
 )
 
 data class Conversation(

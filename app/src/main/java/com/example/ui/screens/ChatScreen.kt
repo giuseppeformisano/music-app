@@ -432,12 +432,13 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, sender
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         onClick = {
-                            val aid = message.pulseAudioId
-                            if (!aid.isNullOrBlank() && pulseAudioPath == null) {
-                                com.example.data.FirebaseRepository.fetchPulseAudioToFile(ctx, aid) { path ->
+                            val aid = message.pulseAudioId ?: ""
+                            val aurl = message.pulseAudioUrl
+                            if ((!aid.isNullOrBlank() || !aurl.isNullOrBlank()) && pulseAudioPath == null) {
+                                com.example.data.FirebaseRepository.fetchPulseAudioToFile(ctx, aid, { path ->
                                     pulseAudioPath = path
                                     pulseTrigger++
-                                }
+                                }, audioUrl = aurl)
                             } else {
                                 pulseTrigger++
                             }
