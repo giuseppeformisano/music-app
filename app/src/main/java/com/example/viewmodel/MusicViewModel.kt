@@ -85,6 +85,7 @@ data class MusicUiState(
     val followerDetails: List<User> = emptyList(),
     val followingDetails: List<User> = emptyList(),
     val isNotificationListenerEnabled: Boolean = false,
+    val showNotificationOnboarding: Boolean = false,
     // Aumenta periodicamente per forzare la riValutazione del TTL di staleness dei live
     // anche quando non arrivano nuovi eventi da Firestore.
     val liveTick: Long = 0L,
@@ -528,6 +529,23 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             // finché non cambi traccia).
             com.example.MusicNotificationListenerService.resyncCurrentTrack()
         }
+        checkOnboardingNeeded()
+    }
+
+    fun checkOnboardingNeeded() {
+        val shown = appContext.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+            .getBoolean("notif_onboarding_shown", false)
+        val enabled = com.example.MusicNotificationListenerService.isEnabled(appContext)
+        if (!shown && !enabled && _uiState.value.isLoggedIn) {
+            _uiState.update { it.copy(showNotificationOnboarding = true) }
+        }
+    }
+
+    fun completeNotificationOnboarding(openSettings: Boolean, context: android.content.Context) {
+        appContext.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("notif_onboarding_shown", true).apply()
+        _uiState.update { it.copy(showNotificationOnboarding = false) }
+        if (openSettings) openNotificationListenerSettings(context)
     }
 
     private fun syncNotificationListenerServiceFlags() {

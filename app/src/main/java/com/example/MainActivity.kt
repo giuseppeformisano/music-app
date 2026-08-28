@@ -49,6 +49,7 @@ import com.example.ui.screens.ChatListScreen
 import com.example.ui.screens.LiveDetailScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.MainFeedScreen
+import com.example.ui.screens.NotificationOnboardingScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.MyApplicationTheme
@@ -300,21 +301,30 @@ fun MusicApp(viewModel: MusicViewModel) {
                     loginError = uiState.loginError
                 )
             } else {
-                // Solo gli utenti effettivamente seguiti appaiono nel feed e nelle live
-                val followingIds = uiState.currentUser.followingIds
-                MainFeedScreen(
-                    currentUser = uiState.currentUser,
-                    feedUsers = uiState.feedUsers.filter { followingIds.contains(it.id) },
-                    stories = viewModel.getStoriesList(),
-                    onOpenLiveDetail = { user -> viewModel.openStory(user) },
-                    onOpenProfile = { user -> viewModel.openProfile(user) },
-                    onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
-                    onOpenShareSheet = { viewModel.openShareSheet() },
-                    onOpenPeopleSearch = { viewModel.openPeopleSearch() },
-                    feedbackToast = uiState.feedbackToast,
-                    onClearToast = { viewModel.clearToast() },
-                    applyCoverToFeed = uiState.applyCoverToFeed
-                )
+                if (uiState.showNotificationOnboarding) {
+                    NotificationOnboardingScreen(
+                        onEnable = { viewModel.completeNotificationOnboarding(openSettings = true, context = context) },
+                        onSkip = { viewModel.completeNotificationOnboarding(openSettings = false, context = context) }
+                    )
+                } else {
+                    // Solo gli utenti effettivamente seguiti appaiono nel feed e nelle live
+                    val followingIds = uiState.currentUser.followingIds
+                    MainFeedScreen(
+                        currentUser = uiState.currentUser,
+                        feedUsers = uiState.feedUsers.filter { followingIds.contains(it.id) },
+                        stories = viewModel.getStoriesList(),
+                        onOpenLiveDetail = { user -> viewModel.openStory(user) },
+                        onOpenProfile = { user -> viewModel.openProfile(user) },
+                        onSelectTrack = { track, user -> viewModel.inspectTrack(track, user) },
+                        onOpenShareSheet = { viewModel.openShareSheet() },
+                        onOpenPeopleSearch = { viewModel.openPeopleSearch() },
+                        feedbackToast = uiState.feedbackToast,
+                        onClearToast = { viewModel.clearToast() },
+                        applyCoverToFeed = uiState.applyCoverToFeed,
+                        isNotificationListenerEnabled = uiState.isNotificationListenerEnabled,
+                        onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) }
+                    )
+                }
             }
         }
 
