@@ -371,12 +371,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 emptyPollCount++
                 if (emptyPollCount < 2) return
                 emptyPollCount = 0
-                val updatedUser = _uiState.value.currentUser.copy(
-                    currentTrack = null,
-                    presenceState = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE
-                )
+                val fallback = if (isAppInForeground) com.example.model.UserPresenceState.ONLINE else com.example.model.UserPresenceState.OFFLINE
+                val updatedUser = _uiState.value.currentUser.copy(currentTrack = null, presenceState = fallback)
                 _uiState.update { it.copy(nowPlayingTrack = null, currentUser = updatedUser) }
-                FirebaseRepository.syncCurrentUser(updatedUser)
+                // clearLiveTrack azzera esplicitamente isLiveNow + currentTrack su Firestore;
+                // syncCurrentUser potrebbe non scrivere isLiveNow=false se non è nel modello.
+                FirebaseRepository.clearLiveTrack(updatedUser.id, fallback)
+                com.example.MusicNotificationListenerService.forceStop("spotify")
             }
 
             is SpotifyWebApiRepository.PlaybackResult.Playing ->
