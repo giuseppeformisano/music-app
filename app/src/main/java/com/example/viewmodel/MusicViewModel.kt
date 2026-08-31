@@ -473,7 +473,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     // dalla live (si resta live finché la music-app riproduce/è in pausa).
     fun onAppForeground() {
         isAppInForeground = true
-        suppressLivePushUntilMs = System.currentTimeMillis() + 5000L
+        suppressLivePushUntilMs = System.currentTimeMillis() + 30_000L
         // Torna in foreground con Premium: il polling riprende, il listener non deve
         // gestire Spotify (evita doppioni con il polling).
         com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = false
@@ -1229,7 +1229,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         wasLive = true
         // Gap < 45s tra stop e play = cambio traccia (Amazon Music, Spotify Free tra brani):
         // non è una nuova sessione live → nessuna notifica.
-        if (System.currentTimeMillis() - wasLiveClearTimeMs < 45_000L && wasLiveClearTimeMs > 0L) return
+        if (System.currentTimeMillis() - wasLiveClearTimeMs < 180_000L && wasLiveClearTimeMs > 0L) return
         // Se è solo il resync all'apertura dell'app (traccia già in riproduzione), non notificare:
         // la notifica live è SOLO per l'inizio effettivo di un brano.
         if (System.currentTimeMillis() < suppressLivePushUntilMs) return

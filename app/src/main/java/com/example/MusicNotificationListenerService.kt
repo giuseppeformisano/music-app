@@ -70,7 +70,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
     // Ultima attività "live" rilevata: usata per capire se è una NUOVA sessione di ascolto
     // (=> push agli amici) o solo un cambio traccia dentro la stessa sessione (=> niente push).
     private var lastLiveActivityAt = 0L
-    private val newSessionGapMs = 60_000L
+    private val newSessionGapMs = 300_000L
 
     private fun loadPreferences() {
         try {
