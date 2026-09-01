@@ -13,7 +13,7 @@ import android.os.VibratorManager
  */
 object PulseHaptics {
     const val SAMPLE_MS = 50L
-    const val SAMPLE_COUNT = 100          // 5000ms / 50ms
+    const val SAMPLE_COUNT = 200          // 10000ms / 50ms
     const val DURATION_MS = SAMPLE_MS * SAMPLE_COUNT
 
     private fun vibrator(context: Context): Vibrator? = try {

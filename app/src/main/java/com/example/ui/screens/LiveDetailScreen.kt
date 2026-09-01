@@ -179,6 +179,8 @@ fun LiveDetailScreen(
     val pulsePressed = remember { mutableStateOf(false) }
     // Intensità delle barre durante la registrazione = livello reale della voce dal microfono
     var pulseIntensity by remember { mutableFloatStateOf(0f) }
+    // Buffer campioni onda per visualizzazione scrolling
+    val waveformSamples = remember { mutableStateListOf<Float>() }
 
     // Effetto bottone 3D: la foto scende alla pressione (↓) e risale al rilascio (↑)
     val avatarPressTranslation by animateFloatAsState(
@@ -200,6 +202,33 @@ fun LiveDetailScreen(
         animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart),
         label = "scanPhase"
     )
+    // Anelli pulsanti idle + hint blink
+    val ringTransition = rememberInfiniteTransition(label = "ring")
+    val ring1Scale by ringTransition.animateFloat(
+        initialValue = 0.95f, targetValue = 1.10f,
+        animationSpec = infiniteRepeatable(tween(2100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ring1Scale"
+    )
+    val ring1Alpha by ringTransition.animateFloat(
+        initialValue = 0.80f, targetValue = 0.10f,
+        animationSpec = infiniteRepeatable(tween(2100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ring1Alpha"
+    )
+    val ring2Scale by ringTransition.animateFloat(
+        initialValue = 1.07f, targetValue = 0.93f,
+        animationSpec = infiniteRepeatable(tween(2800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ring2Scale"
+    )
+    val ring2Alpha by ringTransition.animateFloat(
+        initialValue = 0.40f, targetValue = 0.06f,
+        animationSpec = infiniteRepeatable(tween(2800, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "ring2Alpha"
+    )
+    val hintBlink by ringTransition.animateFloat(
+        initialValue = 1f, targetValue = 0.28f,
+        animationSpec = infiniteRepeatable(tween(1700, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "hintBlink"
+    )
 
     LaunchedEffect(pulseRecording) {
         if (!pulseRecording) return@LaunchedEffect
@@ -215,12 +244,15 @@ fun LiveDetailScreen(
                 val level = if (started) recorder.level() else 0f
                 pulseIntensity = level
                 amps.add((level * 255f).toInt().coerceIn(0, 255))
+                waveformSamples.add(level)
+                if (waveformSamples.size > 40) waveformSamples.removeAt(0)
             }
         } catch (_: Exception) {}
         // Ferma e ottieni la voce in AAC base64 (verrà salvata su Firestore).
         val audioB64 = recorder.stopAndGetBase64()
         pulseIntensity = 0f
         pulseRecording = false
+        waveformSamples.clear()
         // Pad fino a lunghezza piena (silenzio finale) e invia se c'è voce.
         while (amps.size < com.example.data.PulseHaptics.SAMPLE_COUNT) amps.add(0)
         val env = com.example.data.PulseHaptics.encodeEnvelope(amps.toIntArray())
@@ -345,6 +377,22 @@ fun LiveDetailScreen(
                             .height(200.dp)
                     )
 
+                    // Anelli pulsanti (idle) che invitano a premere l'avatar
+                    if (!pulseRecording) {
+                        Box(
+                            modifier = Modifier
+                                .size(180.dp)
+                                .graphicsLayer { scaleX = ring1Scale; scaleY = ring1Scale; alpha = ring1Alpha }
+                                .border(1.5.dp, pulseAccent.copy(alpha = ring1Alpha * 0.9f), CircleShape)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .size(208.dp)
+                                .graphicsLayer { scaleX = ring2Scale; scaleY = ring2Scale; alpha = ring2Alpha }
+                                .border(1.dp, pulseAccent.copy(alpha = ring2Alpha * 0.7f), CircleShape)
+                        )
+                    }
+
                     // Cerchio Avatar Profilo al centro dell'onda
                     Box(
                         modifier = Modifier
@@ -400,47 +448,33 @@ fun LiveDetailScreen(
                     }
                 }
 
-                // Pulsante Pulse — stessa gesture dell'avatar, entry point esplicito
-                androidx.compose.animation.AnimatedVisibility(
-                    visible = !pulseRecording,
-                    enter = androidx.compose.animation.fadeIn(),
-                    exit = androidx.compose.animation.fadeOut()
+                // Hint "HOLD TO PULSE" — pulsa in idle, si attenua durante la registrazione
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Box(
                         modifier = Modifier
-                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
-                            .background(pulseAccent.copy(alpha = 0.18f))
-                            .border(1.dp, pulseAccent.copy(alpha = 0.45f), androidx.compose.foundation.shape.RoundedCornerShape(50))
-                            .pointerInput(user.id) {
-                                awaitEachGesture {
-                                    awaitFirstDown(requireUnconsumed = false)
-                                    pulsePressed.value = true
-                                    if (!pulseRecording) pulseRecording = true
-                                    waitForUpOrCancellation()
-                                    pulsePressed.value = false
-                                }
-                            }
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        androidx.compose.foundation.layout.Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            androidx.compose.material3.Icon(
-                                imageVector = Icons.Default.Mic,
-                                contentDescription = null,
-                                tint = pulseAccent,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = "Tieni premuto · Pulse",
-                                color = pulseAccent,
-                                fontSize = 13.sp,
-                                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-                            )
-                        }
-                    }
+                            .width(22.dp)
+                            .height(1.dp)
+                            .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "HOLD TO PULSE",
+                        color = pulseAccent.copy(alpha = if (pulseRecording) 0.22f else hintBlink),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(22.dp)
+                            .height(1.dp)
+                            .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
+                    )
                 }
 
                 // 3. SEZIONE BRANO: Copertina + Titolo/Artista + Barra Temporale
@@ -730,6 +764,50 @@ fun LiveDetailScreen(
                     alpha = pulseOverlayAlpha
                 )
             }
+            // Waveform scorrente in basso (mezzo schermo, senza etichette)
+            if (pulseRecording && waveformSamples.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 114.dp)
+                        .fillMaxWidth(0.5f)
+                        .height(46.dp)
+                ) {
+                    Canvas(modifier = Modifier.fillMaxSize()) {
+                        val count = waveformSamples.size
+                        val totalSlots = 40
+                        val slotW = size.width / totalSlots
+                        val barW = (slotW * 0.60f).coerceAtLeast(1f)
+                        for (i in waveformSamples.indices) {
+                            val slot = totalSlots - count + i
+                            val amp = waveformSamples[i]
+                            val barH = (amp * size.height * 0.88f).coerceAtLeast(4f)
+                            val x = slot * slotW + (slotW - barW) / 2f
+                            drawRoundRect(
+                                color = pulseAccent,
+                                topLeft = androidx.compose.ui.geometry.Offset(x, (size.height - barH) / 2f),
+                                size = androidx.compose.ui.geometry.Size(barW, barH),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(barW / 2f),
+                                alpha = (0.65f + amp * 0.35f).coerceIn(0f, 1f)
+                            )
+                        }
+                        // Fade laterale elegante
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                listOf(Color.Black.copy(alpha = 0.95f), Color.Transparent),
+                                endX = size.width * 0.20f
+                            )
+                        )
+                        drawRect(
+                            brush = Brush.horizontalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.95f)),
+                                startX = size.width * 0.80f
+                            )
+                        )
+                    }
+                }
+            }
+
             // Linee scan ondulate full-width che attraversano l'area avatar
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val cy = size.height * 0.40f
