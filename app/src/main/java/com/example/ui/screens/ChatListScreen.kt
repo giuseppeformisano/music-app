@@ -75,6 +75,8 @@ fun ChatListScreen(
                 .statusBarsPadding()
                 .padding(top = 8.dp, bottom = 12.dp)
         ) {
+            // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog
+            Column(modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth()) {
             Text(
                 text = "Messaggi",
                 color = PureWhite,
@@ -114,6 +116,7 @@ fun ChatListScreen(
                     cursorColor = PureWhite
                 )
             )
+            } // fine header trascinabile
 
             Spacer(modifier = Modifier.height(10.dp))
 

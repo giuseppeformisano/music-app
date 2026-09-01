@@ -62,9 +62,9 @@ fun NotificationsDialog(
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp)
         ) {
-            // Header standardizzato in alto a sinistra
+            // Header standardizzato in alto a sinistra (trascinabile per chiudere)
             Row(
-                modifier = Modifier
+                modifier = LocalDialogDragHandle.current
                     .fillMaxWidth()
                     .padding(bottom = 20.dp),
                 verticalAlignment = Alignment.CenterVertically

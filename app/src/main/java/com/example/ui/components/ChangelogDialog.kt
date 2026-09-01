@@ -39,12 +39,14 @@ fun ChangelogDialog(
                 .fillMaxWidth(0.9f)
                 .padding(4.dp)
         ) {
+            // Titolo trascinabile: swipe up/down chiude la dialog
             Text(
                 text = "✨ $title",
                 color = PureWhite,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.3).sp
+                letterSpacing = (-0.3).sp,
+                modifier = LocalDialogDragHandle.current.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(14.dp))

@@ -1148,6 +1148,8 @@ private fun FollowersFollowingDialog(
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp)
         ) {
+            // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog
+            Column(modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth()) {
             // Header standardizzato in alto a sinistra
             Row(
                 modifier = Modifier
@@ -1193,6 +1195,7 @@ private fun FollowersFollowingDialog(
                     }
                 )
             }
+            } // fine header trascinabile
 
             // Lista utenti o empty state (senza riquadri grigi di sfondo)
             if (filtered.isEmpty()) {
@@ -1329,9 +1332,9 @@ private fun EditProfileDialog(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header standardizzato in alto a sinistra
+            // Header standardizzato in alto a sinistra (trascinabile per chiudere)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -1676,9 +1679,9 @@ private fun ConnectAccountsDialog(
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp)
         ) {
-            // Header standardizzato in alto a sinistra
+            // Header standardizzato in alto a sinistra (trascinabile per chiudere)
             Row(
-                modifier = Modifier
+                modifier = com.example.ui.components.LocalDialogDragHandle.current
                     .fillMaxWidth()
                     .padding(bottom = 24.dp),
                 verticalAlignment = Alignment.CenterVertically
@@ -1917,9 +1920,9 @@ private fun SettingsDialog(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header standardizzato in alto a sinistra
+            // Header standardizzato in alto a sinistra (trascinabile per chiudere)
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(

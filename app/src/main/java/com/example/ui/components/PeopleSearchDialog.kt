@@ -78,6 +78,8 @@ fun PeopleSearchDialog(
                 .padding(horizontal = 24.dp)
                 .padding(top = 36.dp, bottom = 20.dp)
         ) {
+            // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog
+            Column(modifier = LocalDialogDragHandle.current.fillMaxWidth()) {
             // Header standardizzato in alto a sinistra
             Row(
                 modifier = Modifier
@@ -125,6 +127,7 @@ fun PeopleSearchDialog(
                     cursorColor = PureWhite
                 )
             )
+            } // fine header trascinabile
 
             Spacer(modifier = Modifier.height(14.dp))
 

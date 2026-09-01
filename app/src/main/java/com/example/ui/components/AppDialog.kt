@@ -16,6 +16,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -40,6 +42,15 @@ import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+
+/**
+ * Modifier di trascinamento-per-chiudere esposto dal contenitore della dialog.
+ * Ogni dialog con scroll interno lo attacca al PROPRIO header (titolo ± barra di ricerca):
+ * così lo swipe up/down sull'header chiude, mentre il tap sulla barra continua a scrivere e
+ * le liste interne restano libere di scrollare. È `Modifier` (no-op) fuori da una dialog o
+ * quando la dialog non è chiudibile.
+ */
+val LocalDialogDragHandle = compositionLocalOf<Modifier> { Modifier }
 
 // Distanza (px) di trascinamento a cui il pannello è considerato "chiuso" e a cui il
 // backdrop è completamente dissolto: la transizione è LINEARE con la discesa.
@@ -178,30 +189,27 @@ private fun ImmersiveScaffold(
             else -> Modifier.fillMaxSize()
         }
 
+        // Handle esposto ai contenuti: le dialog con scroll interno lo attaccano al proprio
+        // header (titolo ± barra di ricerca). Fuori dai casi chiudibili è un no-op.
+        val dragHandle: Modifier = if (dismissible)
+            Modifier.draggable(
+                state = draggableState,
+                orientation = Orientation.Vertical,
+                onDragStopped = { velocity -> settle(velocity) }
+            )
+        else Modifier
+
         Box(modifier = boxModifier, contentAlignment = Alignment.Center) {
             backdrop(dragFraction, offsetY.value)
 
             Column(
                 modifier = Modifier.offset { IntOffset(0, offsetY.value.roundToInt()) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                content = content
-            )
-
-            // Zona handle: solo la fascia alta intercetta il drag per chiudere.
-            // Attiva solo quando dismissible=true e swipeAnywhere=false (dialogs con scroll interno).
-            if (dismissible && !swipeAnywhere) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .align(Alignment.TopCenter)
-                        .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                        .draggable(
-                            state = draggableState,
-                            orientation = Orientation.Vertical,
-                            onDragStopped = { velocity -> settle(velocity) }
-                        )
-                )
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                val columnScope = this
+                CompositionLocalProvider(LocalDialogDragHandle provides dragHandle) {
+                    with(columnScope) { content() }
+                }
             }
         }
     }

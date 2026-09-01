@@ -87,14 +87,14 @@ fun NowPlayingSheet(
                 .fillMaxWidth(0.92f)
                 .fillMaxHeight(0.86f)
         ) {
-            // Header — solo titolo, niente X
+            // Header — solo titolo, niente X (trascinabile: swipe up/down chiude)
             Text(
                 text = "CONDIVIDI UN BRANO",
                 color = SubtitleGray,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp,
-                modifier = Modifier.fillMaxWidth()
+                modifier = LocalDialogDragHandle.current.fillMaxWidth()
             )
 
             Spacer(modifier = Modifier.height(14.dp))

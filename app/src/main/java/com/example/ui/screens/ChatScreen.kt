@@ -148,9 +148,9 @@ fun ChatScreen(
                     .navigationBarsPadding()
                     .testTag("chat_screen_${recipient.id}")
             ) {
-                // Top Header minimale: allineato ai pulsanti del profilo utente (si chiude con lo slide down)
+                // Top Header minimale: trascinabile (swipe up/down chiude la chat)
                 Row(
-                    modifier = Modifier
+                    modifier = com.example.ui.components.LocalDialogDragHandle.current
                         .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
