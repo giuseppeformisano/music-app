@@ -43,7 +43,7 @@ fun UpdateBanner(
     if (!visible) return
 
     // Durante il download il pannello non si chiude (swipe/tap ignorati)
-    UtilityDialog(onDismiss = { if (downloadProgress == null) onDismiss() }) {
+    UtilityDialog(onDismiss = { if (downloadProgress == null) onDismiss() }, dismissible = false) {
         Column(modifier = Modifier.fillMaxWidth(0.86f).padding(horizontal = 4.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,

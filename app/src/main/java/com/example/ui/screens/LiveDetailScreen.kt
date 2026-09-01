@@ -307,7 +307,7 @@ fun LiveDetailScreen(
     val totalFormatted = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
     val progressFraction = (elapsedSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
 
-    com.example.ui.components.TrackDialog(coverUrl = track.coverUrl, onDismiss = onClose) {
+    com.example.ui.components.TrackDialog(coverUrl = track.coverUrl, onDismiss = onClose, swipeAnywhere = true) {
       Box(
         modifier = Modifier
             .fillMaxSize()

@@ -61,7 +61,7 @@ fun PulseReceiveDialog(pulse: ActivePulse, onDismiss: () -> Unit) {
         }
     }
 
-    UtilityDialog(onDismiss = onDismiss) {
+    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.9f)

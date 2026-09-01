@@ -59,6 +59,8 @@ private const val DISMISS_THRESHOLD = 240f
 @Composable
 private fun ImmersiveScaffold(
     onDismiss: () -> Unit,
+    swipeAnywhere: Boolean = false,
+    dismissible: Boolean = true,
     backdrop: @Composable (dragFraction: Float, offsetY: Float) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -143,14 +145,24 @@ private fun ImmersiveScaffold(
             }
         }
 
-        val dragFraction = (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f)
+        val dragFraction = if (dismissible) (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f) else 0f
 
-        Box(
-            modifier = Modifier
+        val boxModifier = when {
+            dismissible && swipeAnywhere -> Modifier
                 .fillMaxSize()
-                .nestedScroll(nested),
-            contentAlignment = Alignment.Center
-        ) {
+                .nestedScroll(nested)
+                .pointerInput(Unit) {
+                    detectVerticalDragGestures(
+                        onDragEnd = { settle() },
+                        onDragCancel = { settle() },
+                        onVerticalDrag = { _, dy -> scope.launch { offsetY.snapTo(offsetY.value + dy) } }
+                    )
+                }
+            dismissible -> Modifier.fillMaxSize().nestedScroll(nested)
+            else -> Modifier.fillMaxSize()
+        }
+
+        Box(modifier = boxModifier, contentAlignment = Alignment.Center) {
             backdrop(dragFraction, offsetY.value)
 
             Column(
@@ -160,23 +172,25 @@ private fun ImmersiveScaffold(
             )
 
             // Zona handle: solo la fascia alta intercetta il drag per chiudere.
-            // Il nested scroll gestisce già la chiusura dai bordi delle liste interne.
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .align(Alignment.TopCenter)
-                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                    .pointerInput(Unit) {
-                        detectVerticalDragGestures(
-                            onDragEnd = { settle() },
-                            onDragCancel = { settle() },
-                            onVerticalDrag = { _, dy ->
-                                scope.launch { offsetY.snapTo(offsetY.value + dy) }
-                            }
-                        )
-                    }
-            )
+            // Attiva solo quando dismissible=true e swipeAnywhere=false (dialogs con scroll interno).
+            if (dismissible && !swipeAnywhere) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .align(Alignment.TopCenter)
+                        .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = { settle() },
+                                onDragCancel = { settle() },
+                                onVerticalDrag = { _, dy ->
+                                    scope.launch { offsetY.snapTo(offsetY.value + dy) }
+                                }
+                            )
+                        }
+                )
+            }
         }
     }
 }
@@ -188,10 +202,14 @@ private fun ImmersiveScaffold(
 @Composable
 fun UtilityDialog(
     onDismiss: () -> Unit,
+    swipeAnywhere: Boolean = false,
+    dismissible: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     ImmersiveScaffold(
         onDismiss = onDismiss,
+        swipeAnywhere = swipeAnywhere,
+        dismissible = dismissible,
         backdrop = { frac, _ ->
             Box(
                 modifier = Modifier
@@ -211,10 +229,12 @@ fun UtilityDialog(
 fun TrackDialog(
     coverUrl: String,
     onDismiss: () -> Unit,
+    swipeAnywhere: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     ImmersiveScaffold(
         onDismiss = onDismiss,
+        swipeAnywhere = swipeAnywhere,
         backdrop = { frac, off ->
             // La copertina è lo sfondo del dialog e SCENDE + si dissolve INSIEME al
             // contenuto durante lo swipe (translationY = offset, alpha = 1 - frazione),
