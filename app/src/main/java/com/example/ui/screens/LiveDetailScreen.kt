@@ -464,7 +464,7 @@ fun LiveDetailScreen(
                     Box(
                         modifier = Modifier
                             .align(Alignment.Center)
-                            .offset(y = 86.dp)
+                            .offset { IntOffset(0, 86.dp.roundToPx()) }
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
