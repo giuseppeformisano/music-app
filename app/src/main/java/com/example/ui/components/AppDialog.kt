@@ -2,9 +2,12 @@ package com.example.ui.components
 
 import android.view.WindowManager
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -24,7 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalView
@@ -99,11 +101,30 @@ private fun ImmersiveScaffold(
         val scope = rememberCoroutineScope()
         val offsetY = remember { Animatable(0f) }
 
-        fun settle() {
+        // Settle: spring fisico con velocità — se il pannello è spostato abbastanza O il fling
+        // è abbastanza veloce nella direzione giusta, chiude; altrimenti torna a riposo con spring.
+        fun settle(velocity: Float = 0f) {
             scope.launch {
-                if (kotlin.math.abs(offsetY.value) > DISMISS_THRESHOLD) onDismiss()
-                else offsetY.animateTo(0f, tween(220))
+                val shouldDismiss = when {
+                    offsetY.value > DISMISS_THRESHOLD -> true
+                    offsetY.value < -DISMISS_THRESHOLD -> true
+                    offsetY.value > 0f && velocity > 1200f -> true
+                    offsetY.value < 0f && velocity < -1200f -> true
+                    else -> false
+                }
+                if (shouldDismiss) onDismiss()
+                else offsetY.animateTo(
+                    0f,
+                    spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                    initialVelocity = velocity
+                )
             }
+        }
+
+        // Stato drag condiviso: applica resistenza rubber-band oltre 200px per un feel fisico.
+        val draggableState = rememberDraggableState { rawDelta ->
+            val damped = if (kotlin.math.abs(offsetY.value) > 200f) rawDelta * 0.4f else rawDelta
+            scope.launch { offsetY.snapTo(offsetY.value + damped) }
         }
 
         // Nested scroll: consente lo swipe-per-chiudere (giù O su) anche partendo SOPRA una
@@ -111,7 +132,6 @@ private fun ImmersiveScaffold(
         val nested = remember {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // Se il pannello è già spostato, il primo scroll opposto lo riporta a riposo
                     val dy = available.y
                     if (offsetY.value > 0f && dy < 0f) {
                         val target = (offsetY.value + dy).coerceAtLeast(0f)
@@ -129,8 +149,6 @@ private fun ImmersiveScaffold(
                 }
 
                 override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // La lista non ha consumato lo scroll (è a un estremo) -> sposta il pannello
-                    // giù (available.y > 0) o su (available.y < 0)
                     if (available.y != 0f) {
                         scope.launch { offsetY.snapTo(offsetY.value + available.y) }
                         return Offset(0f, available.y)
@@ -139,7 +157,7 @@ private fun ImmersiveScaffold(
                 }
 
                 override suspend fun onPreFling(available: Velocity): Velocity {
-                    if (offsetY.value != 0f) { settle(); return available }
+                    if (offsetY.value != 0f) { settle(available.y); return available }
                     return Velocity.Zero
                 }
             }
@@ -151,13 +169,11 @@ private fun ImmersiveScaffold(
             dismissible && swipeAnywhere -> Modifier
                 .fillMaxSize()
                 .nestedScroll(nested)
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragEnd = { settle() },
-                        onDragCancel = { settle() },
-                        onVerticalDrag = { _, dy -> scope.launch { offsetY.snapTo(offsetY.value + dy) } }
-                    )
-                }
+                .draggable(
+                    state = draggableState,
+                    orientation = Orientation.Vertical,
+                    onDragStopped = { velocity -> settle(velocity) }
+                )
             dismissible -> Modifier.fillMaxSize().nestedScroll(nested)
             else -> Modifier.fillMaxSize()
         }
@@ -180,15 +196,11 @@ private fun ImmersiveScaffold(
                         .height(56.dp)
                         .align(Alignment.TopCenter)
                         .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragEnd = { settle() },
-                                onDragCancel = { settle() },
-                                onVerticalDrag = { _, dy ->
-                                    scope.launch { offsetY.snapTo(offsetY.value + dy) }
-                                }
-                            )
-                        }
+                        .draggable(
+                            state = draggableState,
+                            orientation = Orientation.Vertical,
+                            onDragStopped = { velocity -> settle(velocity) }
+                        )
                 )
             }
         }
