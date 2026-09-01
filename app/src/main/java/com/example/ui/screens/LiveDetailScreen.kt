@@ -769,6 +769,14 @@ fun LiveDetailScreen(
         // Oscuramento radiale durante la registrazione del Pulse:
         // gradiente trasparente al centro (avatar) → scuro ai bordi.
         // Le linee scan e le barrette PulseCircleWave restano visibili sopra.
+        // Waveform: alpha animata fuori da qualsiasi condizionale (regola Compose)
+        val waveformVisible = pulseRecording && waveformSamples.isNotEmpty()
+        val waveformAlpha by animateFloatAsState(
+            targetValue = if (waveformVisible) 1f else 0f,
+            animationSpec = tween(if (waveformVisible) 500 else 350),
+            label = "waveformAlpha"
+        )
+
         if (pulseOverlayAlpha > 0f) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val cx = size.width / 2f
@@ -782,13 +790,6 @@ fun LiveDetailScreen(
                     alpha = pulseOverlayAlpha
                 )
             }
-            // Waveform scorrente — più vicina all'avatar, fade morbido in/out
-            val waveformVisible = pulseRecording && waveformSamples.isNotEmpty()
-            val waveformAlpha by animateFloatAsState(
-                targetValue = if (waveformVisible) 1f else 0f,
-                animationSpec = tween(if (waveformVisible) 500 else 350),
-                label = "waveformAlpha"
-            )
             if (waveformAlpha > 0f) {
                 Box(
                     modifier = Modifier
