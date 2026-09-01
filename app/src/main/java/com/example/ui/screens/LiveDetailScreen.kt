@@ -764,14 +764,21 @@ fun LiveDetailScreen(
                     alpha = pulseOverlayAlpha
                 )
             }
-            // Waveform scorrente in basso (mezzo schermo, senza etichette)
-            if (pulseRecording && waveformSamples.isNotEmpty()) {
+            // Waveform scorrente — più vicina all'avatar, fade morbido in/out
+            val waveformVisible = pulseRecording && waveformSamples.isNotEmpty()
+            val waveformAlpha by animateFloatAsState(
+                targetValue = if (waveformVisible) 1f else 0f,
+                animationSpec = tween(if (waveformVisible) 500 else 350),
+                label = "waveformAlpha"
+            )
+            if (waveformAlpha > 0f) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(bottom = 114.dp)
+                        .padding(bottom = 210.dp)
                         .fillMaxWidth(0.5f)
                         .height(46.dp)
+                        .graphicsLayer { alpha = waveformAlpha }
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val count = waveformSamples.size

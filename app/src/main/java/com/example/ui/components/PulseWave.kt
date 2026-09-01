@@ -28,7 +28,7 @@ import kotlin.math.sin
 
 /** Compensazione (ms) per la latenza di avvio audio: ritarda vibrazione+onda per allinearle
  *  alla voce. Valore indicativo, da tarare per dispositivo. */
-private const val AUDIO_LATENCY_COMP_MS = 300L
+private const val AUDIO_LATENCY_COMP_MS = 450L
 
 /** Colore d'accento stabile e distinto per persona, derivato dall'id (tonalità HSV). */
 fun pulseAccentFor(id: String): Color {
