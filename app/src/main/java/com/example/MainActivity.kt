@@ -272,7 +272,7 @@ fun MusicApp(viewModel: MusicViewModel) {
 
     // Back handling for overlays/navigation
     BackHandler(
-        enabled = uiState.activeStoryUserIndex != null ||
+        enabled = uiState.activeStoryUserId != null ||
                 uiState.activeProfileUser != null ||
                 uiState.activeChatUser != null ||
                 uiState.isChatListOpen ||
@@ -284,7 +284,7 @@ fun MusicApp(viewModel: MusicViewModel) {
             uiState.showPeopleSearch -> viewModel.closePeopleSearch()
             uiState.showNotifications -> viewModel.closeNotifications()
             uiState.selectedTrackDetail != null -> viewModel.closeTrackInspector()
-            uiState.activeStoryUserIndex != null -> viewModel.closeStory()
+            uiState.activeStoryUserId != null -> viewModel.closeStory()
             uiState.activeChatUser != null -> viewModel.closeChat()
             uiState.isChatListOpen -> viewModel.closeChatList()
             uiState.activeProfileUser != null -> viewModel.closeProfile()
@@ -419,11 +419,10 @@ fun MusicApp(viewModel: MusicViewModel) {
             }
         }
 
-        // Dettaglio Live (stesso scaffold immersivo del dettaglio feed, con contenuti live)
-        if (uiState.activeStoryUserIndex != null) {
-            val allStories = viewModel.getStoriesList()
-            val activeIndex = uiState.activeStoryUserIndex
-            val liveUser = if (activeIndex != null && activeIndex in allStories.indices) allStories[activeIndex] else null
+        // Dettaglio Live: risolto per ID stabile, non per indice — la lista è dinamica.
+        // Se l'utente non è più live (non trovato nella lista), chiude automaticamente.
+        if (uiState.activeStoryUserId != null) {
+            val liveUser = viewModel.getStoriesList().firstOrNull { it.id == uiState.activeStoryUserId }
 
             if (liveUser != null) {
                 LiveDetailScreen(
@@ -440,6 +439,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onSendPulse = { u, samples, audio -> viewModel.sendPulse(u.id, samples, audio) },
                     onSetTrackAsCover = { trk -> viewModel.setTrackAsCover(trk) }
                 )
+            } else {
+                // L'utente ha chiuso la live: chiudi il dettaglio e torna alla lista
+                viewModel.closeStory()
             }
         }
 

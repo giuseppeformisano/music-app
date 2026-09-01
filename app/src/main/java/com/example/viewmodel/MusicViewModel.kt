@@ -55,7 +55,7 @@ data class MusicUiState(
         isCurrentUser = true
     ),
     val feedUsers: List<User> = emptyList(),
-    val activeStoryUserIndex: Int? = null,
+    val activeStoryUserId: String? = null,
     val isShareSheetOpen: Boolean = false,
     val searchTab: SearchTab = SearchTab.TRACKS,
     val nowPlayingTrack: Track? = null,
@@ -1266,27 +1266,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 it.copy(feedUsers = newFeed, currentUser = cu.copy(followingIds = ensuredFollowing))
             }
         }
-        // L'indice DEVE riferirsi a getStoriesList(): è ciò che il dettaglio live indicizza.
-        val stories = getStoriesList()
-        val index = stories.indexOfFirst { it.id == user.id }
-        if (index != -1) {
-            _uiState.update { it.copy(activeStoryUserIndex = index) }
-        }
+        _uiState.update { it.copy(activeStoryUserId = user.id) }
     }
 
     fun nextStory() {
         val allStories = getStoriesList()
-        val currentIndex = _uiState.value.activeStoryUserIndex ?: return
-        if (currentIndex < allStories.size - 1) _uiState.update { it.copy(activeStoryUserIndex = currentIndex + 1) }
+        val currentId = _uiState.value.activeStoryUserId ?: return
+        val currentIndex = allStories.indexOfFirst { it.id == currentId }
+        if (currentIndex != -1 && currentIndex < allStories.size - 1)
+            _uiState.update { it.copy(activeStoryUserId = allStories[currentIndex + 1].id) }
         else closeStory()
     }
 
     fun previousStory() {
-        val currentIndex = _uiState.value.activeStoryUserIndex ?: return
-        if (currentIndex > 0) _uiState.update { it.copy(activeStoryUserIndex = currentIndex - 1) }
+        val allStories = getStoriesList()
+        val currentId = _uiState.value.activeStoryUserId ?: return
+        val currentIndex = allStories.indexOfFirst { it.id == currentId }
+        if (currentIndex > 0) _uiState.update { it.copy(activeStoryUserId = allStories[currentIndex - 1].id) }
     }
 
-    fun closeStory() { _uiState.update { it.copy(activeStoryUserIndex = null) } }
+    fun closeStory() { _uiState.update { it.copy(activeStoryUserId = null) } }
 
     fun openProfile(user: User) {
         val isMe = user.isCurrentUser || (user.id.isNotBlank() && user.id == _uiState.value.currentUser.id)
@@ -1382,7 +1381,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             ?: _uiState.value.followingDetails.firstOrNull { it.id == user.id }
             ?: user
 
-        _uiState.update { it.copy(activeChatUser = freshUser, activeStoryUserIndex = null, isChatListOpen = false) }
+        _uiState.update { it.copy(activeChatUser = freshUser, activeStoryUserId = null, isChatListOpen = false) }
 
         // Se mancano dati (es. avatar), richiedili a Firestore in background per aggiornare la chat
         if (freshUser.avatarUrl.isBlank() || freshUser.name == "Utente") {
@@ -1511,7 +1510,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 activeProfileUser = null,
                 isChatListOpen = false,
                 activeChatUser = null,
-                activeStoryUserIndex = null,
+                activeStoryUserId = null,
                 isShareSheetOpen = false,
                 showPeopleSearch = false,
                 showNotifications = false,
