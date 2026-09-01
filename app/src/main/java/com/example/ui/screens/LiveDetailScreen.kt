@@ -37,6 +37,7 @@ import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Smartphone
 import androidx.compose.material.icons.filled.Speaker
@@ -396,6 +397,49 @@ fun LiveDetailScreen(
                             accent = pulseAccent,
                             modifier = Modifier.size(250.dp)
                         ) {}
+                    }
+                }
+
+                // Pulsante Pulse — stessa gesture dell'avatar, entry point esplicito
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = !pulseRecording,
+                    enter = androidx.compose.animation.fadeIn(),
+                    exit = androidx.compose.animation.fadeOut()
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(androidx.compose.foundation.shape.RoundedCornerShape(50))
+                            .background(pulseAccent.copy(alpha = 0.18f))
+                            .border(1.dp, pulseAccent.copy(alpha = 0.45f), androidx.compose.foundation.shape.RoundedCornerShape(50))
+                            .pointerInput(user.id) {
+                                awaitEachGesture {
+                                    awaitFirstDown(requireUnconsumed = false)
+                                    pulsePressed.value = true
+                                    if (!pulseRecording) pulseRecording = true
+                                    waitForUpOrCancellation()
+                                    pulsePressed.value = false
+                                }
+                            }
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.foundation.layout.Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            androidx.compose.material3.Icon(
+                                imageVector = Icons.Default.Mic,
+                                contentDescription = null,
+                                tint = pulseAccent,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text(
+                                text = "Tieni premuto · Pulse",
+                                color = pulseAccent,
+                                fontSize = 13.sp,
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                            )
+                        }
                     }
                 }
 

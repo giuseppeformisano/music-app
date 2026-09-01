@@ -68,23 +68,33 @@ object PulseHaptics {
         return runs.toLongArray()
     }
 
+    /**
+     * Sotto THRESHOLD il campione diventa 0 (pausa netta).
+     * Sopra viene rimappato a MIN_OUT..255: anche una voce normale vibra forte,
+     * creando un contrasto netto tra silenzio e vibrazione.
+     */
+    private fun remapAmplitude(amp: Int, threshold: Int = 70, minOut: Int = 140): Int {
+        if (amp < threshold) return 0
+        return (minOut + (amp - threshold).toFloat() / (255 - threshold) * (255 - minOut))
+            .toInt().coerceIn(0, 255)
+    }
+
     fun play(context: Context, samples: String?) {
-        val amps = decodeEnvelope(samples)
-        if (amps.isEmpty() || amps.none { it > 24 }) return
+        val raw = decodeEnvelope(samples)
+        if (raw.isEmpty() || raw.none { it > 24 }) return
+        val amps = IntArray(raw.size) { remapAmplitude(raw[it]) }
         val vib = vibrator(context) ?: return
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 if (vib.hasAmplitudeControl()) {
-                    // Ampiezza reale della voce: 0 = pausa, 1..255 = intensità
                     val timings = LongArray(amps.size) { SAMPLE_MS }
                     vib.vibrate(VibrationEffect.createWaveform(timings, amps, -1))
                 } else {
-                    // Nessun controllo ampiezza → on/off da soglia
-                    val binary = amps.joinToString("") { if (it > 60) "1" else "0" }
+                    val binary = amps.joinToString("") { if (it > 0) "1" else "0" }
                     vib.vibrate(VibrationEffect.createWaveform(toTimings(binary), -1))
                 }
             } else {
-                val binary = amps.joinToString("") { if (it > 60) "1" else "0" }
+                val binary = amps.joinToString("") { if (it > 0) "1" else "0" }
                 @Suppress("DEPRECATION")
                 vib.vibrate(toTimings(binary), -1)
             }
