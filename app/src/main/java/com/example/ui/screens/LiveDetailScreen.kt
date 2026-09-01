@@ -183,6 +183,15 @@ fun LiveDetailScreen(
     var pulseIntensity by remember { mutableFloatStateOf(0f) }
     // Buffer campioni onda per visualizzazione scrolling
     val waveformSamples = remember { mutableStateListOf<Float>() }
+    // Animatable che avanza di 1 ogni SAMPLE_MS → scroll 60fps tra un campione e il successivo
+    val waveScrollSlots = remember { androidx.compose.animation.core.Animatable(0f) }
+    LaunchedEffect(waveformSamples.size) {
+        if (waveformSamples.isEmpty()) { waveScrollSlots.snapTo(0f); return@LaunchedEffect }
+        waveScrollSlots.animateTo(
+            waveformSamples.size.toFloat(),
+            animationSpec = tween(com.example.data.PulseHaptics.SAMPLE_MS.toInt(), easing = LinearEasing)
+        )
+    }
 
     // Effetto bottone 3D: scende + si rimpicciolisce alla pressione, ombra si riduce
     val avatarPressTranslation by animateFloatAsState(
@@ -803,35 +812,33 @@ fun LiveDetailScreen(
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
                         val count = waveformSamples.size
+                        if (count == 0) return@Canvas
                         val totalSlots = 40
                         val slotW = size.width / totalSlots
-                        val barW = (slotW * 0.60f).coerceAtLeast(1f)
+                        val barW = (slotW * 0.58f).coerceAtLeast(1f)
+                        // Scroll sub-slot continuo a 60fps: fraction ∈ [0,1)
+                        val scrollFraction = waveScrollSlots.value % 1f
                         for (i in waveformSamples.indices) {
                             val slot = totalSlots - count + i
+                            val x = (slot - scrollFraction) * slotW + (slotW - barW) / 2f
+                            if (x + barW < 0f || x > size.width) continue
                             val amp = waveformSamples[i]
                             val barH = (amp * size.height * 0.88f).coerceAtLeast(4f)
-                            val x = slot * slotW + (slotW - barW) / 2f
+                            // Fade per-bar ai bordi: nessun drawRect, zero rettangoli neri
+                            val normX = x / size.width
+                            val edgeFade = when {
+                                normX < 0.18f -> (normX / 0.18f).coerceIn(0f, 1f)
+                                normX > 0.82f -> ((1f - normX) / 0.18f).coerceIn(0f, 1f)
+                                else -> 1f
+                            }
                             drawRoundRect(
                                 color = pulseAccent,
                                 topLeft = androidx.compose.ui.geometry.Offset(x, (size.height - barH) / 2f),
                                 size = androidx.compose.ui.geometry.Size(barW, barH),
                                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(barW / 2f),
-                                alpha = (0.65f + amp * 0.35f).coerceIn(0f, 1f)
+                                alpha = ((0.60f + amp * 0.40f) * edgeFade).coerceIn(0f, 1f)
                             )
                         }
-                        // Fade laterale elegante
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                listOf(Color.Black.copy(alpha = 0.95f), Color.Transparent),
-                                endX = size.width * 0.20f
-                            )
-                        )
-                        drawRect(
-                            brush = Brush.horizontalGradient(
-                                listOf(Color.Transparent, Color.Black.copy(alpha = 0.95f)),
-                                startX = size.width * 0.80f
-                            )
-                        )
                     }
                 }
             }
