@@ -146,17 +146,7 @@ private fun ImmersiveScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(nested)
-                // Swipe verso il basso O verso l'alto da QUALSIASI punto (aree non scrollabili)
-                .pointerInput(Unit) {
-                    detectVerticalDragGestures(
-                        onDragEnd = { settle() },
-                        onDragCancel = { settle() },
-                        onVerticalDrag = { _, dy ->
-                            scope.launch { offsetY.snapTo(offsetY.value + dy) }
-                        }
-                    )
-                },
+                .nestedScroll(nested),
             contentAlignment = Alignment.Center
         ) {
             backdrop(dragFraction, offsetY.value)
@@ -165,6 +155,25 @@ private fun ImmersiveScaffold(
                 modifier = Modifier.offset { IntOffset(0, offsetY.value.roundToInt()) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 content = content
+            )
+
+            // Zona handle: solo la fascia alta intercetta il drag per chiudere.
+            // Il nested scroll gestisce già la chiusura dai bordi delle liste interne.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .align(Alignment.TopCenter)
+                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onDragEnd = { settle() },
+                            onDragCancel = { settle() },
+                            onVerticalDrag = { _, dy ->
+                                scope.launch { offsetY.snapTo(offsetY.value + dy) }
+                            }
+                        )
+                    }
             )
         }
     }

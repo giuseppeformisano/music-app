@@ -182,11 +182,21 @@ fun LiveDetailScreen(
     // Buffer campioni onda per visualizzazione scrolling
     val waveformSamples = remember { mutableStateListOf<Float>() }
 
-    // Effetto bottone 3D: la foto scende alla pressione (↓) e risale al rilascio (↑)
+    // Effetto bottone 3D: scende + si rimpicciolisce alla pressione, ombra si riduce
     val avatarPressTranslation by animateFloatAsState(
-        targetValue = if (pulsePressed.value) 7f else 0f,
-        animationSpec = tween(if (pulsePressed.value) 70 else 190),
+        targetValue = if (pulsePressed.value) 8f else 0f,
+        animationSpec = tween(if (pulsePressed.value) 65 else 200),
         label = "avatarPress"
+    )
+    val avatarScale by animateFloatAsState(
+        targetValue = if (pulsePressed.value) 0.92f else 1.0f,
+        animationSpec = tween(if (pulsePressed.value) 65 else 200),
+        label = "avatarScale"
+    )
+    val avatarElevation by animateFloatAsState(
+        targetValue = if (pulsePressed.value) 4f else 22f,
+        animationSpec = tween(if (pulsePressed.value) 65 else 200),
+        label = "avatarElevation"
     )
     // Oscuramento radiale (bordi scuri, centro avatar trasparente) durante la registrazione
     val pulseOverlayAlpha by animateFloatAsState(
@@ -396,11 +406,14 @@ fun LiveDetailScreen(
                     // Cerchio Avatar Profilo al centro dell'onda
                     Box(
                         modifier = Modifier
-                            // Effetto bottone 3D: la foto scende alla pressione e risale al rilascio
-                            .graphicsLayer { translationY = avatarPressTranslation }
+                            .graphicsLayer {
+                                translationY = avatarPressTranslation
+                                scaleX = avatarScale
+                                scaleY = avatarScale
+                            }
                             .size(150.dp)
                             .shadow(
-                                elevation = 22.dp,
+                                elevation = avatarElevation.dp,
                                 shape = CircleShape,
                                 ambientColor = primaryColor.copy(alpha = 0.45f),
                                 spotColor = primaryColor.copy(alpha = 0.75f)
@@ -446,35 +459,40 @@ fun LiveDetailScreen(
                             modifier = Modifier.size(250.dp)
                         ) {}
                     }
-                }
 
-                // Hint "HOLD TO PULSE" — pulsa in idle, si attenua durante la registrazione
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
+                    // Hint "HOLD TO PULSE" — sotto l'avatar, nella stessa area wave
                     Box(
                         modifier = Modifier
-                            .width(22.dp)
-                            .height(1.dp)
-                            .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "HOLD TO PULSE",
-                        color = pulseAccent.copy(alpha = if (pulseRecording) 0.22f else hintBlink),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Box(
-                        modifier = Modifier
-                            .width(22.dp)
-                            .height(1.dp)
-                            .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
-                    )
+                            .align(Alignment.Center)
+                            .offset(y = 86.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .width(20.dp)
+                                    .height(1.dp)
+                                    .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
+                            )
+                            Spacer(modifier = Modifier.width(7.dp))
+                            Text(
+                                text = "HOLD TO PULSE",
+                                color = pulseAccent.copy(alpha = if (pulseRecording) 0.20f else hintBlink),
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 2.sp
+                            )
+                            Spacer(modifier = Modifier.width(7.dp))
+                            Box(
+                                modifier = Modifier
+                                    .width(20.dp)
+                                    .height(1.dp)
+                                    .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
+                            )
+                        }
+                    }
                 }
 
                 // 3. SEZIONE BRANO: Copertina + Titolo/Artista + Barra Temporale
