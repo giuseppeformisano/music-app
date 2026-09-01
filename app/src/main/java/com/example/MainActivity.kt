@@ -130,7 +130,17 @@ class MainActivity : ComponentActivity() {
         handleNotificationIntent(intent)
 
         setContent {
-            androidx.compose.runtime.CompositionLocalProvider(coil.compose.LocalImageLoader provides imageLoader) {
+            // Cappa il font scale a 1.15× per evitare che testi troppo grandi
+            // rompano i layout con accessibilità al 125-150%.
+            val originalDensity = androidx.compose.ui.platform.LocalDensity.current
+            val cappedDensity = androidx.compose.ui.unit.Density(
+                density = originalDensity.density,
+                fontScale = originalDensity.fontScale.coerceAtMost(1.15f)
+            )
+            androidx.compose.runtime.CompositionLocalProvider(
+                coil.compose.LocalImageLoader provides imageLoader,
+                androidx.compose.ui.platform.LocalDensity provides cappedDensity
+            ) {
                 MyApplicationTheme {
                     MusicApp(viewModel = viewModel)
                 }
