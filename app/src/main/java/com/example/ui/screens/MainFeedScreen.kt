@@ -83,6 +83,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.draw.clipToBounds
@@ -103,6 +104,7 @@ import com.example.ui.components.UniversalHeader
 import com.example.ui.components.liveNameVibration
 import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.PureWhite
+import com.example.ui.theme.SpotifyGreen
 import com.example.ui.theme.SubtitleGray
 import com.example.ui.theme.Zinc400
 import com.example.ui.theme.Zinc900
@@ -116,25 +118,29 @@ import kotlin.math.sin
 private val EaseInEasing = CubicBezierEasing(0.42f, 0f, 1f, 1f)
 
 /**
- * Transizione a Veneziana Orizzontale con BLUR dinamico tra Feed e Live
+ * Transizione blur+crossfade tra tab Feed e Live — stessa curva del carosello feed:
+ * blur orizzontale (API 31+) con picco a metà transizione, crossfade lineare.
  */
-private fun Modifier.venetianBlindBlurTransition(page: Int, pagerState: PagerState): Modifier {
+private fun Modifier.tabSlideBlurTransition(page: Int, pagerState: PagerState): Modifier {
     val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
     val absOffset = abs(pageOffset)
-    val blurRadius = (absOffset * 24f).dp
+    val blurFraction = sin((absOffset.coerceAtMost(0.9f) / 0.9f) * PI).coerceIn(0.0, 1.0).toFloat()
+    val blurPx = 40f * blurFraction
+    val alphaVal = (1f - absOffset).coerceIn(0f, 1f)
 
-    return this
-        .blur(radius = blurRadius)
-        .graphicsLayer {
-            if (pageOffset != 0f) {
-                cameraDistance = 20f * density
-                rotationY = pageOffset * -36f
-                alpha = (1f - (absOffset * 0.45f)).coerceIn(0.05f, 1f)
-                scaleX = 1f - (absOffset * 0.08f)
-                scaleY = 1f - (absOffset * 0.08f)
-                translationX = pageOffset * (size.width * 0.14f)
+    return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+        this.graphicsLayer {
+            alpha = alphaVal
+            if (blurPx >= 0.5f) {
+                renderEffect = android.graphics.RenderEffect
+                    .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                    .asComposeRenderEffect()
             }
         }
+    } else {
+        this.graphicsLayer { alpha = alphaVal }
+            .then(if (blurPx >= 0.5f) Modifier.blur((blurPx * 0.35f).dp) else Modifier)
+    }
 }
 
 /**
@@ -274,7 +280,7 @@ fun MainFeedScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .venetianBlindBlurTransition(page = page, pagerState = pagerState)
+                        .tabSlideBlurTransition(page = page, pagerState = pagerState)
                 ) {
                     if (page == 0) {
                         // PAGINA 0: SCHERMATA LIVE CON VINYL GLOW E TRANSIZIONE SUPERNOVA
@@ -480,14 +486,12 @@ private fun FeedWeekCard(
                 }
             }
             Text(
-                text = group.weekLabel,
-                color = SubtitleGray,
-                fontSize = 10.sp,
-                letterSpacing = 0.4.sp,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Zinc900)
-                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                text = group.weekLabel.uppercase(),
+                color = if (group.weekLabel == "Questa settimana") SpotifyGreen
+                        else SubtitleGray.copy(alpha = if (group.weekLabel == "Settimana scorsa") 1f else 0.55f),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.0.sp
             )
         }
 
@@ -544,8 +548,7 @@ private fun FeedWeekCard(
                 text = group.tracks.first().genre.lowercase(),
                 color = SubtitleGray,
                 fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                letterSpacing = 0.6.sp
+                letterSpacing = 0.3.sp
             )
         }
     }

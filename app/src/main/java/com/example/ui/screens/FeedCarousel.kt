@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -46,6 +47,7 @@ import com.example.model.User
 import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.Zinc400
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.Calendar
 import java.util.Locale
@@ -158,8 +160,10 @@ fun FeedCarousel(
     val progress = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     var dragAccumulated by remember { mutableFloatStateOf(0f) }
+    var autoPlayVersion by remember { mutableIntStateOf(0) }
 
-    fun navigate(dir: Int) {
+    fun navigate(dir: Int, isManual: Boolean = false) {
+        if (isManual) autoPlayVersion++  // resetta sempre il timer anche se animazione in corso
         if (progress.isRunning) return
         val next = (currentIndex + dir + tracks.size) % tracks.size
         pendingIndex = next
@@ -169,6 +173,14 @@ fun FeedCarousel(
             progress.animateTo(1f, tween(402, easing = FastOutSlowInEasing))
             currentIndex = next
             progress.snapTo(0f)
+        }
+    }
+
+    // Auto-avanzamento ogni 3s; si resetta ad ogni swipe manuale
+    LaunchedEffect(autoPlayVersion) {
+        while (true) {
+            delay(3000L)
+            navigate(1)
         }
     }
 
@@ -184,8 +196,9 @@ fun FeedCarousel(
                     onDragStart = { dragAccumulated = 0f },
                     onDragEnd = {
                         when {
-                            dragAccumulated < -60f -> navigate(1)
-                            dragAccumulated > 60f -> navigate(-1)
+                            dragAccumulated < -60f -> navigate(1, isManual = true)
+                            dragAccumulated > 60f -> navigate(-1, isManual = true)
+                            else -> autoPlayVersion++  // reset timer anche su swipe annullato
                         }
                         dragAccumulated = 0f
                     },
