@@ -160,12 +160,9 @@ private fun ImmersiveScaffold(
                 }
 
                 override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // Solo drag deliberato: ignora la velocità residua di un fling che sfonda
-                    // l'edge della lista, altrimenti la dialog schizza da sola su/giù.
-                    if (available.y != 0f && source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Drag) {
-                        scope.launch { offsetY.snapTo(offsetY.value + available.y) }
-                        return Offset(0f, available.y)
-                    }
+                    // La dialog non assorbe mai lo scroll residuo della lista — né fling né drag
+                    // continuo. Si muove solo con un gesto nuovo (dito sollevato + nuova swipe)
+                    // intercettato dall'header o dal box swipeAnywhere.
                     return Offset.Zero
                 }
 
