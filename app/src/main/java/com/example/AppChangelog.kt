@@ -5,11 +5,10 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.13.35"
+    const val TITLE = "Novità · 0.13.36"
     val LINES = listOf(
-        "Feed: carosello auto-avanza ogni 3s, reset su swipe manuale.",
-        "Feed: etichetta settimana senza riquadro, verde per la settimana corrente.",
-        "Navigazione: transizione blur+crossfade tra tab Live e Feed.",
-        "Font unificato su tutta la schermata feed."
+        "Profilo: apertura e chiusura con blur+slide+crossfade.",
+        "Dialog: blur progressivo sul contenuto durante lo swipe di chiusura.",
+        "Feed: carosello auto-avanza ogni 3s, reset su swipe manuale."
     )
 }

@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -201,8 +202,20 @@ private fun ImmersiveScaffold(
         Box(modifier = boxModifier, contentAlignment = Alignment.Center) {
             backdrop(dragFraction, offsetY.value)
 
+            // Blur progressivo sul contenuto durante lo swipe-to-dismiss (0→30px lineare)
+            val contentBlurPx = if (dismissible) (dragFraction * 30f).coerceAtLeast(0f) else 0f
+
             Column(
-                modifier = Modifier.offset { IntOffset(0, offsetY.value.roundToInt()) },
+                modifier = Modifier
+                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                    .graphicsLayer {
+                        if (contentBlurPx >= 0.5f &&
+                            android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                            renderEffect = android.graphics.RenderEffect
+                                .createBlurEffect(contentBlurPx, contentBlurPx, android.graphics.Shader.TileMode.DECAL)
+                                .asComposeRenderEffect()
+                        }
+                    },
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val columnScope = this

@@ -21,6 +21,11 @@ import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -38,7 +43,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import kotlin.math.PI
+import kotlin.math.sin
 import com.example.ui.components.NotificationsDialog
 import com.example.ui.components.NowPlayingSheet
 import com.example.ui.components.PeopleSearchDialog
@@ -338,12 +347,32 @@ fun MusicApp(viewModel: MusicViewModel) {
             }
         }
 
-        // Overlay: Profile Screen (Flusso D)
+        // Overlay: Profile Screen (Flusso D) — transizione blur+slide+crossfade
         AnimatedVisibility(
             visible = uiState.activeProfileUser != null,
-            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
-            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut()
+            enter = EnterTransition.None,
+            exit = ExitTransition.None
         ) {
+            val progress by transition.animateFloat(
+                transitionSpec = { tween(402, easing = FastOutSlowInEasing) },
+                label = "profileBlurSlide"
+            ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
+
+            val blurPx = (40f * sin(progress * PI).toFloat()).coerceAtLeast(0f)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = progress
+                        translationX = (1f - progress) * size.width * 0.18f
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurPx >= 0.5f) {
+                            renderEffect = android.graphics.RenderEffect
+                                .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                                .asComposeRenderEffect()
+                        }
+                    }
+            ) {
             uiState.activeProfileUser?.let { activeUser ->
                 val isMe = activeUser.isCurrentUser || (uiState.currentUser.id.isNotBlank() && activeUser.id == uiState.currentUser.id)
                 val displayUser = if (isMe) uiState.currentUser.copy(isCurrentUser = true) else activeUser
@@ -386,6 +415,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onOpenChatList = { viewModel.openChatList() }
                 )
             }
+            } // Box blur+slide
         }
 
         // Dialog: Chat List (Messaggi) — stile dialog immersivo con swipe-down per chiudere
