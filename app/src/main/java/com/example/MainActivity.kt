@@ -354,11 +354,11 @@ fun MusicApp(viewModel: MusicViewModel) {
             exit = ExitTransition.None
         ) {
             val progress by transition.animateFloat(
-                transitionSpec = { tween(402, easing = FastOutSlowInEasing) },
+                transitionSpec = { tween(490, easing = FastOutSlowInEasing) },
                 label = "profileBlurSlide"
             ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
 
-            val blurPx = (40f * sin(progress * PI).toFloat()).coerceAtLeast(0f)
+            val blurPx = (6f * sin((progress / 0.9f) * PI).toFloat()).coerceAtLeast(0f)
 
             Box(
                 modifier = Modifier

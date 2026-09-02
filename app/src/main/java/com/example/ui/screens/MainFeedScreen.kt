@@ -126,7 +126,7 @@ private fun Modifier.tabSlideBlurTransition(page: Int, pagerState: PagerState): 
     val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
     val absOffset = abs(pageOffset)
     val blurFraction = sin((absOffset.coerceAtMost(0.9f) / 0.9f) * PI).coerceIn(0.0, 1.0).toFloat()
-    val blurPx = 40f * blurFraction
+    val blurPx = 6f * blurFraction
     val alphaVal = (1f - absOffset).coerceIn(0f, 1f)
 
     return this.graphicsLayer {
@@ -262,7 +262,7 @@ fun MainFeedScreen(
                 onHeaderCenterClick = {
                     coroutineScope.launch {
                         val targetPage = if (pagerState.currentPage == 0) 1 else 0
-                        pagerState.animateScrollToPage(targetPage, animationSpec = tween(380))
+                        pagerState.animateScrollToPage(targetPage, animationSpec = tween(490))
                     }
                 }
             )

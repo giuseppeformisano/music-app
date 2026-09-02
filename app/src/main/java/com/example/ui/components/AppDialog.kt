@@ -203,7 +203,7 @@ private fun ImmersiveScaffold(
             backdrop(dragFraction, offsetY.value)
 
             // Blur progressivo sul contenuto durante lo swipe-to-dismiss (0→30px lineare)
-            val contentBlurPx = if (dismissible) (dragFraction * 30f).coerceAtLeast(0f) else 0f
+            val contentBlurPx = if (dismissible) (dragFraction * 6f).coerceAtLeast(0f) else 0f
 
             Column(
                 modifier = Modifier
