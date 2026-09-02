@@ -184,10 +184,8 @@ fun FeedCarousel(
         }
     }
 
+    // Letto solo per la decisione strutturale (mostrare 1 o 2 card)
     val p = progress.value
-    val eased = easeOutCubic(p)
-    val blurFraction = sin((p / 0.9f) * PI).coerceIn(0.0, 1.0).toFloat()
-    val blurPx = 40f * blurFraction
 
     BoxWithConstraints(
         modifier = modifier
@@ -215,18 +213,23 @@ fun FeedCarousel(
     ) {
         val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
 
-        if (p > 0f) {
+        if (p > 0.01f) {  // soglia: evita recomposition per valori quasi-zero
             CarouselCard(
                 track = tracks[currentIndex],
                 onClick = {},
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        translationX = -swipeDir * 0.18f * eased * widthPx
-                        alpha = 1f - easeInOutCubic(p)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurPx >= 0.5f) {
+                        // Calcoli dentro il lambda: eseguiti in draw phase, no allocazioni in composition
+                        val pv = progress.value
+                        val ev = easeOutCubic(pv)
+                        val bPx = 40f * sin((pv / 0.9f) * PI).coerceIn(0.0, 1.0).toFloat()
+                        translationX = -swipeDir * 0.18f * ev * widthPx
+                        alpha = 1f - easeInOutCubic(pv)
+                        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && bPx >= 0.5f) {
                             renderEffect = android.graphics.RenderEffect
-                                .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                                .createBlurEffect(bPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
                                 .asComposeRenderEffect()
                         }
                     }
@@ -237,11 +240,15 @@ fun FeedCarousel(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        translationX = swipeDir * 0.18f * (1f - eased) * widthPx
-                        alpha = easeInOutCubic(p)
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurPx >= 0.5f) {
+                        val pv = progress.value
+                        val ev = easeOutCubic(pv)
+                        val bPx = 40f * sin((pv / 0.9f) * PI).coerceIn(0.0, 1.0).toFloat()
+                        translationX = swipeDir * 0.18f * (1f - ev) * widthPx
+                        alpha = easeInOutCubic(pv)
+                        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && bPx >= 0.5f) {
                             renderEffect = android.graphics.RenderEffect
-                                .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                                .createBlurEffect(bPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
                                 .asComposeRenderEffect()
                         }
                     }

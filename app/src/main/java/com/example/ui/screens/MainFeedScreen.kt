@@ -129,18 +129,14 @@ private fun Modifier.tabSlideBlurTransition(page: Int, pagerState: PagerState): 
     val blurPx = 40f * blurFraction
     val alphaVal = (1f - absOffset).coerceIn(0f, 1f)
 
-    return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-        this.graphicsLayer {
-            alpha = alphaVal
-            if (blurPx >= 0.5f) {
-                renderEffect = android.graphics.RenderEffect
-                    .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
-                    .asComposeRenderEffect()
-            }
+    return this.graphicsLayer {
+        alpha = alphaVal
+        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && blurPx >= 0.5f) {
+            renderEffect = android.graphics.RenderEffect
+                .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                .asComposeRenderEffect()
         }
-    } else {
-        this.graphicsLayer { alpha = alphaVal }
-            .then(if (blurPx >= 0.5f) Modifier.blur((blurPx * 0.35f).dp) else Modifier)
     }
 }
 

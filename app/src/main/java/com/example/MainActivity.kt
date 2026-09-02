@@ -366,6 +366,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     .graphicsLayer {
                         alpha = progress
                         translationX = (1f - progress) * size.width * 0.18f
+                        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && blurPx >= 0.5f) {
                             renderEffect = android.graphics.RenderEffect
                                 .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
