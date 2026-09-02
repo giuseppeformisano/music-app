@@ -13,7 +13,8 @@ data class Track(
     val releaseYear: String = "2024",
     val source: String = "spotify",
     val deviceType: String = "",   // tipo device Spotify API (Smartphone/Computer/Speaker/Automobile/TV...)
-    val deviceName: String = ""    // nome device (es. "Audi A3", "iPhone di Marco")
+    val deviceName: String = "",   // nome device (es. "Audi A3", "iPhone di Marco")
+    val sharedAt: Long = 0L        // timestamp (ms) in cui il brano è stato condiviso nel feed
 )
 
 enum class UserPresenceState(val value: String) {

@@ -689,7 +689,8 @@ object FirebaseRepository {
             "releaseYear" to track.releaseYear,
             "source" to track.source,
             "deviceType" to track.deviceType,
-            "deviceName" to track.deviceName
+            "deviceName" to track.deviceName,
+            "sharedAt" to track.sharedAt
         )
     }
 
@@ -807,6 +808,7 @@ object FirebaseRepository {
         val source = map["source"] as? String ?: "spotify"
         val deviceType = map["deviceType"] as? String ?: ""
         val deviceName = map["deviceName"] as? String ?: ""
+        val sharedAt = (map["sharedAt"] as? Number)?.toLong() ?: 0L
 
         return Track(
             id = map["id"] as? String ?: (title + artist).hashCode().toString(),
@@ -821,7 +823,8 @@ object FirebaseRepository {
             releaseYear = releaseYear,
             source = source,
             deviceType = deviceType,
-            deviceName = deviceName
+            deviceName = deviceName,
+            sharedAt = sharedAt
         )
     }
 

@@ -1180,8 +1180,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         // Condivisione nel FEED: aggiorna solo i brani condivisi + stats.
         // NON tocca currentTrack/isLiveNow (che sono lo stato LIVE) — feed e live
         // sono due sezioni distinte e la condivisione non deve mandarti in live.
+        val trackWithTimestamp = track.copy(sharedAt = System.currentTimeMillis())
         val updatedUser = _uiState.value.currentUser.copy(
-            sharedTracks = listOf(track) + _uiState.value.currentUser.sharedTracks.filterNot { it.id == track.id },
+            sharedTracks = listOf(trackWithTimestamp) + _uiState.value.currentUser.sharedTracks.filterNot { it.id == track.id },
             stats = _uiState.value.currentUser.stats.copy(sharedCount = _uiState.value.currentUser.stats.sharedCount + 1)
         )
         _uiState.update {
@@ -1191,7 +1192,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 feedbackToast = "Condiviso: ${track.title}"
             )
         }
-        FirebaseRepository.shareTrack(updatedUser.id, track)
+        FirebaseRepository.shareTrack(updatedUser.id, trackWithTimestamp)
         // shareTrack scrive già sharedTracks su Firestore; syncCurrentUser riscriverebbe
         // l'intero profilo (incluso currentTrack live) — non serve qui.
     }

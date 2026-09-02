@@ -389,7 +389,7 @@ fun MainFeedScreen(
 }
 
 /**
- * Contenuto Schermata Feed: Colonna verticale di copertine fusa nel nero.
+ * Contenuto Schermata Feed: raggruppato per settimana e utente con carosello brani.
  */
 @Composable
 private fun FeedPageContent(
@@ -398,15 +398,9 @@ private fun FeedPageContent(
     onSelectTrack: (Track, User) -> Unit,
     onOpenProfile: (User) -> Unit
 ) {
-    val allShares = remember(feedUsers) {
-        val list = mutableListOf<Pair<User, Track>>()
-        feedUsers.forEach { user ->
-            user.sharedTracks.forEach { trk -> list.add(Pair(user, trk)) }
-        }
-        list
-    }
+    val weekGroups = remember(feedUsers) { buildFeedWeekGroups(feedUsers) }
 
-    if (allShares.isEmpty()) {
+    if (weekGroups.isEmpty()) {
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -426,12 +420,132 @@ private fun FeedPageContent(
         contentPadding = PaddingValues(start = 18.dp, end = 18.dp, top = 8.dp, bottom = 100.dp),
         verticalArrangement = Arrangement.spacedBy(28.dp)
     ) {
-        items(allShares, key = { (user, track) -> "${user.id}_${track.id}" }) { (user, track) ->
-            FeedMinimalPost(
-                user = user,
-                track = track,
-                onCardClick = { onSelectTrack(track, user) },
-                onUserClick = { onOpenProfile(user) }
+        items(weekGroups, key = { "${it.user.id}_${it.weekKey}" }) { group ->
+            FeedWeekCard(
+                group = group,
+                onCardClick = { track -> onSelectTrack(track, group.user) },
+                onUserClick = { onOpenProfile(group.user) }
+            )
+        }
+    }
+}
+
+/**
+ * Card settimanale: avatar + nome + label settimana + carosello brani.
+ */
+@Composable
+private fun FeedWeekCard(
+    group: FeedWeekGroup,
+    onCardClick: (Track) -> Unit,
+    onUserClick: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onUserClick
+                ),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = group.user.avatarUrl,
+                    contentDescription = "Avatar ${group.user.name}",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                )
+                Column {
+                    Text(
+                        text = group.user.name.lowercase(),
+                        color = PureWhite,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.3.sp
+                    )
+                    Text(
+                        text = "@${group.user.username}",
+                        color = SubtitleGray,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.2.sp
+                    )
+                }
+            }
+            Text(
+                text = group.weekLabel,
+                color = SubtitleGray,
+                fontSize = 10.sp,
+                letterSpacing = 0.4.sp,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Zinc900)
+                    .padding(horizontal = 8.dp, vertical = 3.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(150.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Zinc900)
+        ) {
+            FeedCarousel(
+                tracks = group.tracks,
+                onTrackClick = onCardClick,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.FavoriteBorder,
+                        contentDescription = "Mi piace",
+                        tint = SubtitleGray,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Text("condividi", color = SubtitleGray, fontSize = 12.sp, letterSpacing = 0.2.sp)
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.ChatBubbleOutline,
+                        contentDescription = "Commenta",
+                        tint = SubtitleGray,
+                        modifier = Modifier.size(17.dp)
+                    )
+                    Text("discuti", color = SubtitleGray, fontSize = 12.sp, letterSpacing = 0.2.sp)
+                }
+            }
+            Text(
+                text = group.tracks.first().genre.lowercase(),
+                color = SubtitleGray,
+                fontSize = 11.sp,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 0.6.sp
             )
         }
     }
