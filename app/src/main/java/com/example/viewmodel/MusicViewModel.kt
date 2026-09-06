@@ -123,12 +123,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var chatMessagesListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var conversationsListener: com.google.firebase.firestore.ListenerRegistration? = null
 
-    companion object {
-        private const val DAILY_SHARE_LIMIT = 3
-        private const val PREFS_SHARE = "daily_share_prefs"
-        private const val KEY_SHARE_DATE = "share_date"
-        private const val KEY_SHARE_COUNT = "share_count"
-    }
+
 
     private fun loadDailyShareCount(): Int {
         val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
@@ -1679,6 +1674,11 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     companion object {
+        private const val DAILY_SHARE_LIMIT = 3
+        private const val PREFS_SHARE = "daily_share_prefs"
+        private const val KEY_SHARE_DATE = "share_date"
+        private const val KEY_SHARE_COUNT = "share_count"
+
         const val FRIEND_REQUEST_CHANNEL_ID = "friend_requests_channel"
         // Un utente è considerato live solo se il suo documento è stato aggiornato entro questo
         // tempo. L'heartbeat del listener rinfresca updatedAt ~ogni 20s; 90s tollera qualche
