@@ -469,7 +469,10 @@ fun MusicApp(viewModel: MusicViewModel) {
                         viewModel.openProfile(user)
                     },
                     onSendPulse = { u, samples, audio -> viewModel.sendPulse(u.id, samples, audio) },
-                    onSetTrackAsCover = { trk -> viewModel.setTrackAsCover(trk) }
+                    onSetTrackAsCover = { trk -> viewModel.setTrackAsCover(trk) },
+                    listeners = uiState.feedUsers.filter {
+                        it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive
+                    }
                 )
             } else {
                 // L'utente ha chiuso la live: chiudi il dettaglio e torna alla lista

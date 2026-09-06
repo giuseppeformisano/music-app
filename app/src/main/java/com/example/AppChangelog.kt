@@ -7,8 +7,8 @@ package com.example
 object AppChangelog {
     const val TITLE = "Novità · 0.13.41"
     val LINES = listOf(
-        "Feed: aura dorata e badge 'sync' quando ascolti lo stesso brano di un amico in tempo reale.",
-        "Brano: contatore di quanti utenti nell'app stanno ascoltando lo stesso brano.",
-        "Brano: contatore dei tuoi ascolti personali e reazioni emoji."
+        "Live: carosello ascoltatori in cima con lista completa al tap.",
+        "Live: cuore a destra dell'input con animazione flottante e contatore sessione.",
+        "Live: reaction bar rimossa."
     )
 }

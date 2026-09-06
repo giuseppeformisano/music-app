@@ -101,8 +101,6 @@ import com.example.model.Track
 import com.example.model.User
 import com.example.ui.components.CustomReaction
 import com.example.ui.components.CustomReactionIcon
-import com.example.ui.components.allCustomReactions
-import com.example.ui.components.liveNameVibration
 import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
@@ -116,6 +114,8 @@ private data class FloatingReaction(
     val reaction: CustomReaction,
     val initialXRatio: Float
 )
+
+private data class FloatingHeart(val id: Long, val xRatio: Float)
 
 /**
  * Schermata Dettaglio Live Fullscreen
@@ -133,6 +133,7 @@ fun LiveDetailScreen(
     onOpenUserProfile: (User) -> Unit,
     onSendPulse: (User, String, String?) -> Unit = { _, _, _ -> },
     onSetTrackAsCover: (Track) -> Unit = {},
+    listeners: List<User> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val track = user.currentTrack ?: return
@@ -144,6 +145,9 @@ fun LiveDetailScreen(
 
     var replyMessage by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingReaction>() }
+    val floatingHearts = remember { mutableStateListOf<FloatingHeart>() }
+    var sessionHearts by remember { mutableIntStateOf(0) }
+    var showListenersSheet by remember { mutableStateOf(false) }
 
     // Colori dinamici estratti DIRETTAMENTE dalla COPERTINA DEL BRANO (non dal profilo)
     var dynamicColors by remember(track.id, track.accentColorHex, track.coverUrl) {
@@ -335,6 +339,76 @@ fun LiveDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
+            // CAROSELLO ASCOLTATORI — in cima a tutto
+            if (listeners.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "ascoltano",
+                        color = PureWhite.copy(alpha = 0.35f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 0.3.sp
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    val visibleListeners = listeners.take(5)
+                    val extraCount = (listeners.size - 5).coerceAtLeast(0)
+                    val avatarDp = 26
+                    val stepDp = 20
+                    val totalSlots = visibleListeners.size + if (extraCount > 0) 1 else 0
+                    Box(
+                        modifier = Modifier
+                            .width((avatarDp + (totalSlots - 1) * stepDp).dp)
+                            .height(avatarDp.dp)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { showListenersSheet = true }
+                            )
+                    ) {
+                        visibleListeners.forEachIndexed { index, u ->
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = (index * stepDp).dp)
+                                    .size(avatarDp.dp)
+                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF1A1A1E))
+                            ) {
+                                AsyncImage(
+                                    model = u.avatarUrl,
+                                    contentDescription = u.username,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                        if (extraCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = (visibleListeners.size * stepDp).dp)
+                                    .size(avatarDp.dp)
+                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2A2A30)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "+$extraCount",
+                                    color = PureWhite.copy(alpha = 0.7f),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Sezione Centrale Equidistanziata: Tag, Avatar+Equalizzatori, Player Brano
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -650,51 +724,14 @@ fun LiveDetailScreen(
                 }
             }
 
-            // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE — GIÙ A TUTTO
+            // INPUT + CUORE — GIÙ A TUTTO
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
-                // Barra Reaction (Diamond, Soundwave, Star)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    com.example.ui.components.detailReactions.forEach { reaction ->
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {
-                                        floatingReactions.add(
-                                            FloatingReaction(
-                                                id = System.currentTimeMillis(),
-                                                reaction = reaction,
-                                                initialXRatio = (0.2f + Math.random().toFloat() * 0.6f)
-                                            )
-                                        )
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            com.example.ui.components.CustomReactionIcon(
-                                reaction = reaction,
-                                tint = PureWhite,
-                                size = 23.dp
-                            )
-                        }
-                    }
-                }
-
                 // Input Testuale Sincronizzato Borderless
                 Row(
                     modifier = Modifier
@@ -764,6 +801,53 @@ fun LiveDetailScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // Cuore — a destra del bottone invio
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        val heartScale = remember { Animatable(1f) }
+                        val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+                        Box(
+                            modifier = Modifier
+                                .size(34.dp)
+                                .scale(heartScale.value)
+                                .clip(CircleShape)
+                                .background(Color(0xFFFF3B6B).copy(alpha = 0.15f))
+                                .border(0.8.dp, Color(0xFFFF3B6B).copy(alpha = 0.45f), CircleShape)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        sessionHearts++
+                                        floatingHearts.add(FloatingHeart(System.currentTimeMillis(), 0.3f + Math.random().toFloat() * 0.4f))
+                                        coroutineScope.launch {
+                                            heartScale.animateTo(1.35f, tween(90))
+                                            heartScale.animateTo(1f, tween(130))
+                                        }
+                                    }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "❤",
+                                color = Color(0xFFFF3B6B),
+                                fontSize = 16.sp
+                            )
+                        }
+                        if (sessionHearts > 0) {
+                            Text(
+                                text = "$sessionHearts",
+                                color = Color(0xFFFF3B6B).copy(alpha = 0.85f),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -775,6 +859,88 @@ fun LiveDetailScreen(
                 xRatio = item.initialXRatio,
                 onFinished = { floatingReactions.remove(item) }
             )
+        }
+
+        // Cuori flottanti
+        floatingHearts.forEach { item ->
+            FloatingHeartEffect(
+                xRatio = item.xRatio,
+                onFinished = { floatingHearts.remove(item) }
+            )
+        }
+
+        // Sheet lista ascoltatori
+        if (showListenersSheet) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(BlackPitch.copy(alpha = 0.65f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { showListenersSheet = false }
+                    ),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                        .background(Color(0xFF141418))
+                        .padding(horizontal = 20.dp, vertical = 20.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = {}
+                        )
+                ) {
+                    Text(
+                        text = "ascoltano questo brano",
+                        color = PureWhite.copy(alpha = 0.5f),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Normal,
+                        letterSpacing = 0.3.sp
+                    )
+                    Spacer(modifier = Modifier.height(14.dp))
+                    listeners.forEach { u ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 6.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF1A1A1E))
+                            ) {
+                                AsyncImage(
+                                    model = u.avatarUrl,
+                                    contentDescription = u.username,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = u.name.ifBlank { u.username },
+                                    color = PureWhite,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "@${u.username.lowercase()}",
+                                    color = SubtitleGray,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+            }
         }
 
         // Oscuramento radiale durante la registrazione del Pulse:
@@ -984,6 +1150,36 @@ private fun FloatingReactionEffect(
                 size = 22.dp
             )
         }
+    }
+}
+
+@Composable
+private fun FloatingHeartEffect(xRatio: Float, onFinished: () -> Unit) {
+    val animY = remember { Animatable(1f) }
+    val animAlpha = remember { Animatable(1f) }
+    val animScale = remember { Animatable(0.6f) }
+
+    LaunchedEffect(Unit) {
+        launch { animScale.animateTo(1.2f, tween(200, easing = FastOutSlowInEasing)) }
+        animY.animateTo(0.02f, animationSpec = tween(1400, easing = LinearEasing))
+        animAlpha.animateTo(0f, animationSpec = tween(400, easing = LinearEasing))
+        onFinished()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {},
+        contentAlignment = Alignment.BottomStart
+    ) {
+        Text(
+            text = "❤",
+            color = Color(0xFFFF3B6B).copy(alpha = animAlpha.value),
+            fontSize = (22 * animScale.value).sp,
+            modifier = Modifier
+                .padding(start = (xRatio * 300).dp)
+                .padding(bottom = (animY.value * 420).dp)
+        )
     }
 }
 
