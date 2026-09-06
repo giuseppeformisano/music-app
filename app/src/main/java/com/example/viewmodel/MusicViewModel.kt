@@ -94,7 +94,9 @@ data class MusicUiState(
     val showChangelog: Boolean = false,
     val activePulse: com.example.model.ActivePulse? = null,
     val dailySharesUsed: Int = 0,
-    val showShareLimitSheet: Boolean = false
+    val showShareLimitSheet: Boolean = false,
+    val appListenersForTrack: Int = 0,
+    val myListenCountForTrack: Int = 0
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -123,7 +125,40 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var chatMessagesListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var conversationsListener: com.google.firebase.firestore.ListenerRegistration? = null
 
+    // Listen tracking: conta gli intervalli di 30s in cui l'utente ascolta un brano
+    private var listenTrackingJob: Job? = null
+    private var trackedTrackId: String? = null
 
+    private val listenCountPrefs get() = appContext.getSharedPreferences("listen_counts", Context.MODE_PRIVATE)
+    private fun getListenCount(trackId: String) = listenCountPrefs.getInt("count_$trackId", 0)
+    private fun incrementListenCount(trackId: String) {
+        val count = getListenCount(trackId) + 1
+        listenCountPrefs.edit().putInt("count_$trackId", count).apply()
+    }
+
+    private fun startListenTracking(trackId: String) {
+        if (trackedTrackId == trackId) return
+        listenTrackingJob?.cancel()
+        trackedTrackId = trackId
+        listenTrackingJob = viewModelScope.launch {
+            while (isActive) {
+                delay(30_000L)
+                if (_uiState.value.currentUser.currentTrack?.id == trackId) {
+                    incrementListenCount(trackId)
+                    if (_uiState.value.selectedTrackDetail?.first?.id == trackId) {
+                        _uiState.update { it.copy(myListenCountForTrack = getListenCount(trackId)) }
+                    }
+                }
+            }
+        }
+    }
+
+    companion object {
+        private const val DAILY_SHARE_LIMIT = 3
+        private const val PREFS_SHARE = "daily_share_prefs"
+        private const val KEY_SHARE_DATE = "share_date"
+        private const val KEY_SHARE_COUNT = "share_count"
+    }
 
     private fun loadDailyShareCount(): Int {
         val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
@@ -147,6 +182,20 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val showChangelog = BuildConfig.VERSION_CODE > lastChangelogCode
         val dailyUsed = loadDailyShareCount()
         _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs, showChangelog = showChangelog, dailySharesUsed = dailyUsed) }
+
+        // Avvia il watcher del brano corrente per il contatore ascolti personale
+        viewModelScope.launch {
+            var lastTrackId: String? = null
+            _uiState.collect { state ->
+                val newTrackId = state.currentUser.currentTrack?.id
+                if (newTrackId != lastTrackId) {
+                    lastTrackId = newTrackId
+                    listenTrackingJob?.cancel()
+                    trackedTrackId = null
+                    if (newTrackId != null) startListenTracking(newTrackId)
+                }
+            }
+        }
 
         SpotifyAuthRepository.loadTokens(appContext)
         checkForUpdate()
@@ -1625,7 +1674,18 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun inspectTrack(track: Track, user: User? = null) {
-        _uiState.update { it.copy(selectedTrackDetail = Pair(track, user)) }
+        val currentUser = _uiState.value.currentUser
+        val appListeners = _uiState.value.feedUsers.count {
+            it.currentTrack?.id == track.id && it.isActuallyLive
+        } + if (currentUser.currentTrack?.id == track.id) 1 else 0
+        val myListenCount = getListenCount(track.id)
+        _uiState.update {
+            it.copy(
+                selectedTrackDetail = Pair(track, user),
+                appListenersForTrack = appListeners,
+                myListenCountForTrack = myListenCount
+            )
+        }
     }
 
     fun closeTrackInspector() { _uiState.update { it.copy(selectedTrackDetail = null) } }

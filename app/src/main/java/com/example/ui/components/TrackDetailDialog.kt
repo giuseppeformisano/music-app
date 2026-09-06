@@ -89,7 +89,9 @@ fun TrackDetailDialog(
     onShareToMyFeed: (Track) -> Unit = {},
     isMyTrack: Boolean = false,
     onDeleteTrack: ((Track) -> Unit)? = null,
-    onSetAsCover: ((Track) -> Unit)? = null
+    onSetAsCover: ((Track) -> Unit)? = null,
+    appListenersCount: Int = 0,
+    myListenCount: Int = 0
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -97,6 +99,7 @@ fun TrackDetailDialog(
 
     var commentText by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingFeedReaction>() }
+    var sessionReactionCount by remember { mutableStateOf(0) }
 
     // Colori dinamici estratti dalla COPERTINA VERA del brano (non dal background blurrato)
     var dynamicColors by remember(track.id, track.accentColorHex, track.coverUrl) {
@@ -322,6 +325,63 @@ fun TrackDetailDialog(
 
                         // Bottoni piattaforme
                         PlatformButtons(track = track, context = context)
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Mini stat row: ascoltatori nell'app + tuoi ascolti + reazioni sessione
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            if (appListenersCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF141418).copy(alpha = 0.85f))
+                                        .border(0.75.dp, Color(0xFF1DB954).copy(alpha = 0.5f), CircleShape)
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "$appListenersCount nell'app",
+                                        color = Color(0xFF1DB954),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            if (myListenCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF141418).copy(alpha = 0.85f))
+                                        .border(0.75.dp, Color(0xFFF0B429).copy(alpha = 0.4f), CircleShape)
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "$myListenCount ascolti",
+                                        color = Color(0xFFF0B429),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            if (sessionReactionCount > 0) {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF141418).copy(alpha = 0.85f))
+                                        .border(0.75.dp, PureWhite.copy(alpha = 0.2f), CircleShape)
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Text(
+                                        text = "+$sessionReactionCount",
+                                        color = PureWhite.copy(alpha = 0.7f),
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
 
@@ -357,6 +417,7 @@ fun TrackDetailDialog(
                                                     initialXRatio = (0.2f + Math.random().toFloat() * 0.6f)
                                                 )
                                             )
+                                            sessionReactionCount++
                                         }
                                     ),
                                 contentAlignment = Alignment.Center

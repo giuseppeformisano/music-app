@@ -7,7 +7,9 @@ package com.example
 object AppChangelog {
     const val TITLE = "Novità · 0.13.40"
     val LINES = listOf(
-        "Brano: bottoni per aprire direttamente su Spotify, Apple Music, Amazon Music e YouTube Music.",
-        "Feed: limite di 3 condivisioni al giorno con badge sul FAB e countdown al reset degli slot."
+        "Feed: aura dorata e badge 'sync' quando ascolti lo stesso brano di un amico in tempo reale.",
+        "Brano: contatore di quanti utenti nell'app stanno ascoltando lo stesso brano.",
+        "Brano: contatore dei tuoi ascolti personali (ogni 30s di ascolto = 1 ascolto).",
+        "Brano: reazioni emoji con contatore sessione."
     )
 }

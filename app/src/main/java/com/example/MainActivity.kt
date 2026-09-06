@@ -541,7 +541,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onShareToMyFeed = { trk -> viewModel.shareTrack(trk) },
                 isMyTrack = isMyTrack,
                 onDeleteTrack = { trk -> viewModel.deleteSharedTrack(trk) },
-                onSetAsCover = { trk -> viewModel.setTrackAsCover(trk) }
+                onSetAsCover = { trk -> viewModel.setTrackAsCover(trk) },
+                appListenersCount = uiState.appListenersForTrack,
+                myListenCount = uiState.myListenCountForTrack
             )
         }
 

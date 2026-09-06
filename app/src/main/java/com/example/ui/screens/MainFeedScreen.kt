@@ -828,6 +828,7 @@ private fun LivePageContent(
                             fadeOutSpec = null,
                             placementSpec = tween(400, easing = EaseInEasing)
                         )
+                        val isInSync = myTrack != null && track.id == myTrack.id
                         when {
                             isDeparting -> ExitingLiveItem(
                                 user = user,
@@ -840,6 +841,7 @@ private fun LivePageContent(
                                 track = track,
                                 onClick = { onSelectLiveUser(user) },
                                 onProfileClick = { onOpenProfile(user) },
+                                isInSync = isInSync,
                                 modifier = slideMod
                             )
                             else -> SupernovaEntranceItem(
@@ -1764,6 +1766,7 @@ private fun LiveUserMinimalItem(
     track: Track,
     onClick: () -> Unit,
     onProfileClick: () -> Unit,
+    isInSync: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val previousTrackState = remember { mutableStateOf<Track?>(null) }
@@ -1801,9 +1804,14 @@ private fun LiveUserMinimalItem(
         }
     }
 
-    // Palette cromatica dinamica estratta in tempo reale dal brano specifico
-    val (primaryColor, secondaryColor) = remember(currentDisplayTrack.id, currentDisplayTrack.accentColorHex, currentDisplayTrack.genre) {
-        extractDynamicTrackGlowColors(currentDisplayTrack)
+    // Palette cromatica dinamica estratta in tempo reale dal brano specifico.
+    // Se in sync con l'utente corrente, sovrascrive con gold.
+    val (primaryColor, secondaryColor) = if (isInSync) {
+        remember(isInSync) { Pair(Color(0xFFF0B429), Color(0xFFFFD700)) }
+    } else {
+        remember(currentDisplayTrack.id, currentDisplayTrack.accentColorHex, currentDisplayTrack.genre) {
+            extractDynamicTrackGlowColors(currentDisplayTrack)
+        }
     }
 
     val (prevPrimaryColor, prevSecondaryColor) = remember(previousTrack?.id, previousTrack?.accentColorHex, previousTrack?.genre) {
@@ -1982,6 +1990,22 @@ private fun LiveUserMinimalItem(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                        if (isInSync) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(androidx.compose.foundation.shape.RoundedCornerShape(4.dp))
+                                    .background(Color(0xFFF0B429).copy(alpha = 0.2f))
+                                    .padding(horizontal = 5.dp, vertical = 1.dp)
+                            ) {
+                                Text(
+                                    text = "sync",
+                                    color = Color(0xFFF0B429),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp
+                                )
+                            }
+                        }
                     }
                 }
             }
