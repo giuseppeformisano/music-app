@@ -790,6 +790,14 @@ fun LiveDetailScreen(
                 }
             }
 
+            // Pill "ascolta su" — apri il brano su altra piattaforma
+            com.example.ui.components.ListenOnPill(
+                track = track,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+            )
+
             // INPUT + CUORE — GIÙ A TUTTO
             val heartScale = remember { Animatable(1f) }
             var heartTapped by remember { mutableStateOf(false) }

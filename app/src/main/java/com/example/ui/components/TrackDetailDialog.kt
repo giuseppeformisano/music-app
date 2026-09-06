@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -80,7 +79,6 @@ private data class FloatingFeedReaction(
     val initialXRatio: Float
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackDetailDialog(
     track: Track,
@@ -104,7 +102,6 @@ fun TrackDetailDialog(
     var commentText by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingFeedReaction>() }
     var sessionReactionCount by remember { mutableStateOf(0) }
-    var showPlatformSheet by remember { mutableStateOf(false) }
 
     // Colori dinamici estratti dalla COPERTINA VERA del brano (non dal background blurrato)
     var dynamicColors by remember(track.id, track.accentColorHex, track.coverUrl) {
@@ -391,27 +388,8 @@ fun TrackDetailDialog(
                             }
                         }
 
-                        // Chip singolo "Ascolta su ▸" — apre bottom sheet con le piattaforme
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(Color(0xFF1A1A1F))
-                                .border(0.8.dp, PureWhite.copy(alpha = 0.12f), RoundedCornerShape(20.dp))
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { showPlatformSheet = true }
-                                )
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
-                            Text(
-                                text = "▸  ascolta su...",
-                                color = PureWhite.copy(alpha = 0.65f),
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.Medium,
-                                letterSpacing = 0.3.sp
-                            )
-                        }
+                        // Pill segmentata "ascolta su" — tutte le piattaforme, sorgente evidenziata
+                        ListenOnPill(track = track, modifier = Modifier.fillMaxWidth())
 
                         Spacer(modifier = Modifier.height(12.dp))
 
@@ -464,44 +442,6 @@ fun TrackDetailDialog(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
-                    // Barra Reaction (Diamond, Soundwave, Star)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        detailReactions.forEach { reaction ->
-                            Box(
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .clip(CircleShape)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                        onClick = {
-                                            floatingReactions.add(
-                                                FloatingFeedReaction(
-                                                    id = System.currentTimeMillis(),
-                                                    reaction = reaction,
-                                                    initialXRatio = (0.2f + Math.random().toFloat() * 0.6f)
-                                                )
-                                            )
-                                            sessionReactionCount++
-                                        }
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CustomReactionIcon(
-                                    reaction = reaction,
-                                    tint = PureWhite,
-                                    size = 23.dp
-                                )
-                            }
-                        }
-                    }
-
                     // Input Testuale Commento
                     Row(
                         modifier = Modifier
@@ -620,91 +560,6 @@ fun TrackDetailDialog(
         }
     }
 
-    // Bottom sheet piattaforme streaming
-    if (showPlatformSheet) {
-        androidx.compose.material3.ModalBottomSheet(
-            onDismissRequest = { showPlatformSheet = false },
-            containerColor = Color(0xFF111116),
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-                    .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Text(
-                    text = "Apri su",
-                    color = PureWhite.copy(alpha = 0.45f),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 0.5.sp,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-                platforms.forEach { platform ->
-                    val isSource = when (platform.label) {
-                        "Spotify" -> track.source.contains("spotify", ignoreCase = true)
-                        "Amazon" -> track.source.contains("amazon", ignoreCase = true)
-                        else -> false
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(
-                                if (isSource) platform.color.copy(alpha = 0.12f)
-                                else Color(0xFF1A1A1F)
-                            )
-                            .border(
-                                0.8.dp,
-                                if (isSource) platform.color.copy(alpha = 0.5f) else PureWhite.copy(alpha = 0.08f),
-                                RoundedCornerShape(14.dp)
-                            )
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null
-                            ) {
-                                showPlatformSheet = false
-                                val uri = platform.buildUri(track)
-                                val intent = Intent(Intent.ACTION_VIEW, uri)
-                                val resolved = context.packageManager.queryIntentActivities(intent, 0)
-                                if (resolved.isNotEmpty()) {
-                                    context.startActivity(intent)
-                                } else {
-                                    if (platform.label == "Amazon") {
-                                        val q = Uri.encode("${track.title} ${track.artist}")
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://music.amazon.com/search/$q")))
-                                    } else {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-                                    }
-                                }
-                            }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = platform.label,
-                            color = if (isSource) platform.color else PureWhite.copy(alpha = 0.75f),
-                            fontSize = 15.sp,
-                            fontWeight = if (isSource) FontWeight.SemiBold else FontWeight.Normal
-                        )
-                        if (isSource) {
-                            Text(
-                                text = "sorgente",
-                                color = platform.color.copy(alpha = 0.7f),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium,
-                                letterSpacing = 0.3.sp
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable
@@ -801,94 +656,6 @@ private fun extractDynamicTrackGlowColors(track: Track): Pair<Color, Color> {
     }
 
     return Pair(primary, secondary)
-}
-
-private data class StreamingPlatform(
-    val label: String,
-    val color: Color,
-    val buildUri: (Track) -> Uri
-)
-
-private val platforms = listOf(
-    StreamingPlatform("Spotify", Color(0xFF1DB954)) { track ->
-        val query = Uri.encode("${track.title} ${track.artist}")
-        Uri.parse("spotify:search:$query")
-    },
-    StreamingPlatform("Apple Music", Color(0xFFFC3D3D)) { track ->
-        val query = Uri.encode("${track.title} ${track.artist}")
-        Uri.parse("https://music.apple.com/search?term=$query")
-    },
-    StreamingPlatform("Amazon", Color(0xFF00A8E1)) { track ->
-        val query = Uri.encode("${track.title} ${track.artist}")
-        Uri.parse("amznmp3://search?phrase=$query").let { amzUri ->
-            amzUri
-        }
-    },
-    StreamingPlatform("YT Music", Color(0xFFFF0000)) { track ->
-        val query = Uri.encode("${track.title} ${track.artist}")
-        Uri.parse("https://music.youtube.com/search?q=$query")
-    }
-)
-
-@Composable
-private fun PlatformButtons(track: Track, context: android.content.Context) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        platforms.forEach { platform ->
-            val isSource = when (platform.label) {
-                "Spotify" -> track.source.contains("spotify", ignoreCase = true)
-                "Amazon" -> track.source.contains("amazon", ignoreCase = true)
-                else -> false
-            }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (isSource) platform.color.copy(alpha = 0.25f)
-                        else Color(0xFF141418).copy(alpha = 0.75f)
-                    )
-                    .border(
-                        width = if (isSource) 0.8.dp else 0.6.dp,
-                        color = if (isSource) platform.color.copy(alpha = 0.7f) else PureWhite.copy(alpha = 0.12f),
-                        shape = RoundedCornerShape(10.dp)
-                    )
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        val uri = platform.buildUri(track)
-                        val intent = Intent(Intent.ACTION_VIEW, uri)
-                        val resolved = context.packageManager.queryIntentActivities(intent, 0)
-                        if (resolved.isNotEmpty()) {
-                            context.startActivity(intent)
-                        } else {
-                            // Fallback web per Amazon Music
-                            if (platform.label == "Amazon") {
-                                val query = Uri.encode("${track.title} ${track.artist}")
-                                context.startActivity(
-                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://music.amazon.com/search/$query"))
-                                )
-                            } else {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, uri))
-                            }
-                        }
-                    }
-                    .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = platform.label,
-                    color = if (isSource) platform.color else PureWhite.copy(alpha = 0.55f),
-                    fontSize = 10.sp,
-                    fontWeight = if (isSource) FontWeight.Bold else FontWeight.Normal,
-                    letterSpacing = 0.2.sp
-                )
-            }
-        }
-    }
 }
 
 /**
