@@ -137,6 +137,7 @@ fun LiveDetailScreen(
     onSetTrackAsCover: (Track) -> Unit = {},
     onHeart: () -> Unit = {},
     listeners: List<User> = emptyList(),
+    globalListeners: List<User> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val track = user.currentTrack ?: return
@@ -408,6 +409,69 @@ fun LiveDetailScreen(
                             }
                         }
                     }
+                }
+            }
+
+            // Listener globali (tutti nell'app che ascoltano lo stesso brano)
+            if (globalListeners.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val visibleG = globalListeners.take(6)
+                    val extraG = (globalListeners.size - 6).coerceAtLeast(0)
+                    val avDp = 22; val stepDp = 16
+                    val slots = visibleG.size + if (extraG > 0) 1 else 0
+                    Box(
+                        modifier = Modifier
+                            .width((avDp + (slots - 1) * stepDp).dp)
+                            .height(avDp.dp)
+                    ) {
+                        visibleG.forEachIndexed { idx, u ->
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = (idx * stepDp).dp)
+                                    .size(avDp.dp)
+                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF1A1A1E))
+                            ) {
+                                AsyncImage(
+                                    model = u.avatarUrl,
+                                    contentDescription = u.username,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                        if (extraG > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = (visibleG.size * stepDp).dp)
+                                    .size(avDp.dp)
+                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF2A2A2E)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "+$extraG",
+                                    color = PureWhite.copy(alpha = 0.7f),
+                                    fontSize = 7.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "ascoltano questo brano",
+                        color = PureWhite.copy(alpha = 0.35f),
+                        fontSize = 11.sp,
+                        letterSpacing = 0.2.sp
+                    )
                 }
             }
 

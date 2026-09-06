@@ -480,6 +480,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onHeart = { viewModel.heartLive(liveUser.id) },
                     listeners = uiState.feedUsers.filter {
                         it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive
+                    },
+                    globalListeners = uiState.feedUsers.filter {
+                        it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id
                     }
                 )
             } else {
@@ -584,7 +587,10 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onDeleteTrack = { trk -> viewModel.deleteSharedTrack(trk) },
                 onSetAsCover = { trk -> viewModel.setTrackAsCover(trk) },
                 appListenersCount = uiState.appListenersForTrack,
-                myListenCount = uiState.myListenCountForTrack
+                myListenCount = uiState.myListenCountForTrack,
+                globalListeners = uiState.feedUsers.filter { u ->
+                    u.currentTrack?.id == track.id
+                }
             )
         }
 
