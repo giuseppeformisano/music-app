@@ -731,13 +731,27 @@ fun LiveDetailScreen(
             var heartTapped by remember { mutableStateOf(false) }
             val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
 
+            // Tutti i viewer (e il broadcaster via Firestore) triggera un cuore flottante
+            // ogni volta che liveHearts sale — così tutti vedono la stessa animazione.
+            val prevLiveHearts = remember { mutableIntStateOf(user.liveHearts) }
+            LaunchedEffect(user.liveHearts) {
+                val diff = user.liveHearts - prevLiveHearts.value
+                if (diff > 0) {
+                    repeat(diff.coerceAtMost(3)) {
+                        floatingHearts.add(FloatingHeart(System.currentTimeMillis() + it, 0f))
+                    }
+                }
+                prevLiveHearts.value = user.liveHearts
+            }
+
+            // Counter + cuore SOTTO la pill (stessa riga orizzontale, centrati verticalmente)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Pill input + invio
+                // Pill input + invio — peso 1, altezza fissa dalla pill stessa
                 Row(
                     modifier = Modifier
                         .weight(1f)
@@ -808,17 +822,20 @@ fun LiveDetailScreen(
 
                 Spacer(modifier = Modifier.width(14.dp))
 
-                // Cuore — fuori dalla pill, a destra
-                // Box wrapper: il cuore principale + i cuori flottanti sopra di esso
-                Box(contentAlignment = Alignment.BottomCenter) {
-                    // Cuori flottanti (sopra il pulsante)
+                // Cuore fuori dalla pill — usa graphicsLayer per la scala, così il layout
+                // della pill NON viene influenzato dall'animazione di rimpicciolimento.
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.width(40.dp)
+                ) {
+                    // Cuori flottanti ancorati sopra il pulsante
                     floatingHearts.forEach { item ->
                         FloatingHeartEffect(onFinished = { floatingHearts.remove(item) })
                     }
 
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        modifier = Modifier.wrapContentSize()
                     ) {
                         Icon(
                             imageVector = if (heartTapped) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
@@ -826,7 +843,11 @@ fun LiveDetailScreen(
                             tint = if (heartTapped) Color(0xFFE8315A) else PureWhite,
                             modifier = Modifier
                                 .size(28.dp)
-                                .scale(heartScale.value)
+                                // graphicsLayer non sposta il layout, evita il rimpicciolimento della pill
+                                .graphicsLayer {
+                                    scaleX = heartScale.value
+                                    scaleY = heartScale.value
+                                }
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -842,11 +863,11 @@ fun LiveDetailScreen(
                                     }
                                 )
                         )
-                        Spacer(modifier = Modifier.height(3.dp))
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "${user.liveHearts}",
-                            color = PureWhite.copy(alpha = 0.6f),
-                            fontSize = 11.sp,
+                            color = PureWhite.copy(alpha = 0.55f),
+                            fontSize = 10.sp,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -1150,20 +1171,23 @@ private fun FloatingReactionEffect(
 @Composable
 private fun FloatingHeartEffect(onFinished: () -> Unit) {
     val animY = remember { Animatable(0f) }
+    val animX = remember { Animatable(0f) }
     val animAlpha = remember { Animatable(1f) }
     val animScale = remember { Animatable(1.2f) }
+    // Direzione orizzontale casuale: ±18dp
+    val xTarget = remember { if (kotlin.random.Random.nextBoolean()) 18f else -18f }
 
     LaunchedEffect(Unit) {
         launch { animScale.animateTo(0.7f, tween(280, easing = LinearEasing)) }
         launch { animY.animateTo(80f, tween(280, easing = FastOutSlowInEasing)) }
+        launch { animX.animateTo(xTarget, tween(280, easing = FastOutSlowInEasing)) }
         kotlinx.coroutines.delay(120)
         animAlpha.animateTo(0f, tween(160, easing = LinearEasing))
         onFinished()
     }
 
-    // Posizionato appena sopra il Box padre (bottomCenter), usa offset negativo sull'asse Y
     Box(
-        modifier = Modifier.offset(y = (-animY.value - 32).dp),
+        modifier = Modifier.offset(x = animX.value.dp, y = (-animY.value - 32).dp),
         contentAlignment = Alignment.Center
     ) {
         Icon(

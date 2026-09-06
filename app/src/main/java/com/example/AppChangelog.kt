@@ -5,10 +5,11 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.14.2"
+    const val TITLE = "Novità · 0.14.3"
     val LINES = listOf(
-        "Live: cuore 2D appena sopra il pulsante, vola e svanisce in ~280ms.",
-        "Live: tap continuo senza blocchi, scala indipendente per ogni pressione.",
-        "Live: contatore liveHearts aggiorna updatedAt → listener Firestore notifica tutti."
+        "Live: broadcaster e tutti i viewer vedono la stessa animazione cuori flottanti.",
+        "Live: cuori flottanti si muovono anche orizzontalmente (drift ±18dp) mentre salgono.",
+        "Live: fix rimpicciolimento barra messaggi quando si tappa il cuore (graphicsLayer).",
+        "Live: allineamento verticale corretto tra cuore e pill di input."
     )
 }
