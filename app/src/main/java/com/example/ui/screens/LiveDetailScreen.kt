@@ -834,8 +834,7 @@ fun LiveDetailScreen(
                     }
 
                     Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.wrapContentSize()
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Icon(
                             imageVector = if (heartTapped) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
