@@ -809,40 +809,47 @@ fun LiveDetailScreen(
                 Spacer(modifier = Modifier.width(14.dp))
 
                 // Cuore — fuori dalla pill, a destra
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = if (heartTapped) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "Cuore",
-                        tint = if (heartTapped) Color(0xFFE8315A) else PureWhite,
-                        modifier = Modifier
-                            .size(28.dp)
-                            .scale(heartScale.value)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = {
-                                    onHeart()
-                                    floatingHearts.add(FloatingHeart(System.currentTimeMillis(), 0.25f + Math.random().toFloat() * 0.5f))
-                                    coroutineScope.launch {
-                                        heartTapped = true
-                                        heartScale.animateTo(1.4f, tween(80))
-                                        heartScale.animateTo(1f, tween(120))
-                                        kotlinx.coroutines.delay(400)
-                                        heartTapped = false
+                // Box wrapper: il cuore principale + i cuori flottanti sopra di esso
+                Box(contentAlignment = Alignment.BottomCenter) {
+                    // Cuori flottanti (sopra il pulsante)
+                    floatingHearts.forEach { item ->
+                        FloatingHeartEffect(onFinished = { floatingHearts.remove(item) })
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = if (heartTapped) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = "Cuore",
+                            tint = if (heartTapped) Color(0xFFE8315A) else PureWhite,
+                            modifier = Modifier
+                                .size(28.dp)
+                                .scale(heartScale.value)
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    onClick = {
+                                        onHeart()
+                                        floatingHearts.add(FloatingHeart(System.currentTimeMillis(), 0f))
+                                        coroutineScope.launch {
+                                            heartTapped = true
+                                            heartScale.animateTo(1.45f, tween(70))
+                                            heartScale.animateTo(1f, tween(90))
+                                            heartTapped = false
+                                        }
                                     }
-                                }
-                            )
-                    )
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = "${user.liveHearts}",
-                        color = PureWhite.copy(alpha = 0.6f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                                )
+                        )
+                        Spacer(modifier = Modifier.height(3.dp))
+                        Text(
+                            text = "${user.liveHearts}",
+                            color = PureWhite.copy(alpha = 0.6f),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
@@ -853,14 +860,6 @@ fun LiveDetailScreen(
                 reaction = item.reaction,
                 xRatio = item.initialXRatio,
                 onFinished = { floatingReactions.remove(item) }
-            )
-        }
-
-        // Cuori flottanti
-        floatingHearts.forEach { item ->
-            FloatingHeartEffect(
-                xRatio = item.xRatio,
-                onFinished = { floatingHearts.remove(item) }
             )
         }
 
@@ -1149,31 +1148,29 @@ private fun FloatingReactionEffect(
 }
 
 @Composable
-private fun FloatingHeartEffect(xRatio: Float, onFinished: () -> Unit) {
+private fun FloatingHeartEffect(onFinished: () -> Unit) {
     val animY = remember { Animatable(0f) }
     val animAlpha = remember { Animatable(1f) }
+    val animScale = remember { Animatable(1.2f) }
 
     LaunchedEffect(Unit) {
-        launch { animY.animateTo(220f, tween(700, easing = FastOutSlowInEasing)) }
-        kotlinx.coroutines.delay(350)
-        animAlpha.animateTo(0f, tween(300, easing = LinearEasing))
+        launch { animScale.animateTo(0.7f, tween(280, easing = LinearEasing)) }
+        launch { animY.animateTo(80f, tween(280, easing = FastOutSlowInEasing)) }
+        kotlinx.coroutines.delay(120)
+        animAlpha.animateTo(0f, tween(160, easing = LinearEasing))
         onFinished()
     }
 
+    // Posizionato appena sopra il Box padre (bottomCenter), usa offset negativo sull'asse Y
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .pointerInput(Unit) {},
-        contentAlignment = Alignment.BottomEnd
+        modifier = Modifier.offset(y = (-animY.value - 32).dp),
+        contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "❤",
-            color = Color(0xFFE8315A).copy(alpha = animAlpha.value),
-            fontSize = 26.sp,
-            modifier = Modifier.padding(
-                end = (xRatio * 80 + 16).dp,
-                bottom = (80 + animY.value).dp
-            )
+        Icon(
+            imageVector = Icons.Default.Favorite,
+            contentDescription = null,
+            tint = Color(0xFFE8315A).copy(alpha = animAlpha.value),
+            modifier = Modifier.size((28 * animScale.value).dp)
         )
     }
 }

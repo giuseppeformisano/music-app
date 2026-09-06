@@ -349,7 +349,10 @@ object FirebaseRepository {
         val db = firestore ?: return
         db.collection(USERS_COLLECTION)
             .document(userId)
-            .update("liveHearts", FieldValue.increment(1))
+            .update(mapOf(
+                "liveHearts" to FieldValue.increment(1),
+                "updatedAt" to System.currentTimeMillis()
+            ))
     }
 
     /**
