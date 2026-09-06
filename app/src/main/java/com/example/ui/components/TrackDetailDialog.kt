@@ -62,7 +62,9 @@ import coil.compose.AsyncImage
 import coil.imageLoader
 import coil.request.ImageRequest
 import coil.request.SuccessResult
+import android.content.Intent
 import android.graphics.drawable.BitmapDrawable
+import android.net.Uri
 import com.example.model.Track
 import com.example.model.User
 import com.example.ui.theme.PureWhite
@@ -315,6 +317,11 @@ fun TrackDetailDialog(
                                 }
                             }
                         }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        // Bottoni piattaforme
+                        PlatformButtons(track = track, context = context)
                     }
                 }
 
@@ -576,6 +583,94 @@ private fun extractDynamicTrackGlowColors(track: Track): Pair<Color, Color> {
     }
 
     return Pair(primary, secondary)
+}
+
+private data class StreamingPlatform(
+    val label: String,
+    val color: Color,
+    val buildUri: (Track) -> Uri
+)
+
+private val platforms = listOf(
+    StreamingPlatform("Spotify", Color(0xFF1DB954)) { track ->
+        val query = Uri.encode("${track.title} ${track.artist}")
+        Uri.parse("spotify:search:$query")
+    },
+    StreamingPlatform("Apple Music", Color(0xFFFC3D3D)) { track ->
+        val query = Uri.encode("${track.title} ${track.artist}")
+        Uri.parse("https://music.apple.com/search?term=$query")
+    },
+    StreamingPlatform("Amazon", Color(0xFF00A8E1)) { track ->
+        val query = Uri.encode("${track.title} ${track.artist}")
+        Uri.parse("amznmp3://search?phrase=$query").let { amzUri ->
+            amzUri
+        }
+    },
+    StreamingPlatform("YT Music", Color(0xFFFF0000)) { track ->
+        val query = Uri.encode("${track.title} ${track.artist}")
+        Uri.parse("https://music.youtube.com/search?q=$query")
+    }
+)
+
+@Composable
+private fun PlatformButtons(track: Track, context: android.content.Context) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        platforms.forEach { platform ->
+            val isSource = when (platform.label) {
+                "Spotify" -> track.source.contains("spotify", ignoreCase = true)
+                "Amazon" -> track.source.contains("amazon", ignoreCase = true)
+                else -> false
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (isSource) platform.color.copy(alpha = 0.25f)
+                        else Color(0xFF141418).copy(alpha = 0.75f)
+                    )
+                    .border(
+                        width = if (isSource) 0.8.dp else 0.6.dp,
+                        color = if (isSource) platform.color.copy(alpha = 0.7f) else PureWhite.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(10.dp)
+                    )
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        val uri = platform.buildUri(track)
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        val resolved = context.packageManager.queryIntentActivities(intent, 0)
+                        if (resolved.isNotEmpty()) {
+                            context.startActivity(intent)
+                        } else {
+                            // Fallback web per Amazon Music
+                            if (platform.label == "Amazon") {
+                                val query = Uri.encode("${track.title} ${track.artist}")
+                                context.startActivity(
+                                    Intent(Intent.ACTION_VIEW, Uri.parse("https://music.amazon.com/search/$query"))
+                                )
+                            } else {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+                            }
+                        }
+                    }
+                    .padding(vertical = 8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = platform.label,
+                    color = if (isSource) platform.color else PureWhite.copy(alpha = 0.55f),
+                    fontSize = 10.sp,
+                    fontWeight = if (isSource) FontWeight.Bold else FontWeight.Normal,
+                    letterSpacing = 0.2.sp
+                )
+            }
+        }
+    }
 }
 
 /**

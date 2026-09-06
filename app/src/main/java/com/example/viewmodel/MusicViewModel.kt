@@ -92,7 +92,9 @@ data class MusicUiState(
     val applyCoverToFeed: Boolean = false,
     val liveNotificationsEnabled: Boolean = true,
     val showChangelog: Boolean = false,
-    val activePulse: com.example.model.ActivePulse? = null
+    val activePulse: com.example.model.ActivePulse? = null,
+    val dailySharesUsed: Int = 0,
+    val showShareLimitSheet: Boolean = false
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -121,6 +123,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var chatMessagesListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var conversationsListener: com.google.firebase.firestore.ListenerRegistration? = null
 
+    companion object {
+        private const val DAILY_SHARE_LIMIT = 3
+        private const val PREFS_SHARE = "daily_share_prefs"
+        private const val KEY_SHARE_DATE = "share_date"
+        private const val KEY_SHARE_COUNT = "share_count"
+    }
+
+    private fun loadDailyShareCount(): Int {
+        val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        val savedDate = prefs.getString(KEY_SHARE_DATE, "")
+        return if (savedDate == today) prefs.getInt(KEY_SHARE_COUNT, 0) else 0
+    }
+
+    private fun saveDailyShareCount(count: Int) {
+        val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
+        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+        prefs.edit().putString(KEY_SHARE_DATE, today).putInt(KEY_SHARE_COUNT, count).apply()
+    }
+
     init {
         val userSettingsPrefs = appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
         val initialApplyCover = userSettingsPrefs.getBoolean("apply_cover_to_feed", false)
@@ -128,7 +150,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         // Changelog: mostralo una sola volta dopo un aggiornamento (non al primissimo avvio).
         val lastChangelogCode = userSettingsPrefs.getInt("last_changelog_code", 0)
         val showChangelog = BuildConfig.VERSION_CODE > lastChangelogCode
-        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs, showChangelog = showChangelog) }
+        val dailyUsed = loadDailyShareCount()
+        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs, showChangelog = showChangelog, dailySharesUsed = dailyUsed) }
 
         SpotifyAuthRepository.loadTokens(appContext)
         checkForUpdate()
@@ -1099,7 +1122,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun openShareSheet() {
-        _uiState.update { it.copy(isShareSheetOpen = true, searchQuery = "", searchResults = emptyList()) }
+        val used = loadDailyShareCount()
+        if (used >= DAILY_SHARE_LIMIT) {
+            _uiState.update { it.copy(dailySharesUsed = used, showShareLimitSheet = true) }
+        } else {
+            _uiState.update { it.copy(isShareSheetOpen = true, searchQuery = "", searchResults = emptyList(), dailySharesUsed = used) }
+        }
+    }
+
+    fun closeShareLimitSheet() {
+        _uiState.update { it.copy(showShareLimitSheet = false) }
     }
 
     fun closeShareSheet() {
@@ -1180,6 +1212,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         // Condivisione nel FEED: aggiorna solo i brani condivisi + stats.
         // NON tocca currentTrack/isLiveNow (che sono lo stato LIVE) — feed e live
         // sono due sezioni distinte e la condivisione non deve mandarti in live.
+        val currentUsed = loadDailyShareCount()
+        if (currentUsed >= DAILY_SHARE_LIMIT) {
+            _uiState.update { it.copy(isShareSheetOpen = false, dailySharesUsed = currentUsed, showShareLimitSheet = true) }
+            return
+        }
+        val newUsed = currentUsed + 1
+        saveDailyShareCount(newUsed)
+
         val trackWithTimestamp = track.copy(sharedAt = System.currentTimeMillis())
         val updatedUser = _uiState.value.currentUser.copy(
             sharedTracks = listOf(trackWithTimestamp) + _uiState.value.currentUser.sharedTracks.filterNot { it.id == track.id },
@@ -1189,6 +1229,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 currentUser = updatedUser,
                 isShareSheetOpen = false,
+                dailySharesUsed = newUsed,
                 feedbackToast = "Condiviso: ${track.title}"
             )
         }

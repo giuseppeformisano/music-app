@@ -341,7 +341,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                         onClearToast = { viewModel.clearToast() },
                         applyCoverToFeed = uiState.applyCoverToFeed,
                         isNotificationListenerEnabled = uiState.isNotificationListenerEnabled,
-                        onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) }
+                        onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) },
+                        dailySharesUsed = uiState.dailySharesUsed
                     )
                 }
             }
@@ -486,6 +487,13 @@ fun MusicApp(viewModel: MusicViewModel) {
                 onSearchQueryChanged = { viewModel.onSearchQueryChanged(it) },
                 onShareTrack = { viewModel.shareTrack(it) },
                 onDismiss = { viewModel.closeShareSheet() }
+            )
+        }
+
+        // Bottom sheet: limite condivisioni giornaliere esaurite
+        if (uiState.showShareLimitSheet) {
+            com.example.ui.components.ShareLimitSheet(
+                onDismiss = { viewModel.closeShareLimitSheet() }
             )
         }
 
