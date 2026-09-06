@@ -153,12 +153,6 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    companion object {
-        private const val DAILY_SHARE_LIMIT = 3
-        private const val PREFS_SHARE = "daily_share_prefs"
-        private const val KEY_SHARE_DATE = "share_date"
-        private const val KEY_SHARE_COUNT = "share_count"
-    }
 
     private fun loadDailyShareCount(): Int {
         val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
