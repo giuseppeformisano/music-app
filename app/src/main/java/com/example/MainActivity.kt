@@ -470,6 +470,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     },
                     onSendPulse = { u, samples, audio -> viewModel.sendPulse(u.id, samples, audio) },
                     onSetTrackAsCover = { trk -> viewModel.setTrackAsCover(trk) },
+                    onHeart = { viewModel.heartLive(liveUser.id) },
                     listeners = uiState.feedUsers.filter {
                         it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive
                     }

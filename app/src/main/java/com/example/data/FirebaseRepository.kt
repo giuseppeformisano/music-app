@@ -345,6 +345,13 @@ object FirebaseRepository {
             .addOnFailureListener { }
     }
 
+    fun incrementLiveHearts(userId: String) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION)
+            .document(userId)
+            .update("liveHearts", FieldValue.increment(1))
+    }
+
     /**
      * Condivide un brano nel feed dell'utente (1 singola scrittura con arrayUnion).
      */
@@ -767,6 +774,7 @@ object FirebaseRepository {
         }?.sortedByDescending { it.timestamp } ?: emptyList()
         val sentRequestIds = (data["sentRequestIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
         val liveNotificationsEnabled = data["liveNotificationsEnabled"] as? Boolean ?: true
+        val liveHearts = (data["liveHearts"] as? Number)?.toInt() ?: 0
 
         return User(
             id = id,
@@ -791,7 +799,8 @@ object FirebaseRepository {
             followingIds = followingIds,
             pendingRequests = pendingRequests,
             sentRequestIds = sentRequestIds,
-            liveNotificationsEnabled = liveNotificationsEnabled
+            liveNotificationsEnabled = liveNotificationsEnabled,
+            liveHearts = liveHearts
         )
     }
 

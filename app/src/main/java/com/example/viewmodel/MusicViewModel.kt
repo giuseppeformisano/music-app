@@ -1533,6 +1533,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
+    fun heartLive(userId: String) {
+        FirebaseRepository.incrementLiveHearts(userId)
+    }
+
     /** Invia un Pulse tattile (registrazione di 5s come stringa di campioni). */
     fun sendPulse(recipientId: String, samples: String, audioBase64: String? = null) {
         if (!com.example.data.PulseHaptics.hasContent(samples)) return

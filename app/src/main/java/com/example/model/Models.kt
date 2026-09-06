@@ -51,7 +51,8 @@ data class User(
     // pendingRequests = ricevute (in attesa); sentRequestIds = inviate da me
     val pendingRequests: List<FriendRequest> = emptyList(),
     val sentRequestIds: List<String> = emptyList(),
-    val liveNotificationsEnabled: Boolean = true
+    val liveNotificationsEnabled: Boolean = true,
+    val liveHearts: Int = 0
 ) {
     val isOnline: Boolean
         get() = presenceState == UserPresenceState.ONLINE || presenceState == UserPresenceState.LIVE

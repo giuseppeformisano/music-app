@@ -38,6 +38,8 @@ import androidx.compose.material.icons.filled.Cast
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
@@ -133,6 +135,7 @@ fun LiveDetailScreen(
     onOpenUserProfile: (User) -> Unit,
     onSendPulse: (User, String, String?) -> Unit = { _, _, _ -> },
     onSetTrackAsCover: (Track) -> Unit = {},
+    onHeart: () -> Unit = {},
     listeners: List<User> = emptyList(),
     modifier: Modifier = Modifier
 ) {
@@ -146,7 +149,6 @@ fun LiveDetailScreen(
     var replyMessage by remember { mutableStateOf("") }
     val floatingReactions = remember { mutableStateListOf<FloatingReaction>() }
     val floatingHearts = remember { mutableStateListOf<FloatingHeart>() }
-    var sessionHearts by remember { mutableIntStateOf(0) }
     var showListenersSheet by remember { mutableStateOf(false) }
 
     // Colori dinamici estratti DIRETTAMENTE dalla COPERTINA DEL BRANO (non dal profilo)
@@ -725,17 +727,20 @@ fun LiveDetailScreen(
             }
 
             // INPUT + CUORE — GIÙ A TUTTO
-            Column(
+            val heartScale = remember { Animatable(1f) }
+            var heartTapped by remember { mutableStateOf(false) }
+            val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(0.dp)
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Input Testuale Sincronizzato Borderless
+                // Pill input + invio
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .weight(1f)
                         .clip(RoundedCornerShape(28.dp))
                         .background(Color(0xFF141418).copy(alpha = 0.85f))
                         .border(0.8.dp, PureWhite.copy(alpha = 0.15f), RoundedCornerShape(28.dp))
@@ -779,9 +784,7 @@ fun LiveDetailScreen(
                             innerTextField()
                         }
                     )
-
                     Spacer(modifier = Modifier.width(10.dp))
-
                     IconButton(
                         onClick = {
                             if (replyMessage.isNotBlank()) {
@@ -801,53 +804,45 @@ fun LiveDetailScreen(
                             modifier = Modifier.size(18.dp)
                         )
                     }
+                }
 
-                    Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(14.dp))
 
-                    // Cuore — a destra del bottone invio
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        val heartScale = remember { Animatable(1f) }
-                        val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
-                        Box(
-                            modifier = Modifier
-                                .size(34.dp)
-                                .scale(heartScale.value)
-                                .clip(CircleShape)
-                                .background(Color(0xFFFF3B6B).copy(alpha = 0.15f))
-                                .border(0.8.dp, Color(0xFFFF3B6B).copy(alpha = 0.45f), CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = {
-                                        sessionHearts++
-                                        floatingHearts.add(FloatingHeart(System.currentTimeMillis(), 0.3f + Math.random().toFloat() * 0.4f))
-                                        coroutineScope.launch {
-                                            heartScale.animateTo(1.35f, tween(90))
-                                            heartScale.animateTo(1f, tween(130))
-                                        }
+                // Cuore — fuori dalla pill, a destra
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = if (heartTapped) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "Cuore",
+                        tint = if (heartTapped) Color(0xFFE8315A) else PureWhite,
+                        modifier = Modifier
+                            .size(28.dp)
+                            .scale(heartScale.value)
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = {
+                                    onHeart()
+                                    floatingHearts.add(FloatingHeart(System.currentTimeMillis(), 0.25f + Math.random().toFloat() * 0.5f))
+                                    coroutineScope.launch {
+                                        heartTapped = true
+                                        heartScale.animateTo(1.4f, tween(80))
+                                        heartScale.animateTo(1f, tween(120))
+                                        kotlinx.coroutines.delay(400)
+                                        heartTapped = false
                                     }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "❤",
-                                color = Color(0xFFFF3B6B),
-                                fontSize = 16.sp
+                                }
                             )
-                        }
-                        if (sessionHearts > 0) {
-                            Text(
-                                text = "$sessionHearts",
-                                color = Color(0xFFFF3B6B).copy(alpha = 0.85f),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
+                    )
+                    Spacer(modifier = Modifier.height(3.dp))
+                    Text(
+                        text = "${user.liveHearts}",
+                        color = PureWhite.copy(alpha = 0.6f),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
@@ -1155,14 +1150,13 @@ private fun FloatingReactionEffect(
 
 @Composable
 private fun FloatingHeartEffect(xRatio: Float, onFinished: () -> Unit) {
-    val animY = remember { Animatable(1f) }
+    val animY = remember { Animatable(0f) }
     val animAlpha = remember { Animatable(1f) }
-    val animScale = remember { Animatable(0.6f) }
 
     LaunchedEffect(Unit) {
-        launch { animScale.animateTo(1.2f, tween(200, easing = FastOutSlowInEasing)) }
-        animY.animateTo(0.02f, animationSpec = tween(1400, easing = LinearEasing))
-        animAlpha.animateTo(0f, animationSpec = tween(400, easing = LinearEasing))
+        launch { animY.animateTo(220f, tween(700, easing = FastOutSlowInEasing)) }
+        kotlinx.coroutines.delay(350)
+        animAlpha.animateTo(0f, tween(300, easing = LinearEasing))
         onFinished()
     }
 
@@ -1170,15 +1164,16 @@ private fun FloatingHeartEffect(xRatio: Float, onFinished: () -> Unit) {
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(Unit) {},
-        contentAlignment = Alignment.BottomStart
+        contentAlignment = Alignment.BottomEnd
     ) {
         Text(
             text = "❤",
-            color = Color(0xFFFF3B6B).copy(alpha = animAlpha.value),
-            fontSize = (22 * animScale.value).sp,
-            modifier = Modifier
-                .padding(start = (xRatio * 300).dp)
-                .padding(bottom = (animY.value * 420).dp)
+            color = Color(0xFFE8315A).copy(alpha = animAlpha.value),
+            fontSize = 26.sp,
+            modifier = Modifier.padding(
+                end = (xRatio * 80 + 16).dp,
+                bottom = (80 + animY.value).dp
+            )
         )
     }
 }
