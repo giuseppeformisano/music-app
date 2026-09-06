@@ -909,7 +909,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                             sharedTracks = fresh.sharedTracks,
                             stats = fresh.stats,
                             followerIds = fresh.followerIds,
-                            followingIds = fresh.followingIds
+                            followingIds = fresh.followingIds,
+                            liveHearts = fresh.liveHearts
                             // isLiveNow e currentTrack restano gestiti localmente da Spotify
                         )
                         saveUserLocalPrefs(updatedCurrentUser)
