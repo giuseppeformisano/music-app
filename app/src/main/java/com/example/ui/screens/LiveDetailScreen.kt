@@ -117,7 +117,7 @@ private data class FloatingReaction(
     val initialXRatio: Float
 )
 
-private data class FloatingHeart(val id: Long, val xRatio: Float)
+internal data class FloatingHeart(val id: Long, val xRatio: Float)
 
 /**
  * Schermata Dettaglio Live Fullscreen
@@ -1168,7 +1168,7 @@ private fun FloatingReactionEffect(
 }
 
 @Composable
-private fun FloatingHeartEffect(onFinished: () -> Unit) {
+internal fun FloatingHeartEffect(onFinished: () -> Unit) {
     val animY = remember { Animatable(0f) }
     val animX = remember { Animatable(0f) }
     val animAlpha = remember { Animatable(1f) }

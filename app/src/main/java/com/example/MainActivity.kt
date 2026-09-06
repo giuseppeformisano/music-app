@@ -37,10 +37,15 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -55,6 +60,8 @@ import com.example.ui.components.TrackDetailDialog
 import com.example.ui.components.UpdateBanner
 import com.example.ui.screens.ChatScreen
 import com.example.ui.screens.ChatListScreen
+import com.example.ui.screens.FloatingHeart
+import com.example.ui.screens.FloatingHeartEffect
 import com.example.ui.screens.LiveDetailScreen
 import com.example.ui.screens.LoginScreen
 import com.example.ui.screens.MainFeedScreen
@@ -478,6 +485,36 @@ fun MusicApp(viewModel: MusicViewModel) {
             } else {
                 // L'utente ha chiuso la live: chiudi il dettaglio e torna alla lista
                 viewModel.closeStory()
+            }
+        }
+
+        // Overlay cuori per il broadcaster: vede le reaction dei viewer anche dal feed
+        if (uiState.currentUser.isActuallyLive) {
+            val broadcasterHearts = remember { mutableStateListOf<FloatingHeart>() }
+            val prevBroadcasterHearts = remember { mutableIntStateOf(uiState.currentUser.liveHearts) }
+            LaunchedEffect(uiState.currentUser.liveHearts) {
+                val diff = uiState.currentUser.liveHearts - prevBroadcasterHearts.value
+                if (diff > 0) {
+                    repeat(diff.coerceAtMost(3)) {
+                        broadcasterHearts.add(FloatingHeart(System.currentTimeMillis() + it, 0f))
+                    }
+                }
+                prevBroadcasterHearts.value = uiState.currentUser.liveHearts
+            }
+            if (broadcasterHearts.isNotEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
+                    Box(
+                        modifier = Modifier.padding(end = 24.dp, bottom = 120.dp),
+                        contentAlignment = Alignment.BottomCenter
+                    ) {
+                        broadcasterHearts.forEach { item ->
+                            FloatingHeartEffect(onFinished = { broadcasterHearts.remove(item) })
+                        }
+                    }
+                }
             }
         }
 
