@@ -99,6 +99,8 @@ import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import com.example.model.Track
 import com.example.model.User
+import com.example.ui.components.BottomNavBar
+import com.example.ui.components.BottomNavMode
 import com.example.ui.components.NavigationPage
 import com.example.ui.components.UniversalHeader
 import com.example.ui.components.liveNameVibration
@@ -153,6 +155,11 @@ fun MainFeedScreen(
     onSelectTrack: (Track, User) -> Unit,
     onOpenShareSheet: () -> Unit,
     onOpenPeopleSearch: () -> Unit,
+    onOpenChatList: () -> Unit = {},
+    onOpenNotifications: () -> Unit = {},
+    onOpenSettings: () -> Unit = {},
+    unreadMessages: Int = 0,
+    unreadNotifications: Int = 0,
     feedbackToast: String?,
     onClearToast: () -> Unit,
     applyCoverToFeed: Boolean = false,
@@ -250,16 +257,11 @@ fun MainFeedScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 28.dp)
-                .navigationBarsPadding()
         ) {
             // ================= 1. HEADER SUPERIORE UNIVERSALE =================
-            // Centrato e minimale: logo "m" cerchiata + "live" in corsivo minuscolo al centro,
-            // lente di ingrandimento a sinistra, avatar profilo a destra.
             UniversalHeader(
                 currentPage = currentPageEnum,
                 currentUser = currentUser,
-                onSearchClick = onOpenPeopleSearch,
-                onProfileClick = { onOpenProfile(currentUser) },
                 onHeaderCenterClick = {
                     coroutineScope.launch {
                         val targetPage = if (pagerState.currentPage == 0) 1 else 0
@@ -281,7 +283,6 @@ fun MainFeedScreen(
                         .tabSlideBlurTransition(page = page, pagerState = pagerState)
                 ) {
                     if (page == 0) {
-                        // PAGINA 0: SCHERMATA LIVE CON VINYL GLOW E TRANSIZIONE SUPERNOVA
                         LivePageContent(
                             currentUser = currentUser,
                             displayLive = displayLive,
@@ -296,7 +297,6 @@ fun MainFeedScreen(
                             onOpenProfile = onOpenProfile
                         )
                     } else {
-                        // PAGINA 1: FEED CONDIVISIONI
                         FeedPageContent(
                             currentUser = currentUser,
                             feedUsers = feedUsers,
@@ -306,17 +306,28 @@ fun MainFeedScreen(
                     }
                 }
             }
+
+            // ================= 3. BOTTOM NAV =================
+            com.example.ui.components.BottomNavBar(
+                mode = com.example.ui.components.BottomNavMode.MAIN,
+                unreadMessages = unreadMessages,
+                unreadNotifications = unreadNotifications,
+                onSearchClick = onOpenPeopleSearch,
+                onMessagesClick = onOpenChatList,
+                onNotificationsClick = onOpenNotifications,
+                onSettingsClick = onOpenSettings,
+                onProfileOrBackClick = { onOpenProfile(currentUser) }
+            )
         }
 
-        // ================= 3. FAB (+) SOLO NEL FEED =================
+        // ================= 4. FAB (+) SOLO NEL FEED =================
         AnimatedVisibility(
             visible = pagerState.currentPage == 1,
             enter = scaleIn(animationSpec = tween(250)) + fadeIn(),
             exit = scaleOut(animationSpec = tween(200)) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .navigationBarsPadding()
-                .padding(end = 20.dp, bottom = 24.dp)
+                .padding(end = 20.dp, bottom = 80.dp)
         ) {
             val sharesLeft = (3 - dailySharesUsed).coerceIn(0, 3)
             val isExhausted = sharesLeft == 0

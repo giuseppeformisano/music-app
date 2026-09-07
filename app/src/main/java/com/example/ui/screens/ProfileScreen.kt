@@ -43,7 +43,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -226,18 +225,11 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 28.dp)
-                .navigationBarsPadding()
-                .padding(bottom = 8.dp)
         ) {
-            // Header superiore fisso
+            // Header superiore fisso — solo logo + logout
             ProfileTopHeader(
-                onBack = onBack,
-                onNotificationsClick = onOpenNotifications,
-                notificationCount = notificationCount,
                 isCurrentUser = isCurrentUser,
-                onLogout = onLogout,
-                onOpenSettings = { showSettingsSheet = true },
-                onOpenChatList = onOpenChatList
+                onLogout = onLogout
             )
 
             // Tutti i blocchi della pagina equidistanziati verticalmente entro lo spazio disponibile (Zero Scrolling)
@@ -293,6 +285,18 @@ fun ProfileScreen(
                     )
                 }
             }
+
+            // ================= BOTTOM NAV =================
+            com.example.ui.components.BottomNavBar(
+                mode = com.example.ui.components.BottomNavMode.PROFILE,
+                unreadMessages = 0,
+                unreadNotifications = notificationCount,
+                onSearchClick = {},
+                onMessagesClick = onOpenChatList,
+                onNotificationsClick = onOpenNotifications,
+                onSettingsClick = { showSettingsSheet = true },
+                onProfileOrBackClick = onBack
+            )
         }
 
         // ================= DIALOG: MODIFICA PROFILO =================
@@ -370,66 +374,23 @@ fun ProfileScreen(
 
 @Composable
 private fun ProfileTopHeader(
-    onBack: () -> Unit,
-    onNotificationsClick: () -> Unit,
-    notificationCount: Int,
     isCurrentUser: Boolean,
     onLogout: () -> Unit,
-    onOpenSettings: () -> Unit = {},
-    onOpenChatList: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 10.dp)
-            .testTag("profile_top_header")
+            .testTag("profile_top_header"),
+        contentAlignment = Alignment.Center
     ) {
-        // Sinistra: torna al feed + impostazioni
-        Row(
-            modifier = Modifier.align(Alignment.CenterStart),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .testTag("profile_back_button")
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Torna al feed",
-                    tint = PureWhite,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            if (isCurrentUser) {
-                IconButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .testTag("profile_settings_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Impostazioni",
-                        tint = PureWhite,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-        }
-
-        // Centro: logo "m" — sempre centrato indipendentemente dalle icone a destra
+        // Centro: logo "m"
         Box(
             modifier = Modifier
                 .size(28.dp)
                 .clip(CircleShape)
-                .background(PureWhite)
-                .align(Alignment.Center),
+                .background(PureWhite),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -443,79 +404,21 @@ private fun ProfileTopHeader(
             )
         }
 
-        // Destra: chat + notifiche + logout (solo utente corrente)
-        Row(
-            modifier = Modifier.align(Alignment.CenterEnd),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (isCurrentUser) {
-                IconButton(
-                    onClick = onOpenChatList,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .testTag("profile_chat_list_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Email,
-                        contentDescription = "Messaggi",
-                        tint = PureWhite,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-            }
-
-            // Box senza clip per permettere al badge di fuoriuscire senza essere tagliato
-            Box(
+        // Destra: logout (solo utente corrente, azione rara)
+        if (isCurrentUser) {
+            IconButton(
+                onClick = onLogout,
                 modifier = Modifier
                     .size(44.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        onClick = onNotificationsClick
-                    )
-                    .testTag("profile_notifications_button"),
-                contentAlignment = Alignment.Center
+                    .align(Alignment.CenterEnd)
+                    .testTag("profile_logout_button")
             ) {
                 Icon(
-                    imageVector = Icons.Default.Notifications,
-                    contentDescription = "Notifiche",
-                    tint = PureWhite,
-                    modifier = Modifier.size(22.dp)
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = "Logout",
+                    tint = PureWhite.copy(alpha = 0.45f),
+                    modifier = Modifier.size(20.dp)
                 )
-                if (notificationCount > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(14.dp)
-                            .clip(CircleShape)
-                            .background(PureWhite)
-                            .align(Alignment.TopEnd),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = if (notificationCount > 9) "9+" else notificationCount.toString(),
-                            color = Color(0xFF111111),
-                            fontSize = 7.sp,
-                            fontWeight = FontWeight.Bold,
-                            lineHeight = 8.sp
-                        )
-                    }
-                }
-            }
-
-            if (isCurrentUser) {
-                IconButton(
-                    onClick = onLogout,
-                    modifier = Modifier
-                        .size(44.dp)
-                        .testTag("profile_logout_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                        contentDescription = "Logout",
-                        tint = PureWhite.copy(alpha = 0.55f),
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
             }
         }
     }
