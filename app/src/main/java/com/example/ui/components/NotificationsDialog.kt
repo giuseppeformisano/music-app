@@ -53,7 +53,7 @@ fun NotificationsDialog(
     onReject: (FriendRequest) -> Unit,
     onDismiss: () -> Unit
 ) {
-    UtilityDialog(onDismiss = onDismiss) {
+    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

@@ -33,7 +33,7 @@ fun ChangelogDialog(
     lines: List<String>,
     onDismiss: () -> Unit
 ) {
-    UtilityDialog(onDismiss = onDismiss) {
+    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.9f)

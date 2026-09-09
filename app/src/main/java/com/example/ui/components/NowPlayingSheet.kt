@@ -81,7 +81,7 @@ fun NowPlayingSheet(
     val keyboardController = LocalSoftwareKeyboardController.current
     val dynamicAccent = if (nowPlayingTrack != null) Color(nowPlayingTrack.accentColorHex) else Color(0xFF1DB954)
 
-    TrackDialog(coverUrl = nowPlayingTrack?.coverUrl ?: "", onDismiss = onDismiss) {
+    TrackDialog(coverUrl = nowPlayingTrack?.coverUrl ?: "", onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
