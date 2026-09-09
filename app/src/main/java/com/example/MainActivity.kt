@@ -45,7 +45,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -361,6 +363,13 @@ fun MusicApp(viewModel: MusicViewModel) {
         }
 
         // Overlay: Profile Screen (Flusso D) — transizione blur+slide+crossfade
+        // rememberedProfileUser mantiene l'ultimo utente visibile durante l'animazione d'uscita,
+        // evitando che il contenuto sparisca prima del completamento del reverse.
+        var rememberedProfileUser by remember { mutableStateOf<com.example.model.User?>(null) }
+        LaunchedEffect(uiState.activeProfileUser) {
+            if (uiState.activeProfileUser != null) rememberedProfileUser = uiState.activeProfileUser
+        }
+
         AnimatedVisibility(
             visible = uiState.activeProfileUser != null,
             enter = EnterTransition.None,
@@ -387,7 +396,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                         }
                     }
             ) {
-            uiState.activeProfileUser?.let { activeUser ->
+            (uiState.activeProfileUser ?: rememberedProfileUser)?.let { activeUser ->
                 val isMe = activeUser.isCurrentUser || (uiState.currentUser.id.isNotBlank() && activeUser.id == uiState.currentUser.id)
                 val displayUser = if (isMe) uiState.currentUser.copy(isCurrentUser = true) else activeUser
                 if (isMe) {

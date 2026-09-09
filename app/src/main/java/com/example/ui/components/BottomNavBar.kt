@@ -30,8 +30,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import com.example.ui.theme.BlackPitch
-
 enum class BottomNavMode { MAIN, PROFILE }
 
 private val IconColor = Color(0xFF555555)
@@ -52,7 +50,6 @@ fun BottomNavBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(BlackPitch)
             .navigationBarsPadding()
     ) {
         Row(
@@ -118,7 +115,7 @@ private fun NavIcon(
             imageVector = imageVector,
             contentDescription = contentDescription,
             tint = IconColor,
-            modifier = Modifier.size(22.dp)
+            modifier = Modifier.size(26.dp)
         )
         if (badge > 0) {
             Box(
