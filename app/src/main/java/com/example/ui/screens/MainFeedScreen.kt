@@ -157,12 +157,14 @@ fun MainFeedScreen(
     onOpenPeopleSearch: () -> Unit,
     onOpenChatList: () -> Unit = {},
     onOpenNotifications: () -> Unit = {},
-    onOpenSettings: () -> Unit = {},
     unreadMessages: Int = 0,
     unreadNotifications: Int = 0,
     feedbackToast: String?,
     onClearToast: () -> Unit,
     applyCoverToFeed: Boolean = false,
+    liveNotificationsEnabled: Boolean = true,
+    onToggleApplyCoverToFeed: (Boolean) -> Unit = {},
+    onToggleLiveNotifications: (Boolean) -> Unit = {},
     isNotificationListenerEnabled: Boolean = true,
     onEnableNotificationListener: () -> Unit = {},
     dailySharesUsed: Int = 0,
@@ -170,6 +172,7 @@ fun MainFeedScreen(
 ) {
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 2 })
     val coroutineScope = rememberCoroutineScope()
+    var showSettingsSheet by remember { mutableStateOf(false) }
     
     val atmosphericCoverUrl = currentUser.coverUrl?.takeIf { it.isNotBlank() }
         ?: currentUser.currentTrack?.coverUrl?.takeIf { it.isNotBlank() }
@@ -315,7 +318,7 @@ fun MainFeedScreen(
                 onSearchClick = onOpenPeopleSearch,
                 onMessagesClick = onOpenChatList,
                 onNotificationsClick = onOpenNotifications,
-                onSettingsClick = onOpenSettings,
+                onSettingsClick = { showSettingsSheet = true },
                 onProfileOrBackClick = { onOpenProfile(currentUser) }
             )
         }
@@ -423,6 +426,20 @@ fun MainFeedScreen(
                     Text(text = "Abilita", fontSize = 13.sp, color = Color.White)
                 }
             }
+        }
+
+        // ================= DIALOG: IMPOSTAZIONI =================
+        if (showSettingsSheet) {
+            SettingsDialog(
+                applyCoverToFeed = applyCoverToFeed,
+                liveNotificationsEnabled = liveNotificationsEnabled,
+                onSave = { newApplyCoverToFeed, newLiveNotifs ->
+                    onToggleApplyCoverToFeed(newApplyCoverToFeed)
+                    onToggleLiveNotifications(newLiveNotifs)
+                    showSettingsSheet = false
+                },
+                onDismiss = { showSettingsSheet = false }
+            )
         }
     }
 }

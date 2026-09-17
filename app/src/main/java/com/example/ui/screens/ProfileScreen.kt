@@ -1803,7 +1803,7 @@ private fun AmazonMusicBrandLogo() {
  * Dialog / Pannello Impostazioni
  */
 @Composable
-private fun SettingsDialog(
+internal fun SettingsDialog(
     applyCoverToFeed: Boolean,
     liveNotificationsEnabled: Boolean,
     onSave: (Boolean, Boolean) -> Unit,
