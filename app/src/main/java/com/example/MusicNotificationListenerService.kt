@@ -123,7 +123,7 @@ class MusicNotificationListenerService : NotificationListenerService() {
             // isSpotifyFreeEnabled → Spotify Free collegato
             // isSpotifyPremiumBackground → Premium collegato ma app in background: il listener
             // sostituisce il polling (che non gira senza app aperta) per tenere la live attiva.
-            val spotifyListenerActive = isSpotifyFreeEnabled || isSpotifyPremiumBackground
+            val spotifyListenerActive = isSpotifyFreeEnabled || isSpotifyPremiumBackground || isSpotifyPremiumForeground
             val spotifyController = if (spotifyListenerActive && hasNotif(SPOTIFY_PACKAGE))
                 controllers.firstOrNull { it.packageName == SPOTIFY_PACKAGE } else null
             val amazonController = if (isAmazonMusicEnabled && hasNotif(AMAZON_MUSIC_PACKAGE))
@@ -276,6 +276,10 @@ class MusicNotificationListenerService : NotificationListenerService() {
         // True quando l'utente ha solo Spotify Premium (no Free) e l'app è in background:
         // il listener prende il posto del polling per tenere la live attiva a app chiusa.
         @Volatile var isSpotifyPremiumBackground: Boolean = false
+        // True quando l'utente ha Spotify Premium e l'app è in foreground: il listener rileva i
+        // cambi di traccia istantaneamente; il ViewModel farà poi una singola chiamata API per
+        // arricchire i metadati (trackId, artworkHD, album). Niente più polling ogni 3 secondi.
+        @Volatile var isSpotifyPremiumForeground: Boolean = false
 
         var onTrackChanged: ((title: String, artist: String, durationMs: Long, positionMs: Long, artUrl: String, source: String) -> Unit)? = null
         var onProgressChanged: ((positionMs: Long, durationMs: Long, source: String) -> Unit)? = null

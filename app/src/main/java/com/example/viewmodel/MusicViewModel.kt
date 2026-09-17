@@ -374,20 +374,24 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun startSpotifyPolling() {
-        // La sorgente segue la SCELTA esplicita: il Web API si usa solo in modalità Premium.
         if (_uiState.value.connectedServices["spotify"] != true) return
         if (!SpotifyAuthRepository.isAuthorized) return
+
+        // Modalità ibrida: listener rileva il cambio brano istantaneamente (zero latenza),
+        // poi il ViewModel fa UNA sola chiamata API per arricchire i metadati (trackId, artHD, album).
+        // Molto meglio del polling ogni 3s: zero batteria sprecata, metadati Premium-quality.
+        if (com.example.MusicNotificationListenerService.isEnabled(appContext)) {
+            com.example.MusicNotificationListenerService.isSpotifyPremiumForeground = true
+            com.example.MusicNotificationListenerService.startListening(appContext)
+            return
+        }
+
+        // Fallback: listener non autorizzato → polling classico ogni 3s
         if (spotifyPollingJob?.isActive == true) return
         spotifyPollingJob = viewModelScope.launch {
             while (isActive) {
-                // Ogni fetch è isolato: un errore transitorio NON deve uccidere il loop
-                // (altrimenti la live si "congela" e non si aggiorna più al cambio brano)
-                try {
-                    fetchCurrentlyPlaying()
-                } catch (_: Exception) {
-                    // errore transitorio ignorato: si riprova al prossimo giro
-                }
-                delay(3_000) // 3s: più reattivo, rileva Spotify già in play rapidamente
+                try { fetchCurrentlyPlaying() } catch (_: Exception) {}
+                delay(3_000)
             }
         }
     }
@@ -395,6 +399,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun stopSpotifyPolling() {
         spotifyPollingJob?.cancel()
         spotifyPollingJob = null
+        com.example.MusicNotificationListenerService.isSpotifyPremiumForeground = false
     }
 
     private suspend fun fetchCurrentlyPlaying() {
@@ -448,6 +453,17 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             // In PAUSA: resta live e mostra il brano in pausa. Esce solo con NotPlaying (204).
             is SpotifyWebApiRepository.PlaybackResult.Paused ->
                 applyLiveTrack(result.track, result.progressMs)
+        }
+    }
+
+    // Chiamata singola (senza polling) per arricchire i metadati Spotify quando il listener
+    // ha già rilevato un cambio traccia. Ignora NotPlaying/Unknown: la stop-detection è del listener.
+    private suspend fun enrichFromApi() {
+        if (com.example.MusicNotificationListenerService.isNonSpotifyDevicePlaybackActive()) return
+        when (val result = SpotifyWebApiRepository.getCurrentlyPlaying(appContext)) {
+            is SpotifyWebApiRepository.PlaybackResult.Playing -> applyLiveTrack(result.track, result.progressMs)
+            is SpotifyWebApiRepository.PlaybackResult.Paused -> applyLiveTrack(result.track, result.progressMs)
+            else -> {} // NotPlaying/Unknown: listener gestisce stop, niente da fare qui
         }
     }
 
@@ -535,9 +551,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     fun onAppForeground() {
         isAppInForeground = true
         suppressLivePushUntilMs = System.currentTimeMillis() + 30_000L
-        // Torna in foreground con Premium: il polling riprende, il listener non deve
-        // gestire Spotify (evita doppioni con il polling).
         com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = false
+        // Riattiva il rilevamento in foreground (listener o polling-fallback).
+        // resyncCurrentTrack azzera lastTrack così il brano corrente viene rilevato anche se
+        // non è cambiato dall'ultima volta che l'app era in foreground → onTrackChanged scatta
+        // → enrichment API aggiorna l'UI con i metadati freschi.
+        val hasPremium = _uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
+        if (hasPremium) {
+            startSpotifyPolling() // usa listener se autorizzato, altrimenti polling
+            com.example.MusicNotificationListenerService.resyncCurrentTrack()
+        }
         setOnline(true)
     }
 
@@ -546,9 +569,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val hasPremium = _uiState.value.connectedServices["spotify"] == true
         val hasFree = _uiState.value.connectedServices["spotify_free"] == true
         val premiumBackground = hasPremium && !hasFree
+        // In background il listener sostituisce sia il polling che il listener-foreground.
+        com.example.MusicNotificationListenerService.isSpotifyPremiumForeground = false
         com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = premiumBackground
-        // Forza subito un check: se Spotify sta già suonando la notifica non verrà ripostata,
-        // quindi onNotificationPosted non scatta → bisogna controllare manualmente lo stato.
+        stopSpotifyPolling() // ferma il fallback-polling se era attivo; il listener gestisce tutto
         if (premiumBackground) com.example.MusicNotificationListenerService.startListening(appContext)
         setOnline(false)
     }
@@ -558,10 +582,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val hasPremium = _uiState.value.connectedServices["spotify"] == true
         val hasFree = _uiState.value.connectedServices["spotify_free"] == true
         val premiumBackground = hasPremium && !hasFree
+        com.example.MusicNotificationListenerService.isSpotifyPremiumForeground = false
         com.example.MusicNotificationListenerService.isSpotifyPremiumBackground = premiumBackground
+        stopSpotifyPolling()
         if (premiumBackground) {
-            // Resetta lastTrack prima di startListening: se la stessa canzone stava già suonando
-            // viene rilevata come "nuova" → updateLiveTrack chiama Firestore in background.
             com.example.MusicNotificationListenerService.forceStop()
             com.example.MusicNotificationListenerService.startListening(appContext)
         }
@@ -631,7 +655,20 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     private fun registerMusicNotificationListenerCallbacks() {
         com.example.MusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl, source ->
-            updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = source)
+            val isPremium = _uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
+            if (source == "spotify" && isPremium) {
+                // Listener ha rilevato il cambio istantaneamente; ora arricchiamo con una
+                // singola chiamata API (trackId canonico, artwork HD, album, device).
+                // Se l'API fallisce o restituisce Unknown, usiamo i metadati del listener come fallback.
+                viewModelScope.launch {
+                    enrichFromApi()
+                    if (_uiState.value.nowPlayingTrack == null) {
+                        updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source)
+                    }
+                }
+            } else {
+                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = source)
+            }
         }
         com.example.MusicNotificationListenerService.onProgressChanged = { positionMs, durationMs, source ->
             updateLiveProgress(positionMs, durationMs)
