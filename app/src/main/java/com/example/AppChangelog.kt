@@ -5,10 +5,10 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.15.4"
+    const val TITLE = "Novità · 0.15.5"
     val LINES = listOf(
-        "Spotify Premium: rilevamento brano istantaneo via listener (zero polling, zero latenza).",
-        "Metadati arricchiti: trackId, artwork HD e album ottenuti con una sola chiamata API al cambio brano.",
-        "Impostazioni accessibili direttamente da Live e Feed (non più tramite il profilo).",
+        "Dialog: swipe per chiudere ora funziona correttamente su lista vuota o corta.",
+        "Impostazioni accessibili direttamente da Live e Feed.",
+        "Spotify Premium: rilevamento brano istantaneo via listener, zero polling.",
     )
 }

@@ -141,7 +141,10 @@ private fun ImmersiveScaffold(
 
         // Nested scroll: consente lo swipe-per-chiudere (giù O su) anche partendo SOPRA una
         // lista scrollabile (quando la lista è a un estremo e non può scrollare oltre).
-        val nested = remember {
+        // Con swipeAnywhere=true, onPostScroll assorbe il delta residuo che la lista interna
+        // non ha consumato (lista vuota/corta) → la dialog si muove come se lo swipe fosse
+        // fatto sull'header. onPostFling fa lo stesso per i fling rapidi.
+        val nested = remember(swipeAnywhere) {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
                     val dy = available.y
@@ -161,9 +164,13 @@ private fun ImmersiveScaffold(
                 }
 
                 override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // La dialog non assorbe mai lo scroll residuo della lista — né fling né drag
-                    // continuo. Si muove solo con un gesto nuovo (dito sollevato + nuova swipe)
-                    // intercettato dall'header o dal box swipeAnywhere.
+                    // swipeAnywhere: quando la lista non può scrollare (vuota/corta), il delta
+                    // che non ha consumato arriva qui → muoviamo la dialog con quel residuo.
+                    if (swipeAnywhere && available.y != 0f) {
+                        val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
+                        scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                        return Offset(0f, available.y)
+                    }
                     return Offset.Zero
                 }
 
@@ -171,11 +178,22 @@ private fun ImmersiveScaffold(
                     if (offsetY.value != 0f) { settle(available.y); return available }
                     return Velocity.Zero
                 }
+
+                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                    // swipeAnywhere: fling rapido su lista vuota/corta → settle con la velocità residua
+                    if (swipeAnywhere && available.y != 0f) {
+                        settle(available.y)
+                        return available
+                    }
+                    return Velocity.Zero
+                }
             }
         }
 
         val dragFraction = if (dismissible) (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f) else 0f
 
+        // Sempre nestedScroll (intercetta anche i residui delle liste interne).
+        // Con swipeAnywhere aggiunge draggable per swipe diretto su aree non-scrollabili.
         val boxModifier = when {
             dismissible && swipeAnywhere -> Modifier
                 .fillMaxSize()
