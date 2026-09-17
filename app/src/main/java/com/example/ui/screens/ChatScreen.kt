@@ -21,9 +21,12 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalOverscrollConfiguration
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.ui.components.LocalDialogScrollConnection
 import androidx.compose.foundation.shape.CircleShape
@@ -72,6 +75,7 @@ import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SpotifyGreen
 import com.example.ui.theme.SubtitleGray
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ChatScreen(
     recipient: User,
@@ -222,7 +226,11 @@ fun ChatScreen(
                 }
 
                 // Messages List
+                // LocalOverscrollConfiguration=null: disabilita l'overscroll effect (stretch/glow)
+                // che altrimenti CONSUMA il delta residuo al bordo prima che arrivi alla
+                // childConnection via nestedScroll, impedendo lo swipe-to-dismiss.
                 val dialogScrollConn = LocalDialogScrollConnection.current
+                CompositionLocalProvider(LocalOverscrollConfiguration provides null) {
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
@@ -240,6 +248,7 @@ fun ChatScreen(
                         )
                     }
                 }
+                } // fine CompositionLocalProvider(LocalOverscrollConfiguration)
 
                 // Bottom Pure Text Input Bar (posizionato dinamicamente sopra la barra di navigazione e tastiera)
                 Row(

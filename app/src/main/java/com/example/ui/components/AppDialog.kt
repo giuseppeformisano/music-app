@@ -204,7 +204,7 @@ private fun ImmersiveScaffold(
         val childConnection = remember(swipeAnywhere) {
             object : NestedScrollConnection {
                 var overscrollAccum = 0f
-                private val DEAD_ZONE = 60f
+                private val DEAD_ZONE = 10f
 
                 override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
                     val dy = available.y
