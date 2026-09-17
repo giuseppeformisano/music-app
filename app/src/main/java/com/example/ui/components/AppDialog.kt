@@ -172,9 +172,9 @@ private fun ImmersiveScaffold(
                 }
 
                 override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // swipeAnywhere: quando la lista non può scrollare (vuota/corta), il delta
-                    // che non ha consumato arriva qui → muoviamo la dialog con quel residuo.
-                    if (swipeAnywhere && available.y != 0f) {
+                    // Quando la lista non può scrollare (vuota/corta/a fondo/in cima), il delta
+                    // residuo arriva qui → muoviamo la dialog. Attivo per tutte le dialog dismissibili.
+                    if (available.y != 0f) {
                         val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
                         scope.launch { offsetY.snapTo(offsetY.value + damped) }
                         return Offset(0f, available.y)
@@ -188,8 +188,10 @@ private fun ImmersiveScaffold(
                 }
 
                 override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                    // swipeAnywhere: fling rapido su lista vuota/corta → settle con la velocità residua
-                    if (swipeAnywhere && available.y != 0f) {
+                    // Settle SOLO se il dialog è già visibilmente spostato (> 20px):
+                    // evita che un fling veloce sulla lista, arrivando al bordo con inerzia residua,
+                    // chiuda accidentalmente la dialog senza che l'utente l'abbia voluto.
+                    if (available.y != 0f && kotlin.math.abs(offsetY.value) > 20f) {
                         settle(available.y)
                         return available
                     }

@@ -114,7 +114,7 @@ fun ChatScreen(
         paletteForUser(recipient, isCurrent = false)
     }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = false) {
         Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
             // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
             if (applyCoverToFeed && !backgroundCoverUrl.isNullOrBlank()) {
