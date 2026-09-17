@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.example.ui.components.LocalDialogScrollConnection
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -67,7 +69,7 @@ fun ChatListScreen(
     val focusManager = LocalFocusManager.current
     val isSearching = searchQuery.isNotBlank()
 
-    UtilityDialog(onDismiss = onDismiss) {
+    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
@@ -120,12 +122,14 @@ fun ChatListScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
+            val dialogScrollConn = LocalDialogScrollConnection.current
             when {
                 isSearching -> {
                     if (searchResults.isEmpty()) {
                         EmptyState(title = "Nessuna persona trovata", subtitle = "Prova con un altro nome o @username")
                     } else {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(modifier = Modifier.fillMaxSize()
+                            .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m }) {
                             items(searchResults, key = { it.id }) { user ->
                                 UserResultRow(
                                     user = user,
@@ -143,7 +147,8 @@ fun ChatListScreen(
                     )
                 }
                 else -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(modifier = Modifier.fillMaxSize()
+                        .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m }) {
                         items(conversations, key = { it.id }) { conversation ->
                             ConversationRow(
                                 conversation = conversation,

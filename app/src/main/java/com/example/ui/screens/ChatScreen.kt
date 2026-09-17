@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.example.ui.components.LocalDialogScrollConnection
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -112,7 +114,7 @@ fun ChatScreen(
         paletteForUser(recipient, isCurrent = false)
     }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
             // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
             if (applyCoverToFeed && !backgroundCoverUrl.isNullOrBlank()) {
@@ -220,11 +222,13 @@ fun ChatScreen(
                 }
 
                 // Messages List
+                val dialogScrollConn = LocalDialogScrollConnection.current
                 LazyColumn(
                     state = listState,
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m },
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {

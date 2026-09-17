@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.model.Track
 import com.example.ui.theme.BlackCard
 import com.example.ui.theme.BlackPitch
@@ -289,8 +290,10 @@ fun NowPlayingSheet(
                         )
                     }
                 } else {
+                    val dialogScrollConn = LocalDialogScrollConnection.current
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize()
+                            .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m },
                         contentPadding = PaddingValues(bottom = 24.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {

@@ -53,6 +53,14 @@ import kotlin.math.roundToInt
  */
 val LocalDialogDragHandle = compositionLocalOf<Modifier> { Modifier }
 
+/**
+ * NestedScrollConnection esposto dalla dialog ai contenuti interni.
+ * Le LazyColumn nelle utility dialog con swipeAnywhere=true lo applicano via
+ * `.nestedScroll(LocalDialogScrollConnection.current)` per propagare il dismiss
+ * anche quando la lista è vuota/corta (onPostScroll riceve il delta residuo).
+ */
+val LocalDialogScrollConnection = compositionLocalOf<NestedScrollConnection?> { null }
+
 // Distanza (px) di trascinamento a cui il pannello è considerato "chiuso" e a cui il
 // backdrop è completamente dissolto: la transizione è LINEARE con la discesa.
 private const val DISMISS_DISTANCE = 620f
@@ -192,17 +200,20 @@ private fun ImmersiveScaffold(
 
         val dragFraction = if (dismissible) (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f) else 0f
 
-        // Sempre nestedScroll (intercetta anche i residui delle liste interne).
-        // Con swipeAnywhere aggiunge draggable per swipe diretto su aree non-scrollabili.
+        // swipeAnywhere: il draggable sull'outer Box cattura gesti verticali su aree
+        // non-scrollabili (empty state, testo, spaziatori). Per le LazyColumn vuote,
+        // onPostScroll riceve il delta residuo non consumato e muove la dialog.
+        // Per le LazyColumn CON contenuto, onPreScroll/onPostScroll gestiscono
+        // il dismiss quando la lista raggiunge i propri estremi.
+        val swipeAnywhereModifier: Modifier = if (dismissible && swipeAnywhere) {
+            Modifier.draggable(
+                state = draggableState,
+                orientation = Orientation.Vertical,
+                onDragStopped = { velocity -> settle(velocity) }
+            )
+        } else Modifier
+
         val boxModifier = when {
-            dismissible && swipeAnywhere -> Modifier
-                .fillMaxSize()
-                .nestedScroll(nested)
-                .draggable(
-                    state = draggableState,
-                    orientation = Orientation.Vertical,
-                    onDragStopped = { velocity -> settle(velocity) }
-                )
             dismissible -> Modifier.fillMaxSize().nestedScroll(nested)
             else -> Modifier.fillMaxSize()
         }
@@ -217,7 +228,7 @@ private fun ImmersiveScaffold(
             )
         else Modifier
 
-        Box(modifier = boxModifier, contentAlignment = Alignment.Center) {
+        Box(modifier = boxModifier.then(swipeAnywhereModifier), contentAlignment = Alignment.Center) {
             backdrop(dragFraction, offsetY.value)
 
             // Blur progressivo sul contenuto durante lo swipe-to-dismiss (0→30px lineare)
@@ -238,7 +249,10 @@ private fun ImmersiveScaffold(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 val columnScope = this
-                CompositionLocalProvider(LocalDialogDragHandle provides dragHandle) {
+                CompositionLocalProvider(
+                    LocalDialogDragHandle provides dragHandle,
+                    LocalDialogScrollConnection provides if (dismissible) nested else null
+                ) {
                     with(columnScope) { content() }
                 }
             }

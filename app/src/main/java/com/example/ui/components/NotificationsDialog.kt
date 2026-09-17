@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.model.FriendRequest
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
@@ -126,10 +127,12 @@ fun NotificationsDialog(
                         letterSpacing = 0.3.sp
                     )
                     Spacer(modifier = Modifier.height(8.dp))
+                    val dialogScrollConn = LocalDialogScrollConnection.current
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .weight(1f),
+                            .weight(1f)
+                            .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m },
                         contentPadding = PaddingValues(vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {

@@ -33,6 +33,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import com.example.ui.components.LocalDialogScrollConnection
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
@@ -1042,7 +1044,7 @@ private fun FollowersFollowingDialog(
         }
     }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1116,10 +1118,12 @@ private fun FollowersFollowingDialog(
                     )
                 }
             } else {
+                val dialogScrollConn = LocalDialogScrollConnection.current
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m },
                     contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -1224,7 +1228,7 @@ private fun EditProfileDialog(
         }
     }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1573,7 +1577,7 @@ private fun ConnectAccountsDialog(
     onEnableNotificationListener: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1812,7 +1816,7 @@ internal fun SettingsDialog(
     var localApplyCoverToFeed by remember(applyCoverToFeed) { mutableStateOf(applyCoverToFeed) }
     var localLiveNotificationsEnabled by remember(liveNotificationsEnabled) { mutableStateOf(liveNotificationsEnabled) }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss) {
+    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

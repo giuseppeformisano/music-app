@@ -50,6 +50,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.example.model.User
 import com.example.ui.theme.BlackPitch
 import com.example.ui.theme.PureWhite
@@ -142,8 +143,10 @@ fun PeopleSearchDialog(
                     )
                 }
             } else {
+                val dialogScrollConn = LocalDialogScrollConnection.current
                 LazyColumn(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f)
+                        .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m },
                     contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
