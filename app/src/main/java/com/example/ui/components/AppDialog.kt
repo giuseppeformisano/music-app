@@ -172,9 +172,11 @@ private fun ImmersiveScaffold(
                 }
 
                 override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    // Quando la lista non può scrollare (vuota/corta/a fondo/in cima), il delta
-                    // residuo arriva qui → muoviamo la dialog. Attivo per tutte le dialog dismissibili.
                     if (available.y != 0f) {
+                        // Con swipeAnywhere=false (es. ChatScreen con lista piena), blocchiamo il
+                        // movimento del dialog durante un Fling: un fling veloce che arriva al bordo
+                        // NON deve spostare il dialog. Solo il Drag deliberato al bordo lo sposta.
+                        if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Fling && !swipeAnywhere) return Offset.Zero
                         val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
                         scope.launch { offsetY.snapTo(offsetY.value + damped) }
                         return Offset(0f, available.y)
@@ -188,10 +190,10 @@ private fun ImmersiveScaffold(
                 }
 
                 override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                    // Settle SOLO se il dialog è già visibilmente spostato (> 20px):
-                    // evita che un fling veloce sulla lista, arrivando al bordo con inerzia residua,
-                    // chiuda accidentalmente la dialog senza che l'utente l'abbia voluto.
-                    if (available.y != 0f && kotlin.math.abs(offsetY.value) > 20f) {
+                    // swipeAnywhere=true: settle diretto (lista vuota/corta → dismiss intenzionale)
+                    // swipeAnywhere=false: settle solo se il dialog è già visibilmente spostato da
+                    //   un drag deliberato (non da inerzia residua di uno scroll veloce)
+                    if (available.y != 0f && (swipeAnywhere || kotlin.math.abs(offsetY.value) > 20f)) {
                         settle(available.y)
                         return available
                     }
