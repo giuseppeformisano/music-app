@@ -35,6 +35,8 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.DoneAll
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.Icon
@@ -86,6 +88,7 @@ fun ChatScreen(
     onOpenProfile: (User) -> Unit,
     applyCoverToFeed: Boolean = false,
     backgroundCoverUrl: String? = null,
+    recipientLastReadAt: Long = 0L,
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -244,7 +247,8 @@ fun ChatScreen(
                         MessageBubble(
                             message = message,
                             palette = if (message.isFromMe) myPalette else otherPalette,
-                            senderAvatarUrl = if (message.isFromMe) currentUser.avatarUrl else recipient.avatarUrl
+                            senderAvatarUrl = if (message.isFromMe) currentUser.avatarUrl else recipient.avatarUrl,
+                            isRead = message.isFromMe && message.timestamp <= recipientLastReadAt
                         )
                     }
                 }
@@ -371,7 +375,7 @@ private fun paletteForUser(user: User, isCurrent: Boolean): UserChatPalette {
 }
 
 @Composable
-private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, senderAvatarUrl: String = "") {
+private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, senderAvatarUrl: String = "", isRead: Boolean = false) {
     val isMe = message.isFromMe
 
     Column(
@@ -509,14 +513,27 @@ private fun MessageBubble(message: ChatMessage, palette: UserChatPalette, sender
                     fontSize = 14.sp,
                     lineHeight = 19.sp
                 )
-                Text(
-                    text = message.formattedTime,
-                    color = PureWhite.copy(alpha = 0.45f),
-                    fontSize = 9.sp,
+                Row(
                     modifier = Modifier
                         .align(Alignment.End)
-                        .padding(top = 3.dp, start = 20.dp)
-                )
+                        .padding(top = 3.dp, start = 20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = message.formattedTime,
+                        color = PureWhite.copy(alpha = 0.45f),
+                        fontSize = 9.sp
+                    )
+                    if (isMe) {
+                        Icon(
+                            imageVector = if (isRead) Icons.Default.DoneAll else Icons.Default.Done,
+                            contentDescription = if (isRead) "Letto" else "Inviato",
+                            tint = if (isRead) PureWhite.copy(alpha = 0.85f) else SubtitleGray.copy(alpha = 0.6f),
+                            modifier = Modifier.size(11.dp)
+                        )
+                    }
+                }
             }
         }
         }

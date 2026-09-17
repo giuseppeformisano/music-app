@@ -899,6 +899,7 @@ object FirebaseRepository {
         convRef.set(convUpdate, SetOptions.merge())
             .addOnSuccessListener {
                 Log.d(TAG, "Messaggio chat inviato con successo.")
+                convRef.update("unreadCount_$recipientId", FieldValue.increment(1))
                 // Push al destinatario (stesso meccanismo di live/richieste follow → backend Render)
                 db.collection(USERS_COLLECTION).document(recipientId).get()
                     .addOnSuccessListener { doc ->
@@ -968,6 +969,18 @@ object FirebaseRepository {
         } else {
             proceed(null, null)
         }
+    }
+
+    fun markConversationAsRead(conversationId: String, userId: String) {
+        val db = firestore ?: return
+        val now = System.currentTimeMillis()
+        db.collection(CONVERSATIONS_COLLECTION)
+            .document(conversationId)
+            .update(
+                "unreadCount_$userId", 0,
+                "lastReadAt_$userId", now
+            )
+            .addOnFailureListener { e -> Log.e(TAG, "markConversationAsRead failed: ${e.message}") }
     }
 
     /** Scarica la voce di un Pulse e la scrive in un file temporaneo.

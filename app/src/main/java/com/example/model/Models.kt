@@ -120,5 +120,7 @@ data class Conversation(
     val lastMessageText: String = "",
     val lastMessageAt: Long = 0L,
     val lastMessageSenderId: String = "",
-    val lastAttachedTrack: Track? = null
+    val lastAttachedTrack: Track? = null,
+    val unreadCount: Int = 0,           // messaggi non letti dall'utente corrente
+    val recipientLastReadAt: Long = 0L  // quando il destinatario ha letto l'ultima volta (per spunte)
 )

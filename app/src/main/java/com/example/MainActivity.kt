@@ -348,7 +348,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                         onOpenPeopleSearch = { viewModel.openPeopleSearch() },
                         onOpenChatList = { viewModel.openChatList() },
                         onOpenNotifications = { viewModel.openNotifications() },
-                        unreadMessages = 0,
+                        unreadMessages = uiState.unreadMessages,
                         unreadNotifications = uiState.pendingFriendRequests.size,
                         feedbackToast = uiState.feedbackToast,
                         onClearToast = { viewModel.clearToast() },
@@ -469,7 +469,10 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onDismiss = { viewModel.closeChat() },
                     onOpenProfile = { user -> viewModel.openProfile(user) },
                     applyCoverToFeed = uiState.applyCoverToFeed,
-                    backgroundCoverUrl = uiState.currentUser.coverUrl
+                    backgroundCoverUrl = uiState.currentUser.coverUrl,
+                    recipientLastReadAt = uiState.conversations
+                        .firstOrNull { it.recipientUser.id == uiState.activeChatUser?.id }
+                        ?.recipientLastReadAt ?: 0L
                 )
             }
         }

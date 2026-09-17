@@ -69,6 +69,7 @@ data class MusicUiState(
     val activeChatUser: User? = null,
     val chatMessages: Map<String, List<ChatMessage>> = emptyMap(),
     val conversations: List<Conversation> = emptyList(),
+    val unreadMessages: Int = 0,
     val isChatListOpen: Boolean = false,
     val selectedTrackDetail: Pair<Track, User?>? = null,
     val feedbackToast: String? = null,
@@ -1525,6 +1526,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             val updatedMap = _uiState.value.chatMessages.toMutableMap().apply { put(user.id, messages) }
             _uiState.update { it.copy(chatMessages = updatedMap) }
         }
+        FirebaseRepository.markConversationAsRead(convId, currentUserId)
 
         // Se c'è una traccia iniziale, invia subito un messaggio con la traccia allegata
         if (initialTrack != null) {
@@ -1685,10 +1687,15 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                         lastMessageText = lastText,
                         lastMessageAt = lastAt,
                         lastMessageSenderId = lastSenderId,
-                        lastAttachedTrack = lastTrack
+                        lastAttachedTrack = lastTrack,
+                        unreadCount = (data["unreadCount_$userId"] as? Number)?.toInt() ?: 0,
+                        recipientLastReadAt = (data["lastReadAt_$otherUserId"] as? Number)?.toLong() ?: 0L
                     )
                 }
-                _uiState.update { it.copy(conversations = initialConversations) }
+                _uiState.update { it.copy(
+                    conversations = initialConversations,
+                    unreadMessages = initialConversations.sumOf { c -> c.unreadCount }
+                ) }
 
                 // Se ci sono utenti non ancora in cache locale, caricali da Firestore
                 if (missingUserIds.isNotEmpty()) {
