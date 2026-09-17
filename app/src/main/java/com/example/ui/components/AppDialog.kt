@@ -147,11 +147,9 @@ private fun ImmersiveScaffold(
             scope.launch { offsetY.snapTo(offsetY.value + damped) }
         }
 
-        // Nested scroll: consente lo swipe-per-chiudere (giù O su) anche partendo SOPRA una
-        // lista scrollabile (quando la lista è a un estremo e non può scrollare oltre).
-        // Con swipeAnywhere=true, onPostScroll assorbe il delta residuo che la lista interna
-        // non ha consumato (lista vuota/corta) → la dialog si muove come se lo swipe fosse
-        // fatto sull'header. onPostFling fa lo stesso per i fling rapidi.
+        // nested: applicato sull'outer Box. Gestisce SOLO lo snap-back quando il dialog
+        // è già spostato (onPreScroll) e il dismiss per dialog con swipeAnywhere=true
+        // che NON applicano LocalDialogScrollConnection sulla propria LazyColumn.
         val nested = remember(swipeAnywhere) {
             object : NestedScrollConnection {
                 override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
@@ -172,11 +170,9 @@ private fun ImmersiveScaffold(
                 }
 
                 override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
-                    if (available.y != 0f) {
-                        // Con swipeAnywhere=false (es. ChatScreen con lista piena), blocchiamo il
-                        // movimento del dialog durante un Fling: un fling veloce che arriva al bordo
-                        // NON deve spostare il dialog. Solo il Drag deliberato al bordo lo sposta.
-                        if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Fling && !swipeAnywhere) return Offset.Zero
+                    // Solo per swipeAnywhere=true: dialog con lista vuota/corta che NON applicano
+                    // childConnection. Le dialog con childConnection consumano prima di qui.
+                    if (swipeAnywhere && available.y != 0f) {
                         val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
                         scope.launch { offsetY.snapTo(offsetY.value + damped) }
                         return Offset(0f, available.y)
@@ -190,9 +186,68 @@ private fun ImmersiveScaffold(
                 }
 
                 override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
-                    // swipeAnywhere=true: settle diretto (lista vuota/corta → dismiss intenzionale)
-                    // swipeAnywhere=false: settle solo se il dialog è già visibilmente spostato da
-                    //   un drag deliberato (non da inerzia residua di uno scroll veloce)
+                    if (swipeAnywhere && available.y != 0f) { settle(available.y); return available }
+                    return Velocity.Zero
+                }
+            }
+        }
+
+        // childConnection: applicato via LocalDialogScrollConnection DIRETTAMENTE sulle LazyColumn
+        // delle dialog. Separato da nested per evitare doppia elaborazione del delta.
+        //
+        // Con swipeAnywhere=false (es. ChatScreen): dead zone di 60px — i primi 60px di overscroll
+        // sono assorbiti silenziosamente; solo dopo una spinta deliberata il dialog si muove.
+        // I Fling non contano (solo Drag deliberati). Impedisce che uno scroll veloce che arriva
+        // al bordo chiuda accidentalmente la dialog.
+        //
+        // Con swipeAnywhere=true: nessuna dead zone, comportamento diretto.
+        val childConnection = remember(swipeAnywhere) {
+            object : NestedScrollConnection {
+                var overscrollAccum = 0f
+                private val DEAD_ZONE = 60f
+
+                override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                    val dy = available.y
+                    if (offsetY.value > 0f && dy < 0f) {
+                        val target = (offsetY.value + dy).coerceAtLeast(0f)
+                        val consumed = target - offsetY.value
+                        scope.launch { offsetY.snapTo(target) }
+                        return Offset(0f, consumed)
+                    }
+                    if (offsetY.value < 0f && dy > 0f) {
+                        val target = (offsetY.value + dy).coerceAtMost(0f)
+                        val consumed = target - offsetY.value
+                        scope.launch { offsetY.snapTo(target) }
+                        return Offset(0f, consumed)
+                    }
+                    return Offset.Zero
+                }
+
+                override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                    if (available.y == 0f) return Offset.Zero
+                    if (!swipeAnywhere) {
+                        // Blocca i Fling: solo Drag deliberati al bordo spostano il dialog
+                        if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Fling) return Offset.Zero
+                        // Dead zone: reset se la direzione cambia
+                        if ((overscrollAccum > 0f && available.y < 0f) || (overscrollAccum < 0f && available.y > 0f)) {
+                            overscrollAccum = 0f
+                        }
+                        overscrollAccum += available.y
+                        if (kotlin.math.abs(overscrollAccum) < DEAD_ZONE) return Offset.Zero
+                    }
+                    val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
+                    scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                    return Offset(0f, available.y)
+                }
+
+                override suspend fun onPreFling(available: Velocity): Velocity {
+                    overscrollAccum = 0f
+                    if (offsetY.value != 0f) { settle(available.y); return available }
+                    return Velocity.Zero
+                }
+
+                override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                    overscrollAccum = 0f
                     if (available.y != 0f && (swipeAnywhere || kotlin.math.abs(offsetY.value) > 20f)) {
                         settle(available.y)
                         return available
@@ -255,7 +310,7 @@ private fun ImmersiveScaffold(
                 val columnScope = this
                 CompositionLocalProvider(
                     LocalDialogDragHandle provides dragHandle,
-                    LocalDialogScrollConnection provides if (dismissible) nested else null
+                    LocalDialogScrollConnection provides if (dismissible) childConnection else null
                 ) {
                     with(columnScope) { content() }
                 }
