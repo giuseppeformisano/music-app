@@ -334,10 +334,11 @@ fun UtilityDialog(
         onDismiss = onDismiss,
         swipeAnywhere = swipeAnywhere,
         dismissible = dismissible,
-        backdrop = { frac, _ ->
+        backdrop = { frac, off ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .graphicsLayer { translationY = off }
                     .background(Color.Black.copy(alpha = 0.965f * (1f - frac)))
             )
         },

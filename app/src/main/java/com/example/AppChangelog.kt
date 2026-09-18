@@ -5,7 +5,7 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.15.11"
+    const val TITLE = "Novità · 0.15.12"
     val LINES = listOf(
         "Chat: badge messaggi non letti sull'icona messaggi in basso.",
         "Chat: spunte stile WhatsApp — grigia inviato, bianca letto.",
