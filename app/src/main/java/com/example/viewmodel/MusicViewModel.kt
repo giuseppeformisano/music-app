@@ -1311,6 +1311,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         FirebaseRepository.shareTrack(updatedUser.id, trackWithTimestamp)
+        // Notifica i follower della nuova condivisione nel feed (push via hub Render).
+        FirebaseRepository.sendShareNotificationToFollowers(updatedUser, trackWithTimestamp)
         // shareTrack scrive già sharedTracks su Firestore; syncCurrentUser riscriverebbe
         // l'intero profilo (incluso currentTrack live) — non serve qui.
     }
@@ -1620,6 +1622,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (senderId.isBlank()) return
         FirebaseRepository.getUsersByIds(listOf(senderId)) { users ->
             users.firstOrNull()?.let { openChat(it) }
+        }
+    }
+
+    fun openProfileFromNotification(senderId: String) {
+        if (senderId.isBlank()) return
+        FirebaseRepository.getUsersByIds(listOf(senderId)) { users ->
+            users.firstOrNull()?.let { openProfile(it) }
         }
     }
 

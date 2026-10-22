@@ -182,6 +182,8 @@ class MainActivity : ComponentActivity() {
         val openChatString = intent.getStringExtra("open_chat")
         val openPulseBool = intent.getBooleanExtra(EXTRA_OPEN_PULSE, false)
         val openPulseString = intent.getStringExtra("open_pulse")
+        val openShareBool = intent.getBooleanExtra(EXTRA_OPEN_FEED_SHARE, false)
+        val openShareString = intent.getStringExtra("open_feed_share")
         val notifType = intent.getStringExtra("type")
         val hostUserId = intent.getStringExtra("hostUserId")
         val senderId = intent.getStringExtra("senderId")
@@ -189,6 +191,7 @@ class MainActivity : ComponentActivity() {
         val isLiveNav = openLiveBool || openLiveString == "true" || notifType == "live_start"
         val isChatNav = openChatBool || openChatString == "true" || notifType == "new_message"
         val isPulseNav = openPulseBool || openPulseString == "true" || notifType == "new_pulse"
+        val isShareNav = openShareBool || openShareString == "true" || notifType == "feed_share"
         val isFollowNav = openBool || openString == "true" || notifType == "follow_request"
 
         if (isPulseNav) {
@@ -208,7 +211,7 @@ class MainActivity : ComponentActivity() {
         }
 
         // Porta SEMPRE al punto della notifica, da qualsiasi sezione: prima azzera gli overlay.
-        if (isLiveNav || isChatNav || isFollowNav) {
+        if (isLiveNav || isChatNav || isFollowNav || isShareNav) {
             viewModel.clearOverlaysForNavigation()
         }
 
@@ -216,6 +219,8 @@ class MainActivity : ComponentActivity() {
             if (!hostUserId.isNullOrBlank()) viewModel.openLiveFromNotification(hostUserId)
         } else if (isChatNav) {
             if (!senderId.isNullOrBlank()) viewModel.openChatFromNotification(senderId)
+        } else if (isShareNav) {
+            if (!senderId.isNullOrBlank()) viewModel.openProfileFromNotification(senderId)
         } else if (isFollowNav) {
             viewModel.openNotifications()
         }
@@ -280,6 +285,7 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_OPEN_LIVE = "open_live"
         const val EXTRA_OPEN_CHAT = "open_chat"
         const val EXTRA_OPEN_PULSE = "open_pulse"
+        const val EXTRA_OPEN_FEED_SHARE = "open_feed_share"
     }
 }
 

@@ -25,6 +25,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
         val isLive = data["type"] == "live_start" || data["open_live"] == "true"
         val isChat = data["type"] == "new_message" || data["open_chat"] == "true"
         val isPulse = data["type"] == "new_pulse" || data["open_pulse"] == "true"
+        val isShare = data["type"] == "feed_share" || data["open_feed_share"] == "true"
         val pulse = data["pulse"] ?: ""
         if (isLive) {
             val liveNotifsEnabled = try {
@@ -46,6 +47,7 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
             isLive -> "Diretta Live 🎵"
             isPulse -> "Nuovo Pulse"
             isChat -> "Nuovo messaggio"
+            isShare -> "Nuova condivisione 🎶"
             else -> "Nuova richiesta di follow"
         }
         val title = data["title"] ?: message.notification?.title ?: defaultTitle
@@ -86,6 +88,12 @@ class AppFirebaseMessagingService : FirebaseMessagingService() {
                         putExtra(MainActivity.EXTRA_OPEN_CHAT, true)
                         putExtra("open_chat", "true")
                         putExtra("type", "new_message")
+                        putExtra("senderId", senderId)
+                    }
+                    isShare -> {
+                        putExtra(MainActivity.EXTRA_OPEN_FEED_SHARE, true)
+                        putExtra("open_feed_share", "true")
+                        putExtra("type", "feed_share")
                         putExtra("senderId", senderId)
                     }
                     else -> {

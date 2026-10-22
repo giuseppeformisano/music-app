@@ -572,6 +572,49 @@ object FirebaseRepository {
             }
     }
 
+    /**
+     * Notifica i follower quando l'utente condivide un brano nel proprio feed.
+     * Riusa lo stesso hub push delle live: nessun lavoro backend aggiuntivo.
+     */
+    fun sendShareNotificationToFollowers(user: User, track: Track) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(user.id).get()
+            .addOnSuccessListener { userDoc ->
+                val followerIds = (userDoc?.get("followerIds") as? List<*>)?.filterIsInstance<String>() ?: user.followerIds
+                if (followerIds.isEmpty()) return@addOnSuccessListener
+
+                val pushAvatarUrl = if (user.avatarUrl.startsWith("http", ignoreCase = true)) user.avatarUrl else ""
+                val trackLabel = listOf(track.title, track.artist).filter { it.isNotBlank() }.joinToString(" · ")
+
+                followerIds.forEach { followerId ->
+                    db.collection(USERS_COLLECTION).document(followerId).get()
+                        .addOnSuccessListener { doc ->
+                            val shareNotifsEnabled = doc?.getBoolean("shareNotificationsEnabled") ?: true
+                            if (!shareNotifsEnabled) return@addOnSuccessListener
+
+                            val fcmToken = doc?.getString("fcmToken")
+                            if (!fcmToken.isNullOrBlank()) {
+                                PushNotificationSender.sendPushNotification(
+                                    targetToken = fcmToken,
+                                    title = "${user.name} ha condiviso un brano",
+                                    body = if (trackLabel.isNotBlank()) trackLabel else "Tocca per ascoltarlo",
+                                    data = mapOf(
+                                        "type" to "feed_share",
+                                        "open_feed_share" to "true",
+                                        "senderId" to user.id,
+                                        "senderName" to user.name,
+                                        "senderUsername" to user.username,
+                                        "fromUserAvatarUrl" to pushAvatarUrl
+                                    )
+                                )
+                            }
+                        }
+                        .addOnFailureListener { e -> Log.e(TAG, "Errore recupero follower $followerId per share: ${e.message}") }
+                }
+            }
+            .addOnFailureListener { e -> Log.e(TAG, "Errore recupero utente per notifica share: ${e.message}") }
+    }
+
     // Accetta: 1 batch atomico. Il follow finisce in follower/following; la richiesta
     // viene RIMOSSA (niente doc "ACCEPTED" che si accumulano) da entrambi i lati.
     fun acceptFollowRequest(currentUserId: String, fromUserId: String) {
