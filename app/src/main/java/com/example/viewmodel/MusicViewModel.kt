@@ -13,6 +13,7 @@ import com.example.data.SpotifyWebApiRepository
 import com.example.data.UpdateRepository
 import com.example.data.VersionInfo
 import java.io.File
+import com.example.model.AppNotification
 import com.example.model.ChatMessage
 import com.example.model.Conversation
 import com.example.model.FriendRequest
@@ -78,6 +79,9 @@ data class MusicUiState(
     val updateDownloadProgress: Int? = null,
     val updateReadyFile: File? = null,
     val pendingFriendRequests: List<FriendRequest> = emptyList(),
+    // Notifiche in-app persistenti (stile Instagram): restano come traccia anche dopo
+    // essere state gestite. Merge di subcollection Firestore + richieste pending legacy.
+    val notifications: List<AppNotification> = emptyList(),
     val showPeopleSearch: Boolean = false,
     val showNotifications: Boolean = false,
     val peopleSearchQuery: String = "",
@@ -130,6 +134,51 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     // Chat listeners
     private var chatMessagesListener: com.google.firebase.firestore.ListenerRegistration? = null
     private var conversationsListener: com.google.firebase.firestore.ListenerRegistration? = null
+
+    // Notifiche persistenti: documenti dalla subcollection Firestore. La lista finale mostrata
+    // è il merge di questi + eventuali richieste pending "legacy" prive di documento.
+    private var rawNotifDocs: List<AppNotification> = emptyList()
+
+    private fun recomputeNotifications() {
+        val docs = rawNotifDocs
+        val docFromIds = docs.map { it.fromUserId }.toSet()
+        // Richieste pending storiche non ancora materializzate come documento notifica.
+        val legacyPending = _uiState.value.pendingFriendRequests
+            .filter { it.fromUserId !in docFromIds }
+            .map {
+                AppNotification(
+                    id = "follow_${it.fromUserId}",
+                    type = "follow_request",
+                    fromUserId = it.fromUserId,
+                    fromUserName = it.fromUserName,
+                    fromUserUsername = it.fromUserUsername,
+                    fromUserAvatarUrl = it.fromUserAvatarUrl,
+                    status = "pending",
+                    createdAt = it.timestamp
+                )
+            }
+        val merged = (docs + legacyPending).sortedByDescending { it.createdAt }
+        _uiState.update { it.copy(notifications = merged) }
+    }
+
+    // Aggiorna lo status di una notifica localmente (ottimistico), prima che arrivi lo snapshot.
+    private fun patchNotificationStatus(fromUserId: String, status: String) {
+        rawNotifDocs = rawNotifDocs.map {
+            if (it.fromUserId == fromUserId) it.copy(status = status) else it
+        }.let { docs ->
+            if (docs.none { it.fromUserId == fromUserId }) {
+                // Legacy: nessun doc ancora → crealo in memoria dalla richiesta pending.
+                val pending = _uiState.value.pendingFriendRequests.firstOrNull { it.fromUserId == fromUserId }
+                if (pending != null) docs + AppNotification(
+                    id = "follow_$fromUserId", type = "follow_request",
+                    fromUserId = fromUserId, fromUserName = pending.fromUserName,
+                    fromUserUsername = pending.fromUserUsername, fromUserAvatarUrl = pending.fromUserAvatarUrl,
+                    status = status, createdAt = pending.timestamp
+                ) else docs
+            } else docs
+        }
+        recomputeNotifications()
+    }
 
     // Listen tracking: conta gli intervalli di 30s in cui l'utente ascolta un brano
     private var listenTrackingJob: Job? = null
@@ -1023,10 +1072,21 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                             sentRequestIds = fresh.sentRequestIds.toSet()
                         )
                     }
+                    // Le richieste pending sono cambiate → ricalcola la lista notifiche (merge).
+                    recomputeNotifications()
                     // Se il profilo proprio è aperto, aggiorna i dettagli social
                     if (_uiState.value.activeProfileUser?.isCurrentUser == true) {
                         loadSocialDetails(_uiState.value.currentUser)
                     }
+                }
+        }
+        // Notifiche in-app persistenti (subcollection).
+        viewModelScope.launch {
+            FirebaseRepository.observeNotifications(userId)
+                .catch { }
+                .collect { docs ->
+                    rawNotifDocs = docs
+                    recomputeNotifications()
                 }
         }
     }
@@ -1324,23 +1384,39 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         _uiState.update { it.copy(showNotifications = false) }
     }
 
-    fun acceptFriendRequest(request: FriendRequest) {
-        val updated = _uiState.value.pendingFriendRequests.filter { it.id != request.id }
+    // Accetta una richiesta di follow. La notifica NON sparisce: resta come traccia con
+    // status "accepted" (gestito da patchNotificationStatus + snapshot Firestore).
+    fun acceptFollowNotification(n: AppNotification) {
         val currentId = _uiState.value.currentUser.id
+        val updated = _uiState.value.pendingFriendRequests.filter { it.fromUserId != n.fromUserId }
         _uiState.update {
             it.copy(
                 pendingFriendRequests = updated,
-                feedbackToast = "Ora segui @${request.fromUserUsername}"
+                feedbackToast = "@${n.fromUserUsername} ora ti segue"
             )
         }
-        FirebaseRepository.acceptFollowRequest(currentId, request.fromUserId)
+        patchNotificationStatus(n.fromUserId, "accepted")
+        FirebaseRepository.acceptFollowRequest(currentId, n.fromUserId)
     }
 
-    fun rejectFriendRequest(request: FriendRequest) {
-        val updated = _uiState.value.pendingFriendRequests.filter { it.id != request.id }
+    // Rifiuta: anche qui la notifica resta come traccia con status "rejected".
+    fun rejectFollowNotification(n: AppNotification) {
         val currentId = _uiState.value.currentUser.id
+        val updated = _uiState.value.pendingFriendRequests.filter { it.fromUserId != n.fromUserId }
         _uiState.update { it.copy(pendingFriendRequests = updated) }
-        FirebaseRepository.rejectFollowRequest(currentId, request.fromUserId)
+        patchNotificationStatus(n.fromUserId, "rejected")
+        FirebaseRepository.rejectFollowRequest(currentId, n.fromUserId)
+    }
+
+    // "Segui" dalla notifica: invia una richiesta di follow alla persona (follow-back).
+    fun followBackFromNotification(n: AppNotification) {
+        val target = User(
+            id = n.fromUserId,
+            name = n.fromUserName,
+            username = n.fromUserUsername,
+            avatarUrl = n.fromUserAvatarUrl
+        )
+        sendFollowRequest(target)
     }
 
     // Diffing per notificare solo le NUOVE richieste (usato dal listener unico del doc utente)
@@ -1566,7 +1642,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             ?: _uiState.value.followingDetails.firstOrNull { it.id == user.id }
             ?: user
 
-        _uiState.update { it.copy(activeChatUser = freshUser, activeStoryUserId = null, isChatListOpen = false) }
+        // NON chiudere la lista chat: la chat specifica si apre SOPRA la lista, così
+        // chiudendola (closeChat) si torna alla lista. Se la chat è aperta da altrove
+        // (profilo/feed) isChatListOpen è già false, quindi nessun effetto collaterale.
+        _uiState.update { it.copy(activeChatUser = freshUser, activeStoryUserId = null) }
 
         // Se mancano dati (es. avatar), richiedili a Firestore in background per aggiornare la chat
         if (freshUser.avatarUrl.isBlank() || freshUser.name == "Utente") {

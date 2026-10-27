@@ -86,6 +86,24 @@ data class FriendRequest(
     val status: RequestStatus = RequestStatus.PENDING
 )
 
+/**
+ * Notifica in-app PERSISTENTE (stile Instagram): resta come traccia anche dopo essere
+ * stata letta o gestita. Salvata in Firestore sotto users/{uid}/notifications/{id}.
+ * Per le richieste di follow lo [status] evolve pending → accepted/rejected ma la
+ * notifica NON viene cancellata.
+ */
+data class AppNotification(
+    val id: String = "",
+    val type: String = "follow_request",   // estendibile: share, live, ...
+    val fromUserId: String = "",
+    val fromUserName: String = "",
+    val fromUserUsername: String = "",
+    val fromUserAvatarUrl: String = "",
+    val status: String = "pending",         // follow_request: pending | accepted | rejected
+    val createdAt: Long = 0L,
+    val read: Boolean = false
+)
+
 data class ChatMessage(
     val id: String,
     val senderId: String,

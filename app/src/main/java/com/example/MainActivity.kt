@@ -583,9 +583,12 @@ fun MusicApp(viewModel: MusicViewModel) {
         // Dialog: Notifiche e Richieste Amicizia
         if (uiState.showNotifications) {
             NotificationsDialog(
-                pendingRequests = uiState.pendingFriendRequests,
-                onAccept = { viewModel.acceptFriendRequest(it) },
-                onReject = { viewModel.rejectFriendRequest(it) },
+                notifications = uiState.notifications,
+                followingIds = uiState.currentUser.followingIds.toSet(),
+                sentRequestIds = uiState.sentRequestIds,
+                onAccept = { viewModel.acceptFollowNotification(it) },
+                onReject = { viewModel.rejectFollowNotification(it) },
+                onFollowBack = { viewModel.followBackFromNotification(it) },
                 onDismiss = { viewModel.closeNotifications() }
             )
         }

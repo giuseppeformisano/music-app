@@ -41,6 +41,7 @@ object FirebaseRepository {
     private const val USERS_COLLECTION = "users"
     private const val CONVERSATIONS_COLLECTION = "conversations"
     private const val MESSAGES_SUBCOLLECTION = "messages"
+    private const val NOTIFICATIONS_SUBCOLLECTION = "notifications"
     private const val PULSE_AUDIO_COLLECTION = "pulseAudio"
     private const val RENDER_BASE_URL = "https://cross-notify-hub.onrender.com"
     private const val RENDER_API_KEY = "cross-notify-secret-key-2026"
@@ -504,6 +505,24 @@ object FirebaseRepository {
                 db.collection(USERS_COLLECTION).document(from.id),
                 "sentRequestIds", FieldValue.arrayUnion(to.id)
             )
+            // Notifica in-app PERSISTENTE per il destinatario (traccia stile Instagram).
+            // id stabile = "follow_<fromId>" → una re-richiesta riporta lo status a pending.
+            val now = System.currentTimeMillis()
+            batch.set(
+                db.collection(USERS_COLLECTION).document(to.id)
+                    .collection(NOTIFICATIONS_SUBCOLLECTION).document("follow_${from.id}"),
+                mapOf(
+                    "id" to "follow_${from.id}",
+                    "type" to "follow_request",
+                    "fromUserId" to from.id,
+                    "fromUserName" to from.name,
+                    "fromUserUsername" to from.username,
+                    "fromUserAvatarUrl" to fromAvatar,
+                    "status" to "pending",
+                    "createdAt" to now,
+                    "read" to false
+                )
+            )
             batch.commit()
                 .addOnSuccessListener {
                     Log.d(TAG, "Richiesta inviata con successo a ${to.name}")
@@ -657,6 +676,14 @@ object FirebaseRepository {
                         "sentRequestIds" to FieldValue.arrayRemove(currentUserId)
                     )
                 )
+                // Notifica persistente: resta come traccia, cambia solo lo status.
+                // merge: crea il doc anche per richieste legacy che ne erano prive.
+                set(
+                    db.collection(USERS_COLLECTION).document(currentUserId)
+                        .collection(NOTIFICATIONS_SUBCOLLECTION).document("follow_$fromUserId"),
+                    mapOf("status" to "accepted"),
+                    SetOptions.merge()
+                )
             }.commit()
         } catch (e: Exception) {
             Log.e(TAG, "acceptFollowRequest error: ${e.message}")
@@ -676,10 +703,47 @@ object FirebaseRepository {
                     db.collection(USERS_COLLECTION).document(fromUserId),
                     mapOf("sentRequestIds" to FieldValue.arrayRemove(currentUserId))
                 )
+                // Notifica persistente: resta come traccia con status "rejected".
+                set(
+                    db.collection(USERS_COLLECTION).document(currentUserId)
+                        .collection(NOTIFICATIONS_SUBCOLLECTION).document("follow_$fromUserId"),
+                    mapOf("status" to "rejected"),
+                    SetOptions.merge()
+                )
             }.commit()
         } catch (e: Exception) {
             Log.e(TAG, "rejectFollowRequest error: ${e.message}")
         }
+    }
+
+    // Stream delle notifiche in-app persistenti (ordinate dalla più recente).
+    fun observeNotifications(userId: String): Flow<List<com.example.model.AppNotification>> = callbackFlow {
+        val db = firestore
+        if (db == null || userId.isBlank()) { trySend(emptyList()); awaitClose { } ; return@callbackFlow }
+        val reg = db.collection(USERS_COLLECTION).document(userId)
+            .collection(NOTIFICATIONS_SUBCOLLECTION)
+            .orderBy("createdAt", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .addSnapshotListener { snap, err ->
+                if (err != null) { Log.w(TAG, "observeNotifications: ${err.message}"); return@addSnapshotListener }
+                val list = snap?.documents?.mapNotNull { mapDocToNotification(it.data, it.id) } ?: emptyList()
+                trySend(list)
+            }
+        awaitClose { reg.remove() }
+    }
+
+    private fun mapDocToNotification(data: Map<String, Any?>?, id: String): com.example.model.AppNotification? {
+        if (data == null) return null
+        return com.example.model.AppNotification(
+            id = id,
+            type = data["type"] as? String ?: "follow_request",
+            fromUserId = data["fromUserId"] as? String ?: "",
+            fromUserName = data["fromUserName"] as? String ?: "",
+            fromUserUsername = data["fromUserUsername"] as? String ?: "",
+            fromUserAvatarUrl = data["fromUserAvatarUrl"] as? String ?: "",
+            status = data["status"] as? String ?: "pending",
+            createdAt = (data["createdAt"] as? Number)?.toLong() ?: 0L,
+            read = data["read"] as? Boolean ?: false
+        )
     }
 
     fun getUsersByIds(ids: List<String>, onResult: (List<User>) -> Unit) {
