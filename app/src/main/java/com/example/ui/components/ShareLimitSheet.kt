@@ -73,23 +73,23 @@ fun ShareLimitSheet(onDismiss: () -> Unit) {
             }
 
             Text(
-                text = "Condivisioni esaurite",
+                text = "Brano del giorno condiviso",
                 color = PureWhite,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold
             )
 
             Text(
-                text = "Hai usato le tue 3 condivisioni di oggi.\nLa scarsità rende ogni scelta più significativa.",
+                text = "Hai già condiviso il tuo brano di oggi.\nUno al giorno: ogni scelta conta.",
                 color = SubtitleGray,
                 fontSize = 13.sp,
                 lineHeight = 19.sp,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
 
-            // Slot visivi
+            // Slot visivo singolo
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                repeat(3) {
+                repeat(1) {
                     Box(
                         modifier = Modifier
                             .size(width = 60.dp, height = 6.dp)
@@ -116,7 +116,7 @@ fun ShareLimitSheet(onDismiss: () -> Unit) {
                     modifier = Modifier.size(16.dp)
                 )
                 Text(
-                    text = "Nuovi slot disponibili tra $minutesUntilReset",
+                    text = "Potrai condividere di nuovo tra $minutesUntilReset",
                     color = SubtitleGray.copy(alpha = 0.7f),
                     fontSize = 12.sp
                 )

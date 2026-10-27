@@ -1813,7 +1813,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     companion object {
-        private const val DAILY_SHARE_LIMIT = 3
+        // BeReal: un solo "brano del giorno". (Era 3 brani/giorno — temporaneamente ridotto a 1.)
+        // private const val DAILY_SHARE_LIMIT = 3
+        private const val DAILY_SHARE_LIMIT = 1
         private const val PREFS_SHARE = "daily_share_prefs"
         private const val KEY_SHARE_DATE = "share_date"
         private const val KEY_SHARE_COUNT = "share_count"

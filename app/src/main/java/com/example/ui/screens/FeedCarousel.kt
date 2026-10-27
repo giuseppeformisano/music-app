@@ -64,6 +64,8 @@ data class FeedWeekGroup(
     val lastSharedAt: Long     // timestamp del brano più recente (per ordinare i gruppi)
 )
 
+private const val UNKNOWN_WEEK_KEY = "unknown"
+
 fun buildFeedWeekGroups(feedUsers: List<User>): List<FeedWeekGroup> {
     val now = Calendar.getInstance()
     val currentYear = now.get(Calendar.YEAR)
@@ -74,14 +76,19 @@ fun buildFeedWeekGroups(feedUsers: List<User>): List<FeedWeekGroup> {
         if (user.sharedTracks.isEmpty()) return@forEach
         val byWeek = mutableMapOf<String, MutableList<Track>>()
         user.sharedTracks.forEach { track ->
-            val ts = if (track.sharedAt > 0L) track.sharedAt else System.currentTimeMillis()
-            val cal = Calendar.getInstance().apply { timeInMillis = ts }
-            val key = "${cal.get(Calendar.YEAR)}-W${cal.get(Calendar.WEEK_OF_YEAR)}"
+            // Tracce legacy senza sharedAt (=0) NON vanno in "Questa settimana": finiscono
+            // in un gruppo "In precedenza" (key UNKNOWN_WEEK_KEY), ordinato in fondo.
+            val key = if (track.sharedAt > 0L) {
+                val cal = Calendar.getInstance().apply { timeInMillis = track.sharedAt }
+                "${cal.get(Calendar.YEAR)}-W${cal.get(Calendar.WEEK_OF_YEAR)}"
+            } else {
+                UNKNOWN_WEEK_KEY
+            }
             byWeek.getOrPut(key) { mutableListOf() }.add(track)
         }
         byWeek.forEach { (key, tracks) ->
             val sorted = tracks.sortedByDescending { it.sharedAt }
-            val lastAt = sorted.maxOf { it.sharedAt }
+            val lastAt = if (key == UNKNOWN_WEEK_KEY) 0L else sorted.maxOf { it.sharedAt }
             result.add(FeedWeekGroup(user, key, weekLabel(key, currentYear, currentWeek), sorted, lastAt))
         }
     }
@@ -89,6 +96,7 @@ fun buildFeedWeekGroups(feedUsers: List<User>): List<FeedWeekGroup> {
 }
 
 private fun weekLabel(key: String, currentYear: Int, currentWeek: Int): String {
+    if (key == UNKNOWN_WEEK_KEY) return "In precedenza"
     val parts = key.split("-W")
     val year = parts.getOrNull(0)?.toIntOrNull() ?: return key
     val week = parts.getOrNull(1)?.toIntOrNull() ?: return key

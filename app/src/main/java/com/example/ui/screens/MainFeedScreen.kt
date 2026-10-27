@@ -332,8 +332,8 @@ fun MainFeedScreen(
                 .align(Alignment.BottomEnd)
                 .padding(end = 20.dp, bottom = 80.dp)
         ) {
-            val sharesLeft = (3 - dailySharesUsed).coerceIn(0, 3)
-            val isExhausted = sharesLeft == 0
+            // BeReal: un solo "brano del giorno". Se già condiviso oggi, FAB disattivato.
+            val isExhausted = dailySharesUsed >= 1
             Box(contentAlignment = Alignment.TopStart) {
                 FloatingActionButton(
                     onClick = onOpenShareSheet,
@@ -347,30 +347,10 @@ fun MainFeedScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Add,
-                        contentDescription = "Condividi un brano",
+                        contentDescription = "Condividi il brano del giorno",
                         modifier = Modifier.size(28.dp),
                         tint = if (isExhausted) SubtitleGray else BlackPitch
                     )
-                }
-                // Badge slot rimanenti (solo se non esaurite)
-                if (!isExhausted) {
-                    Box(
-                        modifier = Modifier
-                            .offset(x = (-2).dp, y = (-2).dp)
-                            .size(18.dp)
-                            .background(
-                                color = if (sharesLeft == 1) Color(0xFFE53935) else Color(0xFFF0B429),
-                                shape = CircleShape
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = sharesLeft.toString(),
-                            color = BlackPitch,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
             }
         }
