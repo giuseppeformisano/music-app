@@ -5,10 +5,9 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.18.0"
+    const val TITLE = "Novità · 0.19.0"
     val LINES = listOf(
-        "Brano del giorno: ora si condivide un solo brano al giorno, stile BeReal.",
-        "Feed: corretto il raggruppamento settimanale — i brani vecchi non finiscono più in \"Questa settimana\".",
-        "Feed: i brani senza data finiscono nel gruppo \"In precedenza\".",
+        "Spotify: rilevamento del brano in ascolto tramite l'app Spotify (App Remote) — funziona anche senza l'accesso alle notifiche.",
+        "Più affidabile sui telefoni che bloccano l'accesso alle notifiche: resta comunque il fallback automatico.",
     )
 }

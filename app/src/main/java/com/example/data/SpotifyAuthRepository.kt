@@ -17,7 +17,8 @@ import java.security.SecureRandom
 object SpotifyAuthRepository {
 
     private const val TAG = "SpotifyAuthRepository"
-    private const val CLIENT_ID = "1598958401ae4dc3a5fcbc54e984b544"
+    // Pubblico: lo riusa SpotifyAppRemoteSource per ConnectionParams.
+    const val CLIENT_ID = "1598958401ae4dc3a5fcbc54e984b544"
     const val REDIRECT_URI = "com.aistudio.music.livefeed://callback"
     private const val SCOPES = "user-read-currently-playing user-read-playback-state"
 

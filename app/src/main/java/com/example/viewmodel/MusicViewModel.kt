@@ -112,6 +112,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     private var firebaseObserverJob: Job? = null
     private var liveStaleTickerJob: Job? = null
     private var spotifyPollingJob: Job? = null
+    // App Remote SDK attivo come sorgente primaria Spotify (niente permesso notifiche).
+    private var appRemoteActive = false
     // Debounce: evita che un singolo poll vuoto (204 tra brani / errore rete transitorio)
     // faccia sparire e riapparire la live agli altri
     private var emptyPollCount = 0
@@ -381,16 +383,47 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (_uiState.value.connectedServices["spotify"] != true) return
         if (!SpotifyAuthRepository.isAuthorized) return
 
-        // Modalità ibrida: listener rileva il cambio brano istantaneamente (zero latenza),
-        // poi il ViewModel fa UNA sola chiamata API per arricchire i metadati (trackId, artHD, album).
-        // Molto meglio del polling ogni 3s: zero batteria sprecata, metadati Premium-quality.
+        // Preferenza 1: App Remote SDK — si collega direttamente all'app Spotify, niente
+        // permesso notifiche, funziona per Free e Premium. È la sorgente più robusta per il
+        // rilevamento locale. Se Spotify non è installato o la connessione fallisce (es. SHA-1
+        // non configurato nel dashboard), si scende ai fallback storici.
+        if (com.example.data.SpotifyAppRemoteSource.isSpotifyInstalled(appContext)) {
+            connectAppRemote()
+            return
+        }
+
+        startSpotifyFallbackDetection()
+    }
+
+    private fun connectAppRemote() {
+        if (appRemoteActive) return
+        com.example.data.SpotifyAppRemoteSource.connect(
+            appContext,
+            onTrack = { title, artist, album, durationMs, positionMs, _ ->
+                // imageUri Spotify (spotify:image:...) non è un URL http: lasciamo risolvere
+                // la copertina a CoverResolver via artista+titolo, come per il path notifiche.
+                updateNowPlayingFromBroadcast("", title, artist, album, durationMs, positionMs, "", source = "spotify")
+            },
+            onProgress = { positionMs, durationMs -> updateLiveProgress(positionMs, durationMs) },
+            onStopped = { clearNowPlayingFromBroadcast(source = "spotify") },
+            onConnected = { appRemoteActive = true },
+            onFailure = {
+                appRemoteActive = false
+                // Connessione App Remote non disponibile → attiva i fallback (listener / Web API).
+                startSpotifyFallbackDetection()
+            }
+        )
+    }
+
+    // Fallback storici per Spotify Premium quando l'App Remote non è disponibile:
+    // listener notifiche (zero latenza + enrichment via Web API) oppure polling ogni 3s.
+    private fun startSpotifyFallbackDetection() {
         if (com.example.MusicNotificationListenerService.isEnabled(appContext)) {
             com.example.MusicNotificationListenerService.isSpotifyPremiumForeground = true
             com.example.MusicNotificationListenerService.startListening(appContext)
             return
         }
 
-        // Fallback: listener non autorizzato → polling classico ogni 3s
         if (spotifyPollingJob?.isActive == true) return
         spotifyPollingJob = viewModelScope.launch {
             while (isActive) {
@@ -404,6 +437,10 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         spotifyPollingJob?.cancel()
         spotifyPollingJob = null
         com.example.MusicNotificationListenerService.isSpotifyPremiumForeground = false
+        if (appRemoteActive) {
+            com.example.data.SpotifyAppRemoteSource.disconnect()
+            appRemoteActive = false
+        }
     }
 
     private suspend fun fetchCurrentlyPlaying() {
