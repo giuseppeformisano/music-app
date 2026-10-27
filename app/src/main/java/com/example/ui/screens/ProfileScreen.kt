@@ -913,12 +913,12 @@ private fun UserStatsSection(
                     .fillMaxWidth()
                     .statsPageBlurTransition(page, pagerState)
                     .padding(vertical = 4.dp, horizontal = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val stats = pages[page]
                 stats.forEachIndexed { index, stat ->
-                    StatItem(label = stat.label, value = stat.value)
+                    // weight(1f) su ogni stat → le 3 colonne occupano spazio orizzontale identico
+                    StatItem(label = stat.label, value = stat.value, modifier = Modifier.weight(1f))
                     if (index < stats.lastIndex) {
                         Box(modifier = Modifier.width(1.dp).height(22.dp).background(PureWhite.copy(alpha = 0.12f)))
                     }
@@ -961,7 +961,9 @@ private fun StatItem(
             color = PureWhite,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = (-0.2).sp
+            letterSpacing = (-0.2).sp,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
 
         Spacer(modifier = Modifier.height(2.dp))
@@ -970,7 +972,9 @@ private fun StatItem(
             text = label,
             color = SubtitleGray,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
         )
     }
 }
