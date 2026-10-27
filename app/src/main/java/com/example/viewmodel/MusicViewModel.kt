@@ -118,6 +118,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     // Heartbeat: rinfresca updatedAt ogni ~25s mentre si ascolta lo stesso brano, così
     // il proprio documento resta in cima alla query e la live non sparisce agli altri
     private var lastLiveHeartbeat = 0L
+    // Il brano corrente è già stato contato tra gli "ascoltati"? Si conta al primo
+    // heartbeat (~25s di riproduzione reale), una sola volta per brano.
+    private var currentTrackCounted = false
     private val httpClient by lazy { OkHttpClient() }
 
     private var isAppInForeground = true
@@ -479,16 +482,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (liveTrack.id == currentTrackId) {
             // Stesso brano: heartbeat + riallineo la posizione reale (assorbe seek/pausa)
             if (now - lastLiveHeartbeat >= 25_000L) {
+                val listenDelta = now - lastLiveHeartbeat  // tempo d'ascolto da attribuire
                 lastLiveHeartbeat = now
+                val countTrack = !currentTrackCounted
+                currentTrackCounted = true
                 val u = _uiState.value.currentUser.copy(
                     trackProgressMs = progressMs, trackProgressAt = now
                 )
                 _uiState.update { it.copy(currentUser = u) }
-                FirebaseRepository.touchLive(u.id, progressMs, now)
+                FirebaseRepository.touchLive(
+                    u.id, progressMs, now,
+                    listenDeltaMs = listenDelta,
+                    listenArtist = liveTrack.artist,
+                    listenGenre = liveTrack.genre,
+                    countTrack = countTrack
+                )
             }
             return
         }
         lastLiveHeartbeat = now
+        currentTrackCounted = false
         val updatedUser = _uiState.value.currentUser.copy(
             currentTrack = liveTrack,
             presenceState = com.example.model.UserPresenceState.LIVE,
@@ -681,13 +694,22 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // Riallinea la posizione reale del brano corrente (Free), con heartbeat ~25s
     private fun updateLiveProgress(positionMs: Long, durationMs: Long) {
-        if (_uiState.value.currentUser.currentTrack == null) return
+        val liveTrack = _uiState.value.currentUser.currentTrack ?: return
         val now = System.currentTimeMillis()
         if (now - lastLiveHeartbeat < 25_000L) return
+        val listenDelta = now - lastLiveHeartbeat
         lastLiveHeartbeat = now
+        val countTrack = !currentTrackCounted
+        currentTrackCounted = true
         val u = _uiState.value.currentUser.copy(trackProgressMs = positionMs, trackProgressAt = now)
         _uiState.update { it.copy(currentUser = u) }
-        FirebaseRepository.touchLive(u.id, positionMs, now)
+        FirebaseRepository.touchLive(
+            u.id, positionMs, now,
+            listenDeltaMs = listenDelta,
+            listenArtist = liveTrack.artist,
+            listenGenre = liveTrack.genre,
+            countTrack = countTrack
+        )
     }
 
     fun updateNowPlayingFromBroadcast(
@@ -701,9 +723,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val coverUrl = com.example.data.CoverResolver.resolveCoverUrl(cleanArtist, trackName, artUrl)
             val now = System.currentTimeMillis()
+            val resolvedId = trackId.ifBlank { "$cleanArtist-$trackName".hashCode().toString() }
+            // Nuovo brano → riparte il conteggio "ascoltato"; stesso brano non lo azzera.
+            if (_uiState.value.currentUser.currentTrack?.id != resolvedId) {
+                currentTrackCounted = false
+            }
             lastLiveHeartbeat = now
             val track = Track(
-                id = trackId.ifBlank { "$cleanArtist-$trackName".hashCode().toString() },
+                id = resolvedId,
                 title = trackName,
                 artist = cleanArtist,
                 album = cleanAlbum,

@@ -82,6 +82,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
@@ -268,13 +269,7 @@ fun ProfileScreen(
 
                 // 3. Sezione Statistiche — visibile solo se si segue l'utente o è il profilo proprio
                 if (canSeeContent) {
-                    UserStatsSection(
-                        totalShared = user.sharedTracks.size,
-                        topArtistsCount = remember(user.sharedTracks) {
-                            user.sharedTracks.map { it.artist }.distinct().size.coerceAtLeast(6)
-                        },
-                        listeningHours = 65
-                    )
+                    UserStatsSection(user = user)
                 }
 
                 // 4. Blocco Live Footer — visibile solo se si segue l'utente o è il profilo proprio
@@ -837,20 +832,65 @@ private fun SharedTracks3DCarousel(
  * - Titolo "YOUR STATS" centrato orizzontalmente con font stilizzato e raffinato.
  * - Zero Riquadri Grigio/Solidi: poggia in totale trasparenza direttamente sullo sfondo #000000.
  */
+// Singola statistica: etichetta + valore.
+private data class ProfileStat(val label: String, val value: String)
+
+/** Stesso effetto slide+blur delle pagine Feed/Live durante lo swipe orizzontale. */
+private fun Modifier.statsPageBlurTransition(page: Int, pagerState: androidx.compose.foundation.pager.PagerState): Modifier {
+    val pageOffset = ((pagerState.currentPage - page) + pagerState.currentPageOffsetFraction).coerceIn(-1f, 1f)
+    val absOffset = abs(pageOffset)
+    val blurFraction = kotlin.math.sin((absOffset.coerceAtMost(0.9f) / 0.9f) * kotlin.math.PI).coerceIn(0.0, 1.0).toFloat()
+    val blurPx = 6f * blurFraction
+    val alphaVal = (1f - absOffset).coerceIn(0f, 1f)
+    return this.graphicsLayer {
+        alpha = alphaVal
+        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S && blurPx >= 0.5f) {
+            renderEffect = android.graphics.RenderEffect
+                .createBlurEffect(blurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                .asComposeRenderEffect()
+        }
+    }
+}
+
 @Composable
 private fun UserStatsSection(
-    totalShared: Int,
-    topArtistsCount: Int,
-    listeningHours: Int,
+    user: User,
     modifier: Modifier = Modifier
 ) {
+    // 6 statistiche reali, divise in 2 pagine da 3. Pagina 1 = ascolto, pagina 2 = condivisione/social.
+    val pages: List<List<ProfileStat>> = remember(user) {
+        val s = user.stats
+        val listenedHours = s.listenedMs / 3_600_000L
+        val listenedMinutes = (s.listenedMs / 60_000L) % 60L
+        val listeningLabel = when {
+            s.listenedMs <= 0L -> "0m"
+            listenedHours > 0L -> "${listenedHours}h ${listenedMinutes}m"
+            else -> "${listenedMinutes}m"
+        }
+        val genresCount = user.sharedTracks.mapNotNull { it.genre.takeIf { g -> g.isNotBlank() } }.distinct().size
+        listOf(
+            listOf(
+                ProfileStat("Ore ascolto", listeningLabel),
+                ProfileStat("Brani ascoltati", s.listenedTracks.toString()),
+                ProfileStat("Artista top", s.topListenedArtist.ifBlank { "—" })
+            ),
+            listOf(
+                ProfileStat("Brani condivisi", user.sharedTracks.size.toString()),
+                ProfileStat("Generi", genresCount.toString()),
+                ProfileStat("Cuori", user.liveHearts.toString())
+            )
+        )
+    }
+
+    val pagerState = rememberPagerState(initialPage = 0) { pages.size }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Label "YOUR STATS"
         Text(
             text = "YOUR STATS",
             color = PureWhite.copy(alpha = 0.85f),
@@ -864,19 +904,44 @@ private fun UserStatsSection(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Music stats
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxWidth()
+        ) { page ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statsPageBlurTransition(page, pagerState)
+                    .padding(vertical = 4.dp, horizontal = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                val stats = pages[page]
+                stats.forEachIndexed { index, stat ->
+                    StatItem(label = stat.label, value = stat.value)
+                    if (index < stats.lastIndex) {
+                        Box(modifier = Modifier.width(1.dp).height(22.dp).background(PureWhite.copy(alpha = 0.12f)))
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        // Indicatori pagina
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 4.dp, horizontal = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            StatItem(label = "Top Artists", value = topArtistsCount.toString())
-            Box(modifier = Modifier.width(1.dp).height(22.dp).background(PureWhite.copy(alpha = 0.12f)))
-            StatItem(label = "Total Shared", value = totalShared.toString())
-            Box(modifier = Modifier.width(1.dp).height(22.dp).background(PureWhite.copy(alpha = 0.12f)))
-            StatItem(label = "Listening Time", value = "${listeningHours}h")
+            repeat(pages.size) { i ->
+                val selected = pagerState.currentPage == i
+                Box(
+                    modifier = Modifier
+                        .size(if (selected) 7.dp else 5.dp)
+                        .clip(CircleShape)
+                        .background(PureWhite.copy(alpha = if (selected) 0.9f else 0.3f))
+                )
+            }
         }
     }
 }

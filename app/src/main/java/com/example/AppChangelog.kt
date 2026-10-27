@@ -5,12 +5,11 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.16.0"
+    const val TITLE = "Novità · 0.17.0"
     val LINES = listOf(
-        "Notifiche: quando un amico condivide un brano nel feed ricevi una push — tocca per aprire il suo profilo.",
-        "Chat: striscia colorata durante swipe eliminata definitivamente.",
-        "Chat: badge messaggi non letti sull'icona messaggi in basso.",
-        "Chat: spunte stile WhatsApp — grigia inviato, bianca letto.",
-        "Chat: swipe al bordo (su/giù) chiude la dialog; scroll veloce e fling non la chiudono.",
+        "Profilo: statistiche reali — ore e brani ascoltati, artista top, condivisi, generi, cuori.",
+        "Profilo: 6 statistiche su 2 pagine con swipe orizzontale e sfocatura stile Feed/Live.",
+        "Ascolto: le ore e i brani ascoltati vengono ora tracciati davvero durante la live.",
+        "Notifiche: push quando un amico condivide un brano nel feed — tocca per aprire il suo profilo.",
     )
 }

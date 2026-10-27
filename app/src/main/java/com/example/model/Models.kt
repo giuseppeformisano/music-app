@@ -65,9 +65,13 @@ data class User(
 }
 
 data class UserStats(
-    val sharedCount: Int = 142,
-    val topArtist: String = "Daft Punk",
-    val totalMinutesOrGenres: String = "Indie • Electronic"
+    val sharedCount: Int = 0,
+    val topArtist: String = "",
+    val totalMinutesOrGenres: String = "",
+    // Statistiche d'ascolto LIVE reali, accumulate dagli heartbeat Spotify (non più mock).
+    val listenedMs: Long = 0L,        // tempo d'ascolto cumulativo rilevato dall'app
+    val listenedTracks: Int = 0,      // brani ascoltati (contati dopo ~25s = ascolto reale)
+    val topListenedArtist: String = "" // artista più ascoltato (max su listenedByArtist)
 )
 
 enum class RequestStatus { PENDING, ACCEPTED, REJECTED }

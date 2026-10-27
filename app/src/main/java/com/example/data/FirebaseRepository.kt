@@ -118,20 +118,42 @@ object FirebaseRepository {
      * profilo. Mantiene il documento in cima alla query ordinata per updatedAt anche
      * quando il brano non cambia, così i live non spariscono dalla lista altrui.
      */
-    fun touchLive(userId: String, progressMs: Long = 0L, progressAt: Long = System.currentTimeMillis()) {
+    fun touchLive(
+        userId: String,
+        progressMs: Long = 0L,
+        progressAt: Long = System.currentTimeMillis(),
+        listenDeltaMs: Long = 0L,
+        listenArtist: String? = null,
+        listenGenre: String? = null,
+        countTrack: Boolean = false
+    ) {
         val db = firestore ?: return
-        db.collection(USERS_COLLECTION).document(userId)
-            .update(
-                mapOf(
-                    "updatedAt" to System.currentTimeMillis(),
-                    "presenceState" to com.example.model.UserPresenceState.LIVE.value,
-                    "isLiveNow" to true,
-                    "isOnline" to true,
-                    "trackProgressMs" to progressMs,
-                    "trackProgressAt" to progressAt
-                )
-            )
-            .addOnFailureListener { /* documento non ancora presente: ignora */ }
+        val ref = db.collection(USERS_COLLECTION).document(userId)
+        // Coppie (FieldPath, valore) oltre alla prima: FieldPath evita che punti/slash nei
+        // nomi artista/genere vengano interpretati come percorsi annidati.
+        val extras = ArrayList<Any>()
+        fun add(path: com.google.firebase.firestore.FieldPath, value: Any) { extras.add(path); extras.add(value) }
+        add(com.google.firebase.firestore.FieldPath.of("presenceState"), com.example.model.UserPresenceState.LIVE.value)
+        add(com.google.firebase.firestore.FieldPath.of("isLiveNow"), true)
+        add(com.google.firebase.firestore.FieldPath.of("isOnline"), true)
+        add(com.google.firebase.firestore.FieldPath.of("trackProgressMs"), progressMs)
+        add(com.google.firebase.firestore.FieldPath.of("trackProgressAt"), progressAt)
+        if (listenDeltaMs > 0L) {
+            add(com.google.firebase.firestore.FieldPath.of("listenedMs"), FieldValue.increment(listenDeltaMs))
+            if (!listenArtist.isNullOrBlank()) {
+                add(com.google.firebase.firestore.FieldPath.of("listenedByArtist", listenArtist), FieldValue.increment(listenDeltaMs))
+            }
+            if (!listenGenre.isNullOrBlank()) {
+                add(com.google.firebase.firestore.FieldPath.of("listenedByGenre", listenGenre), FieldValue.increment(listenDeltaMs))
+            }
+        }
+        if (countTrack) {
+            add(com.google.firebase.firestore.FieldPath.of("listenedTracks"), FieldValue.increment(1))
+        }
+        ref.update(
+            com.google.firebase.firestore.FieldPath.of("updatedAt"), System.currentTimeMillis(),
+            *extras.toTypedArray()
+        ).addOnFailureListener { /* documento non ancora presente: ignora */ }
     }
 
     fun updateLiveTrack(
@@ -802,6 +824,13 @@ object FirebaseRepository {
         val topArtist = data["topArtist"] as? String ?: "Artista"
         val genres = data["genres"] as? String ?: "Alternative"
 
+        // Statistiche d'ascolto reali accumulate dagli heartbeat live.
+        val listenedMs = (data["listenedMs"] as? Number)?.toLong() ?: 0L
+        val listenedTracks = (data["listenedTracks"] as? Number)?.toInt() ?: 0
+        val listenedByArtist = data["listenedByArtist"] as? Map<String, Any?>
+        val topListenedArtist = listenedByArtist
+            ?.maxByOrNull { (it.value as? Number)?.toLong() ?: 0L }?.key ?: ""
+
         val followerIds = (data["followerIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
         val followingIds = (data["followingIds"] as? List<*>)?.filterIsInstance<String>() ?: emptyList()
 
@@ -838,7 +867,10 @@ object FirebaseRepository {
             stats = com.example.model.UserStats(
                 sharedCount = sharedCount,
                 topArtist = topArtist,
-                totalMinutesOrGenres = genres
+                totalMinutesOrGenres = genres,
+                listenedMs = listenedMs,
+                listenedTracks = listenedTracks,
+                topListenedArtist = topListenedArtist
             ),
             isCurrentUser = false,
             followerIds = followerIds,
