@@ -24,6 +24,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
@@ -33,7 +34,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -42,7 +42,6 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
-import kotlin.math.roundToInt
 
 /**
  * Modifier di trascinamento-per-chiudere esposto dal contenitore della dialog.
@@ -83,7 +82,9 @@ private fun ImmersiveScaffold(
     onDismiss: () -> Unit,
     swipeAnywhere: Boolean = false,
     dismissible: Boolean = true,
-    backdrop: @Composable (dragFraction: Float, offsetY: Float) -> Unit,
+    // Provider differiti: le lambda leggono offset/frazione in fase di draw (graphicsLayer/
+    // drawBehind), MAI in composizione → niente ricomposizione durante slide e settle.
+    backdrop: @Composable (offset: () -> Float, fraction: () -> Float) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Dialog(
@@ -260,7 +261,13 @@ private fun ImmersiveScaffold(
             }
         }
 
-        val dragFraction = if (dismissible) (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f) else 0f
+        // Provider differiti (vedi firma backdrop): chiusi su offsetY, letti solo in draw.
+        val offsetProvider = remember { { offsetY.value } }
+        val fractionProvider = remember(dismissible) {
+            {
+                if (dismissible) (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f) else 0f
+            }
+        }
 
         // swipeAnywhere: il draggable sull'outer Box cattura gesti verticali su aree
         // non-scrollabili (empty state, testo, spaziatori). Per le LazyColumn vuote,
@@ -291,15 +298,16 @@ private fun ImmersiveScaffold(
         else Modifier
 
         Box(modifier = boxModifier.then(swipeAnywhereModifier), contentAlignment = Alignment.Center) {
-            backdrop(dragFraction, offsetY.value)
-
-            // Blur progressivo sul contenuto durante lo swipe-to-dismiss (0→30px lineare)
-            val contentBlurPx = if (dismissible) (dragFraction * 6f).coerceAtLeast(0f) else 0f
+            backdrop(offsetProvider, fractionProvider)
 
             Column(
                 modifier = Modifier
-                    .offset { IntOffset(0, offsetY.value.roundToInt()) }
                     .graphicsLayer {
+                        // translationY invece di offset{}: sposta in fase di draw, nessun
+                        // re-layout per frame durante slide/settle.
+                        translationY = offsetY.value
+                        // Blur progressivo del contenuto durante lo swipe (0→6px), letto in draw.
+                        val contentBlurPx = if (dismissible) (fractionProvider() * 6f).coerceAtLeast(0f) else 0f
                         if (contentBlurPx >= 0.5f &&
                             android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                             compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
@@ -337,12 +345,15 @@ fun UtilityDialog(
         onDismiss = onDismiss,
         swipeAnywhere = swipeAnywhere,
         dismissible = dismissible,
-        backdrop = { frac, off ->
+        backdrop = { offset, fraction ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .graphicsLayer { translationY = off }
-                    .background(Color.Black.copy(alpha = 0.965f * (1f - frac)))
+                    .graphicsLayer { translationY = offset() }
+                    // drawBehind: alpha ricalcolato in fase di draw, nessuna ricomposizione.
+                    .drawBehind {
+                        drawRect(Color.Black.copy(alpha = 0.965f * (1f - fraction())))
+                    }
             )
         },
         content = content
@@ -363,7 +374,7 @@ fun TrackDialog(
     ImmersiveScaffold(
         onDismiss = onDismiss,
         swipeAnywhere = swipeAnywhere,
-        backdrop = { frac, off ->
+        backdrop = { offset, fraction ->
             // La copertina è lo sfondo del dialog e SCENDE + si dissolve INSIEME al
             // contenuto durante lo swipe (translationY = offset, alpha = 1 - frazione),
             // rivelando linearmente l'app sottostante. A riposo copre tutto (anche la
@@ -372,8 +383,8 @@ fun TrackDialog(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        translationY = off
-                        alpha = (1f - frac).coerceIn(0f, 1f)
+                        translationY = offset()
+                        alpha = (1f - fraction()).coerceIn(0f, 1f)
                     }
             ) {
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black))
