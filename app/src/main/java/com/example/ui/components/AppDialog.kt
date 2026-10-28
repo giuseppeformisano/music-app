@@ -443,14 +443,23 @@ private fun ImmersiveOverlayScaffold(
     backdrop: @Composable (offset: () -> Float, fraction: () -> Float) -> Unit,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    BackHandler(enabled = dismissible) { onDismiss() }
-
     val scope = rememberCoroutineScope()
     val offsetY = remember { Animatable(0f) }
 
-    // Transizione d'ingresso orizzontale (slide + fade + blur), uguale a profilo/lista chat.
+    // Transizione d'ingresso orizzontale (slide + fade), uguale a profilo/lista chat.
     val appear = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { appear.animateTo(1f, tween(490, easing = FastOutSlowInEasing)) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, tween(420, easing = FastOutSlowInEasing)) }
+
+    // Chiusura con slide-out orizzontale INVERSO (back / tasto indietro della barra):
+    // anima appear 1→0, poi chiude davvero.
+    fun dismissWithExit() {
+        scope.launch {
+            appear.animateTo(0f, tween(300, easing = FastOutSlowInEasing))
+            onDismiss()
+        }
+    }
+
+    BackHandler(enabled = dismissible) { dismissWithExit() }
 
     fun settle(velocity: Float = 0f) {
         scope.launch {
@@ -594,18 +603,12 @@ private fun ImmersiveOverlayScaffold(
     Box(
         modifier = boxModifier
             .then(swipeAnywhereModifier)
-            // Slide-in orizzontale + fade + blur all'ingresso (appear 0→1).
+            // Slide-in/out orizzontale + fade (appear 0↔1). Niente blur offscreen qui:
+            // leggero e fluido anche su pannelli pesanti come la chat.
             .graphicsLayer {
                 val p = appear.value
                 alpha = p
                 translationX = (1f - p) * size.width * 0.18f
-                val b = (6f * sin((p / 0.9f) * PI).toFloat()).coerceAtLeast(0f)
-                if (b >= 0.5f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
-                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
-                    renderEffect = android.graphics.RenderEffect
-                        .createBlurEffect(b, 0.5f, android.graphics.Shader.TileMode.DECAL)
-                        .asComposeRenderEffect()
-                }
             },
         contentAlignment = Alignment.Center
     ) {
@@ -651,7 +654,7 @@ private fun ImmersiveOverlayScaffold(
                 onMessagesClick = nav.onMessages,
                 onNotificationsClick = nav.onNotifications,
                 onSettingsClick = nav.onSettings,
-                onProfileOrBackClick = onDismiss
+                onProfileOrBackClick = { dismissWithExit() }
             )
         }
     }

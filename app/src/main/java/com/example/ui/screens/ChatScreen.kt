@@ -127,33 +127,9 @@ fun ChatScreen(
     }
 
     com.example.ui.components.UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = false) {
-        Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
-            // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
-            if (applyCoverToFeed && !backgroundCoverUrl.isNullOrBlank()) {
-                AsyncImage(
-                    model = backgroundCoverUrl,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f }
-                        .blur(radius = 12.dp)
-                )
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    BlackPitch.copy(alpha = 0.55f),
-                                    BlackPitch.copy(alpha = 0.78f),
-                                    BlackPitch.copy(alpha = 0.92f)
-                                )
-                            )
-                        )
-                )
-            }
-
+        // Niente sfondo/copertina propri: usa il backdrop uniforme dello scaffold overlay
+        // (copertina o nero, anche dietro la barra in basso) → nessuna striscia, più veloce.
+        Box(modifier = modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
