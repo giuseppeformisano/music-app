@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -50,7 +51,7 @@ import coil.compose.AsyncImage
 import com.example.model.Conversation
 import com.example.model.User
 import com.example.ui.components.PresenceDot
-import com.example.ui.components.UtilityDialog
+import com.example.ui.components.UtilityOverlay
 import com.example.ui.theme.PureWhite
 import com.example.ui.theme.SubtitleGray
 
@@ -69,12 +70,13 @@ fun ChatListScreen(
     val focusManager = LocalFocusManager.current
     val isSearching = searchQuery.isNotBlank()
 
-    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .fillMaxHeight(0.92f)
                 .statusBarsPadding()
+                .imePadding()
                 .padding(top = 8.dp, bottom = 12.dp)
         ) {
             // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog

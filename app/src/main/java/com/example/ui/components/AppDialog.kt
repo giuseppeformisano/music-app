@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -328,6 +329,224 @@ private fun ImmersiveScaffold(
             }
         }
     }
+}
+
+/**
+ * Variante IN-TREE dello scaffold immersivo: stesso gesto/backdrop/blur di [ImmersiveScaffold],
+ * ma renderizzata come overlay fullscreen DENTRO la finestra dell'Activity (niente `Dialog` =
+ * niente seconda finestra). Condivide così l'edge-to-edge e gli insets della schermata
+ * principale: il background sta dietro status/nav bar senza riconfigurare flag di finestra,
+ * e la tastiera può essere gestita con WindowInsets.ime dal contenuto. Il back chiude via
+ * BackHandler. Va posizionata dai chiamanti come ultimo figlio del Box root, sopra il resto.
+ */
+@Composable
+private fun ImmersiveOverlayScaffold(
+    onDismiss: () -> Unit,
+    swipeAnywhere: Boolean = false,
+    dismissible: Boolean = true,
+    backdrop: @Composable (offset: () -> Float, fraction: () -> Float) -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    BackHandler(enabled = dismissible) { onDismiss() }
+
+    val scope = rememberCoroutineScope()
+    val offsetY = remember { Animatable(0f) }
+
+    fun settle(velocity: Float = 0f) {
+        scope.launch {
+            val shouldDismiss = when {
+                offsetY.value > DISMISS_THRESHOLD -> true
+                offsetY.value < -DISMISS_THRESHOLD -> true
+                offsetY.value > 0f && velocity > 1200f -> true
+                offsetY.value < 0f && velocity < -1200f -> true
+                else -> false
+            }
+            if (shouldDismiss) onDismiss()
+            else offsetY.animateTo(
+                0f,
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+                initialVelocity = velocity
+            )
+        }
+    }
+
+    val draggableState = rememberDraggableState { rawDelta ->
+        val damped = if (kotlin.math.abs(offsetY.value) > 200f) rawDelta * 0.4f else rawDelta
+        scope.launch { offsetY.snapTo(offsetY.value + damped) }
+    }
+
+    val nested = remember(swipeAnywhere) {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                val dy = available.y
+                if (offsetY.value > 0f && dy < 0f) {
+                    val target = (offsetY.value + dy).coerceAtLeast(0f)
+                    val consumed = target - offsetY.value
+                    scope.launch { offsetY.snapTo(target) }
+                    return Offset(0f, consumed)
+                }
+                if (offsetY.value < 0f && dy > 0f) {
+                    val target = (offsetY.value + dy).coerceAtMost(0f)
+                    val consumed = target - offsetY.value
+                    scope.launch { offsetY.snapTo(target) }
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+            override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                if (swipeAnywhere && available.y != 0f) {
+                    val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
+                    scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (offsetY.value != 0f) { settle(available.y); return available }
+                return Velocity.Zero
+            }
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                if (swipeAnywhere && available.y != 0f) { settle(available.y); return available }
+                return Velocity.Zero
+            }
+        }
+    }
+
+    val childConnection = remember(swipeAnywhere) {
+        object : NestedScrollConnection {
+            var overscrollAccum = 0f
+            private val DEAD_ZONE = 10f
+            override fun onPreScroll(available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                val dy = available.y
+                if (offsetY.value > 0f && dy < 0f) {
+                    val target = (offsetY.value + dy).coerceAtLeast(0f)
+                    val consumed = target - offsetY.value
+                    scope.launch { offsetY.snapTo(target) }
+                    return Offset(0f, consumed)
+                }
+                if (offsetY.value < 0f && dy > 0f) {
+                    val target = (offsetY.value + dy).coerceAtMost(0f)
+                    val consumed = target - offsetY.value
+                    scope.launch { offsetY.snapTo(target) }
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+            override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
+                if (available.y == 0f) return Offset.Zero
+                if (!swipeAnywhere) {
+                    if (source == androidx.compose.ui.input.nestedscroll.NestedScrollSource.Fling) return Offset.Zero
+                    if ((overscrollAccum > 0f && available.y < 0f) || (overscrollAccum < 0f && available.y > 0f)) {
+                        overscrollAccum = 0f
+                    }
+                    overscrollAccum += available.y
+                    if (kotlin.math.abs(overscrollAccum) < DEAD_ZONE) return Offset.Zero
+                }
+                val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
+                scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                return Offset(0f, available.y)
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                overscrollAccum = 0f
+                if (offsetY.value != 0f) { settle(available.y); return available }
+                return Velocity.Zero
+            }
+            override suspend fun onPostFling(consumed: Velocity, available: Velocity): Velocity {
+                overscrollAccum = 0f
+                if (available.y != 0f && (swipeAnywhere || kotlin.math.abs(offsetY.value) > 20f)) {
+                    settle(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
+
+    val offsetProvider = remember { { offsetY.value } }
+    val fractionProvider = remember(dismissible) {
+        {
+            if (dismissible) (kotlin.math.abs(offsetY.value) / DISMISS_DISTANCE).coerceIn(0f, 1f) else 0f
+        }
+    }
+
+    val swipeAnywhereModifier: Modifier = if (dismissible && swipeAnywhere) {
+        Modifier.draggable(
+            state = draggableState,
+            orientation = Orientation.Vertical,
+            onDragStopped = { velocity -> settle(velocity) }
+        )
+    } else Modifier
+
+    val boxModifier = when {
+        dismissible -> Modifier.fillMaxSize().nestedScroll(nested)
+        else -> Modifier.fillMaxSize()
+    }
+
+    val dragHandle: Modifier = if (dismissible)
+        Modifier.draggable(
+            state = draggableState,
+            orientation = Orientation.Vertical,
+            onDragStopped = { velocity -> settle(velocity) }
+        )
+    else Modifier
+
+    Box(modifier = boxModifier.then(swipeAnywhereModifier), contentAlignment = Alignment.Center) {
+        backdrop(offsetProvider, fractionProvider)
+
+        Column(
+            modifier = Modifier
+                .graphicsLayer {
+                    translationY = offsetY.value
+                    val contentBlurPx = if (dismissible) (fractionProvider() * 6f).coerceAtLeast(0f) else 0f
+                    if (contentBlurPx >= 0.5f &&
+                        android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                        renderEffect = android.graphics.RenderEffect
+                            .createBlurEffect(contentBlurPx, contentBlurPx, android.graphics.Shader.TileMode.DECAL)
+                            .asComposeRenderEffect()
+                    }
+                },
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            val columnScope = this
+            CompositionLocalProvider(
+                LocalDialogDragHandle provides dragHandle,
+                LocalDialogScrollConnection provides if (dismissible) childConnection else null
+            ) {
+                with(columnScope) { content() }
+            }
+        }
+    }
+}
+
+/**
+ * Versione overlay in-tree di [UtilityDialog] (stesso backdrop nero). Usala per i pannelli
+ * resi come figli del Box root dell'app (es. chat), così il background copre la status bar
+ * come le schermate normali e la tastiera è gestibile dal contenuto.
+ */
+@Composable
+fun UtilityOverlay(
+    onDismiss: () -> Unit,
+    swipeAnywhere: Boolean = false,
+    dismissible: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    ImmersiveOverlayScaffold(
+        onDismiss = onDismiss,
+        swipeAnywhere = swipeAnywhere,
+        dismissible = dismissible,
+        backdrop = { offset, fraction ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { translationY = offset() }
+                    .drawBehind {
+                        drawRect(Color.Black.copy(alpha = 0.965f * (1f - fraction())))
+                    }
+            )
+        },
+        content = content
+    )
 }
 
 /**

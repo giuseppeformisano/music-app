@@ -13,9 +13,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
@@ -121,7 +126,7 @@ fun ChatScreen(
         paletteForUser(recipient, isCurrent = false)
     }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = false) {
+    com.example.ui.components.UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = false) {
         Box(modifier = modifier.fillMaxSize().background(BlackPitch)) {
             // Sfondo atmosferico opzionale (stessa immagine settabile delle altre sezioni)
             if (applyCoverToFeed && !backgroundCoverUrl.isNullOrBlank()) {
@@ -154,7 +159,8 @@ fun ChatScreen(
                     .fillMaxSize()
                     .statusBarsPadding()
                     .padding(top = 28.dp)
-                    .navigationBarsPadding()
+                    // Nav bar + tastiera gestiti sulla barra input in basso (vedi sotto):
+                    // niente navigationBarsPadding qui per non sommarlo all'IME.
                     .testTag("chat_screen_${recipient.id}")
             ) {
                 // Top Header minimale: trascinabile (swipe up/down chiude la chat)
@@ -254,10 +260,13 @@ fun ChatScreen(
                 }
                 } // fine CompositionLocalProvider(LocalOverscrollConfiguration)
 
-                // Bottom Pure Text Input Bar (posizionato dinamicamente sopra la barra di navigazione e tastiera)
+                // Bottom Pure Text Input Bar: si solleva sopra la tastiera quando appare,
+                // altrimenti resta sopra la barra di navigazione. union(ime, navBars) evita il
+                // doppio conteggio (l'IME già include l'area della nav bar quando è aperta).
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
