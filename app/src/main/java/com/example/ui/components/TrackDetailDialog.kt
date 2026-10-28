@@ -126,7 +126,7 @@ fun TrackDetailDialog(
 
     val (primaryColor, secondaryColor) = dynamicColors
 
-    TrackDialog(coverUrl = track.coverUrl, onDismiss = onDismiss, swipeAnywhere = true) {
+    TrackOverlay(coverUrl = track.coverUrl, onDismiss = onDismiss, swipeAnywhere = true) {
         Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
