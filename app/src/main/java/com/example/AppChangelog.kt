@@ -5,9 +5,8 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.23.0"
+    const val TITLE = "Novità · 0.24.0"
     val LINES = listOf(
-        "Notifiche, impostazioni, follower, dettaglio live e gli altri pannelli: background corretto dietro la barra di stato.",
-        "Lista chat: titolo \"Messaggi\" più distanziato dalla barra di stato.",
+        "Anche i pannelli del profilo (modifica profilo, collega account, follower, impostazioni) ora con background corretto dietro la barra di stato.",
     )
 }

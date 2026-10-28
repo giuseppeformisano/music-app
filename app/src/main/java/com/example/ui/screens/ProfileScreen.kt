@@ -1113,7 +1113,7 @@ private fun FollowersFollowingDialog(
         }
     }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    com.example.ui.components.UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1297,7 +1297,7 @@ private fun EditProfileDialog(
         }
     }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    com.example.ui.components.UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1646,7 +1646,7 @@ private fun ConnectAccountsDialog(
     onEnableNotificationListener: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    com.example.ui.components.UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -1885,7 +1885,7 @@ internal fun SettingsDialog(
     var localApplyCoverToFeed by remember(applyCoverToFeed) { mutableStateOf(applyCoverToFeed) }
     var localLiveNotificationsEnabled by remember(liveNotificationsEnabled) { mutableStateOf(liveNotificationsEnabled) }
 
-    com.example.ui.components.UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    com.example.ui.components.UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
