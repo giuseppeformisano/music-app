@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.ui.graphics.graphicsLayer
@@ -42,6 +43,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import coil.compose.AsyncImage
+import com.example.ui.theme.BlackPitch
 import kotlinx.coroutines.launch
 
 /**
@@ -60,6 +62,67 @@ val LocalDialogDragHandle = compositionLocalOf<Modifier> { Modifier }
  * anche quando la lista è vuota/corta (onPostScroll riceve il delta residuo).
  */
 val LocalDialogScrollConnection = compositionLocalOf<NestedScrollConnection?> { null }
+
+/**
+ * Copertina atmosferica condivisa con i pannelli (notifiche, impostazioni, follower,
+ * lista chat, ecc.): quando [enabled] è true e c'è una [coverUrl], il backdrop dei pannelli
+ * mostra la stessa copertina sfocata di profilo/feed/live invece del nero pieno. Impostata
+ * una volta a livello root; [enabled] riflette l'impostazione "applica copertina" dell'utente.
+ */
+data class PanelCover(val coverUrl: String?, val enabled: Boolean)
+val LocalPanelCover = compositionLocalOf { PanelCover(null, false) }
+
+/**
+ * Backdrop condiviso dei pannelli: copertina sfocata + scrim quando attiva, altrimenti nero.
+ * In entrambi i casi si dissolve/trasla con lo swipe (letto in draw, nessuna ricomposizione).
+ */
+@Composable
+private fun PanelBackdrop(offset: () -> Float, fraction: () -> Float) {
+    val cover = LocalPanelCover.current
+    if (cover.enabled && !cover.coverUrl.isNullOrBlank()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    translationY = offset()
+                    alpha = (1f - fraction()).coerceIn(0f, 1f)
+                }
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(BlackPitch))
+            AsyncImage(
+                model = cover.coverUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer { scaleX = 1.15f; scaleY = 1.15f }
+                    .blur(12.dp)
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            listOf(
+                                BlackPitch.copy(alpha = 0.60f),
+                                BlackPitch.copy(alpha = 0.80f),
+                                BlackPitch.copy(alpha = 0.94f)
+                            )
+                        )
+                    )
+            )
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { translationY = offset() }
+                .drawBehind {
+                    drawRect(Color.Black.copy(alpha = 0.965f * (1f - fraction())))
+                }
+        )
+    }
+}
 
 // Distanza (px) di trascinamento a cui il pannello è considerato "chiuso" e a cui il
 // backdrop è completamente dissolto: la transizione è LINEARE con la discesa.
@@ -535,16 +598,7 @@ fun UtilityOverlay(
         onDismiss = onDismiss,
         swipeAnywhere = swipeAnywhere,
         dismissible = dismissible,
-        backdrop = { offset, fraction ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { translationY = offset() }
-                    .drawBehind {
-                        drawRect(Color.Black.copy(alpha = 0.965f * (1f - fraction())))
-                    }
-            )
-        },
+        backdrop = { offset, fraction -> PanelBackdrop(offset, fraction) },
         content = content
     )
 }
@@ -564,17 +618,7 @@ fun UtilityDialog(
         onDismiss = onDismiss,
         swipeAnywhere = swipeAnywhere,
         dismissible = dismissible,
-        backdrop = { offset, fraction ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { translationY = offset() }
-                    // drawBehind: alpha ricalcolato in fase di draw, nessuna ricomposizione.
-                    .drawBehind {
-                        drawRect(Color.Black.copy(alpha = 0.965f * (1f - fraction())))
-                    }
-            )
-        },
+        backdrop = { offset, fraction -> PanelBackdrop(offset, fraction) },
         content = content
     )
 }

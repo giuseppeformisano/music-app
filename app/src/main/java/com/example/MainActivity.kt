@@ -315,6 +315,15 @@ fun MusicApp(viewModel: MusicViewModel) {
         }
     }
 
+    // Copertina atmosferica (come profilo/feed/live) condivisa coi pannelli ex-utility,
+    // mostrata solo se l'impostazione "applica copertina" è attiva.
+    val panelCoverUrl = uiState.currentUser.coverUrl?.takeIf { it.isNotBlank() }
+        ?: uiState.currentUser.currentTrack?.coverUrl?.takeIf { it.isNotBlank() }
+        ?: uiState.currentUser.sharedTracks.firstOrNull()?.coverUrl?.takeIf { it.isNotBlank() }
+    androidx.compose.runtime.CompositionLocalProvider(
+        com.example.ui.components.LocalPanelCover provides
+            com.example.ui.components.PanelCover(panelCoverUrl, uiState.applyCoverToFeed)
+    ) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -639,4 +648,5 @@ fun MusicApp(viewModel: MusicViewModel) {
             )
         }
     }
+    } // fine CompositionLocalProvider(LocalPanelCover)
 }

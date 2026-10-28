@@ -157,7 +157,8 @@ fun ChatScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .statusBarsPadding()
+                    // Solo top=28 come feed/profilo (NO statusBarsPadding): evita il doppio
+                    // margine superiore che faceva sembrare l'header troppo ribassato.
                     .padding(top = 28.dp)
                     // Nav bar + tastiera gestiti sulla barra input in basso (vedi sotto):
                     // niente navigationBarsPadding qui per non sommarlo all'IME.
