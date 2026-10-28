@@ -13,14 +13,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.union
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
@@ -94,6 +90,10 @@ fun ChatScreen(
     applyCoverToFeed: Boolean = false,
     backgroundCoverUrl: String? = null,
     recipientLastReadAt: Long = 0L,
+    unreadNotifications: Int = 0,
+    onOpenNotifications: () -> Unit = {},
+    onOpenPeopleSearch: () -> Unit = {},
+    onBackToList: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var inputText by remember { mutableStateOf("") }
@@ -261,13 +261,12 @@ fun ChatScreen(
                 }
                 } // fine CompositionLocalProvider(LocalOverscrollConfiguration)
 
-                // Bottom Pure Text Input Bar: si solleva sopra la tastiera quando appare,
-                // altrimenti resta sopra la barra di navigazione. union(ime, navBars) evita il
-                // doppio conteggio (l'IME già include l'area della nav bar quando è aperta).
+                // Bottom Pure Text Input Bar: con tastiera aperta si solleva sopra di essa
+                // (imePadding); la barra di navigazione in basso è gestita dalla BottomNavBar sotto.
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+                        .imePadding()
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -326,6 +325,18 @@ fun ChatScreen(
                         )
                     }
                 }
+
+                // ================= BOTTOM NAV (sotto la barra di scrittura) =================
+                com.example.ui.components.BottomNavBar(
+                    mode = com.example.ui.components.BottomNavMode.PROFILE,
+                    unreadMessages = 0,
+                    unreadNotifications = unreadNotifications,
+                    onSearchClick = onOpenPeopleSearch,
+                    onMessagesClick = onBackToList,
+                    onNotificationsClick = onOpenNotifications,
+                    onSettingsClick = {},
+                    onProfileOrBackClick = onDismiss
+                )
             }
         }
     }

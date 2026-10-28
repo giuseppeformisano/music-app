@@ -468,6 +468,9 @@ fun MusicApp(viewModel: MusicViewModel) {
                 searchResults = uiState.userSearchResults,
                 onSearchQueryChanged = { viewModel.onUserSearchQueryChanged(it) },
                 onOpenChat = { user -> viewModel.openChat(user) },
+                unreadNotifications = uiState.pendingFriendRequests.size,
+                onOpenNotifications = { viewModel.openNotifications() },
+                onOpenPeopleSearch = { viewModel.openPeopleSearch() },
                 onDismiss = { viewModel.closeChatList() }
             )
         }
@@ -487,7 +490,11 @@ fun MusicApp(viewModel: MusicViewModel) {
                     backgroundCoverUrl = uiState.currentUser.coverUrl,
                     recipientLastReadAt = uiState.conversations
                         .firstOrNull { it.recipientUser.id == uiState.activeChatUser?.id }
-                        ?.recipientLastReadAt ?: 0L
+                        ?.recipientLastReadAt ?: 0L,
+                    unreadNotifications = uiState.pendingFriendRequests.size,
+                    onOpenNotifications = { viewModel.openNotifications() },
+                    onOpenPeopleSearch = { viewModel.openPeopleSearch() },
+                    onBackToList = { viewModel.closeChat() }
                 )
             }
         }

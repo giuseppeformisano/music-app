@@ -64,6 +64,9 @@ fun ChatListScreen(
     searchResults: List<User>,
     onSearchQueryChanged: (String) -> Unit,
     onOpenChat: (User) -> Unit,
+    unreadNotifications: Int = 0,
+    onOpenNotifications: () -> Unit = {},
+    onOpenPeopleSearch: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -73,11 +76,10 @@ fun ChatListScreen(
     UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.92f)
-                .statusBarsPadding()
-                .imePadding()
-                .padding(top = 8.dp, bottom = 12.dp)
+                // Fullscreen come profilo/feed, così la BottomNavBar sta in fondo allo schermo.
+                .fillMaxSize()
+                .padding(top = 28.dp)
+                .padding(horizontal = 16.dp)
         ) {
             // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog
             Column(modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth()) {
@@ -125,6 +127,7 @@ fun ChatListScreen(
             Spacer(modifier = Modifier.height(10.dp))
 
             val dialogScrollConn = LocalDialogScrollConnection.current
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 isSearching -> {
                     if (searchResults.isEmpty()) {
@@ -161,6 +164,19 @@ fun ChatListScreen(
                     }
                 }
             }
+            } // fine Box weight(1f)
+
+            // ================= BOTTOM NAV =================
+            com.example.ui.components.BottomNavBar(
+                mode = com.example.ui.components.BottomNavMode.PROFILE,
+                unreadMessages = 0,
+                unreadNotifications = unreadNotifications,
+                onSearchClick = onOpenPeopleSearch,
+                onMessagesClick = {},
+                onNotificationsClick = onOpenNotifications,
+                onSettingsClick = {},
+                onProfileOrBackClick = onDismiss
+            )
         }
     }
 }
