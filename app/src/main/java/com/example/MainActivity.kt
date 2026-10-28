@@ -458,21 +458,48 @@ fun MusicApp(viewModel: MusicViewModel) {
             } // Box blur+slide
         }
 
-        // Dialog: Chat List (Messaggi) — stile dialog immersivo con swipe-down per chiudere
-        if (uiState.isChatListOpen) {
-            ChatListScreen(
-                conversations = uiState.conversations,
-                currentUserId = uiState.currentUser.id,
-                followingIds = uiState.currentUser.followingIds.toSet(),
-                searchQuery = uiState.userSearchQuery,
-                searchResults = uiState.userSearchResults,
-                onSearchQueryChanged = { viewModel.onUserSearchQueryChanged(it) },
-                onOpenChat = { user -> viewModel.openChat(user) },
-                unreadNotifications = uiState.pendingFriendRequests.size,
-                onOpenNotifications = { viewModel.openNotifications() },
-                onOpenPeopleSearch = { viewModel.openPeopleSearch() },
-                onDismiss = { viewModel.closeChatList() }
-            )
+        // Lista chat: stessa transizione orizzontale (blur + slide + fade) del profilo
+        // quando si passa da lista live/feed al profilo utente.
+        AnimatedVisibility(
+            visible = uiState.isChatListOpen,
+            enter = EnterTransition.None,
+            exit = ExitTransition.None
+        ) {
+            val clProgress by transition.animateFloat(
+                transitionSpec = { tween(490, easing = FastOutSlowInEasing) },
+                label = "chatListBlurSlide"
+            ) { state -> if (state == EnterExitState.Visible) 1f else 0f }
+
+            val clBlurPx = (6f * sin((clProgress / 0.9f) * PI).toFloat()).coerceAtLeast(0f)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .graphicsLayer {
+                        alpha = clProgress
+                        translationX = (1f - clProgress) * size.width * 0.18f
+                        compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && clBlurPx >= 0.5f) {
+                            renderEffect = android.graphics.RenderEffect
+                                .createBlurEffect(clBlurPx, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                                .asComposeRenderEffect()
+                        }
+                    }
+            ) {
+                ChatListScreen(
+                    conversations = uiState.conversations,
+                    currentUserId = uiState.currentUser.id,
+                    followingIds = uiState.currentUser.followingIds.toSet(),
+                    searchQuery = uiState.userSearchQuery,
+                    searchResults = uiState.userSearchResults,
+                    onSearchQueryChanged = { viewModel.onUserSearchQueryChanged(it) },
+                    onOpenChat = { user -> viewModel.openChat(user) },
+                    unreadNotifications = uiState.pendingFriendRequests.size,
+                    onOpenNotifications = { viewModel.openNotifications() },
+                    onOpenPeopleSearch = { viewModel.openPeopleSearch() },
+                    onDismiss = { viewModel.closeChatList() }
+                )
+            }
         }
 
         // Dialog: Chat Screen (con swipe-down per chiudere)
