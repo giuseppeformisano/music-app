@@ -78,7 +78,9 @@ fun ChatListScreen(
             modifier = Modifier
                 // Fullscreen come profilo/feed, così la BottomNavBar sta in fondo allo schermo.
                 .fillMaxSize()
-                .padding(top = 28.dp)
+                // Titolo sotto la barra di stato ma con un po' di distanza (regola pannelli).
+                .statusBarsPadding()
+                .padding(top = 16.dp)
                 .padding(horizontal = 16.dp)
         ) {
             // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog

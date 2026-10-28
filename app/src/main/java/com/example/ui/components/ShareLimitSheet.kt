@@ -48,7 +48,7 @@ fun ShareLimitSheet(onDismiss: () -> Unit) {
         if (hours > 0) "${hours}h ${mins}min" else "${mins}min"
     }
 
-    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()

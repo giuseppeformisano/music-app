@@ -70,7 +70,7 @@ fun PeopleSearchDialog(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
-    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

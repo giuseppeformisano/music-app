@@ -56,7 +56,7 @@ fun NotificationsDialog(
 ) {
     val pendingCount = notifications.count { it.type == "follow_request" && it.status == "pending" }
 
-    UtilityDialog(onDismiss = onDismiss, swipeAnywhere = true) {
+    UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
                 .fillMaxSize()

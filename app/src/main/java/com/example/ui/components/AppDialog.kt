@@ -3,6 +3,8 @@ package com.example.ui.components
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -79,6 +81,16 @@ val LocalPanelCover = compositionLocalOf { PanelCover(null, false) }
 @Composable
 private fun PanelBackdrop(offset: () -> Float, fraction: () -> Float) {
     val cover = LocalPanelCover.current
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            // Consuma i tap sullo sfondo: rende l'overlay modale (niente click-through
+            // alla schermata sotto, come faceva la finestra Dialog).
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { }
+    ) {
     if (cover.enabled && !cover.coverUrl.isNullOrBlank()) {
         Box(
             modifier = Modifier
@@ -121,6 +133,7 @@ private fun PanelBackdrop(offset: () -> Float, fraction: () -> Float) {
                     drawRect(Color.Black.copy(alpha = 0.965f * (1f - fraction())))
                 }
         )
+    }
     }
 }
 
@@ -661,6 +674,56 @@ fun TrackDialog(
                         .blur(12.dp)
                 )
                 // Velo leggero per la leggibilità del testo (ridotto per mostrare i colori reali)
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.18f))
+                )
+            }
+        },
+        content = content
+    )
+}
+
+/**
+ * Versione overlay in-tree di [TrackDialog] (backdrop = copertina del brano sfocata).
+ * Usala per i pannelli di brano/live resi come figli del Box root dell'app (es. dettaglio
+ * live), così condividono l'edge-to-edge e il background copre bene la barra di stato.
+ */
+@Composable
+fun TrackOverlay(
+    coverUrl: String,
+    onDismiss: () -> Unit,
+    swipeAnywhere: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    ImmersiveOverlayScaffold(
+        onDismiss = onDismiss,
+        swipeAnywhere = swipeAnywhere,
+        backdrop = { offset, fraction ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    // Modale: consuma i tap sullo sfondo.
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { }
+                    .graphicsLayer {
+                        translationY = offset()
+                        alpha = (1f - fraction()).coerceIn(0f, 1f)
+                    }
+            ) {
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+                AsyncImage(
+                    model = coverUrl,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { scaleX = 1.05f; scaleY = 1.05f }
+                        .blur(12.dp)
+                )
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
