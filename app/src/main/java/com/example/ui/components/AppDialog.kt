@@ -5,9 +5,14 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import kotlin.math.PI
+import kotlin.math.sin
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -73,6 +78,21 @@ val LocalDialogScrollConnection = compositionLocalOf<NestedScrollConnection?> { 
  */
 data class PanelCover(val coverUrl: String?, val enabled: Boolean)
 val LocalPanelCover = compositionLocalOf { PanelCover(null, false) }
+
+/**
+ * Azioni globali della barra di navigazione in basso, condivise con TUTTI i pannelli overlay
+ * (notifiche, ricerca, dettaglio, ecc.). Il tasto indietro di ogni pannello usa il proprio
+ * onDismiss; queste sono le altre icone. Impostata una volta a livello root.
+ */
+data class PanelNav(
+    val unreadMessages: Int = 0,
+    val unreadNotifications: Int = 0,
+    val onSearch: () -> Unit = {},
+    val onMessages: () -> Unit = {},
+    val onNotifications: () -> Unit = {},
+    val onSettings: () -> Unit = {}
+)
+val LocalPanelNav = compositionLocalOf { PanelNav() }
 
 /**
  * Backdrop condiviso dei pannelli: copertina sfocata + scrim quando attiva, altrimenti nero.
@@ -428,6 +448,10 @@ private fun ImmersiveOverlayScaffold(
     val scope = rememberCoroutineScope()
     val offsetY = remember { Animatable(0f) }
 
+    // Transizione d'ingresso orizzontale (slide + fade + blur), uguale a profilo/lista chat.
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { appear.animateTo(1f, tween(490, easing = FastOutSlowInEasing)) }
+
     fun settle(velocity: Float = 0f) {
         scope.launch {
             val shouldDismiss = when {
@@ -566,11 +590,30 @@ private fun ImmersiveOverlayScaffold(
         )
     else Modifier
 
-    Box(modifier = boxModifier.then(swipeAnywhereModifier), contentAlignment = Alignment.Center) {
+    val nav = LocalPanelNav.current
+    Box(
+        modifier = boxModifier
+            .then(swipeAnywhereModifier)
+            // Slide-in orizzontale + fade + blur all'ingresso (appear 0→1).
+            .graphicsLayer {
+                val p = appear.value
+                alpha = p
+                translationX = (1f - p) * size.width * 0.18f
+                val b = (6f * sin((p / 0.9f) * PI).toFloat()).coerceAtLeast(0f)
+                if (b >= 0.5f && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+                    renderEffect = android.graphics.RenderEffect
+                        .createBlurEffect(b, 0.5f, android.graphics.Shader.TileMode.DECAL)
+                        .asComposeRenderEffect()
+                }
+            },
+        contentAlignment = Alignment.Center
+    ) {
         backdrop(offsetProvider, fractionProvider)
 
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .graphicsLayer {
                     translationY = offsetY.value
                     val contentBlurPx = if (dismissible) (fractionProvider() * 6f).coerceAtLeast(0f) else 0f
@@ -584,13 +627,32 @@ private fun ImmersiveOverlayScaffold(
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val columnScope = this
-            CompositionLocalProvider(
-                LocalDialogDragHandle provides dragHandle,
-                LocalDialogScrollConnection provides if (dismissible) childConnection else null
+            // Contenuto del pannello nella regione superiore (weight 1f); la barra di
+            // navigazione comune resta sempre in fondo (come profilo/feed).
+            Column(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                // I pannelli a tutto schermo riempiono; i popup piccoli (wrap) restano centrati.
+                verticalArrangement = Arrangement.Center
             ) {
-                with(columnScope) { content() }
+                val columnScope = this
+                CompositionLocalProvider(
+                    LocalDialogDragHandle provides dragHandle,
+                    LocalDialogScrollConnection provides if (dismissible) childConnection else null
+                ) {
+                    with(columnScope) { content() }
+                }
             }
+            BottomNavBar(
+                mode = BottomNavMode.PROFILE,
+                unreadMessages = nav.unreadMessages,
+                unreadNotifications = nav.unreadNotifications,
+                onSearchClick = nav.onSearch,
+                onMessagesClick = nav.onMessages,
+                onNotificationsClick = nav.onNotifications,
+                onSettingsClick = nav.onSettings,
+                onProfileOrBackClick = onDismiss
+            )
         }
     }
 }

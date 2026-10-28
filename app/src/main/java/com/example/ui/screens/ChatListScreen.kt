@@ -167,18 +167,7 @@ fun ChatListScreen(
                 }
             }
             } // fine Box weight(1f)
-
-            // ================= BOTTOM NAV =================
-            com.example.ui.components.BottomNavBar(
-                mode = com.example.ui.components.BottomNavMode.PROFILE,
-                unreadMessages = 0,
-                unreadNotifications = unreadNotifications,
-                onSearchClick = onOpenPeopleSearch,
-                onMessagesClick = {},
-                onNotificationsClick = onOpenNotifications,
-                onSettingsClick = {},
-                onProfileOrBackClick = onDismiss
-            )
+            // La barra di navigazione comune è fornita dallo scaffold overlay (sotto).
         }
     }
 }

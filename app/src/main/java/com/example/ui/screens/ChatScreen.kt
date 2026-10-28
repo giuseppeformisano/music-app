@@ -325,18 +325,7 @@ fun ChatScreen(
                         )
                     }
                 }
-
-                // ================= BOTTOM NAV (sotto la barra di scrittura) =================
-                com.example.ui.components.BottomNavBar(
-                    mode = com.example.ui.components.BottomNavMode.PROFILE,
-                    unreadMessages = 0,
-                    unreadNotifications = unreadNotifications,
-                    onSearchClick = onOpenPeopleSearch,
-                    onMessagesClick = onBackToList,
-                    onNotificationsClick = onOpenNotifications,
-                    onSettingsClick = {},
-                    onProfileOrBackClick = onDismiss
-                )
+                // La barra di navigazione comune è fornita dallo scaffold overlay (sotto).
             }
         }
     }
