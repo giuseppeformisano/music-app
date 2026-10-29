@@ -1131,31 +1131,18 @@ private fun FollowersFollowingDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp)
+                .padding(top = 12.dp, bottom = 20.dp)
         ) {
-            // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog
-            Column(modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth()) {
-            // Header standardizzato in alto a sinistra
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = title,
-                    color = PureWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp
-                )
-            }
+            // Header uniforme (freccia indietro + titolo, come gli altri pannelli)
+            com.example.ui.components.PanelHeader(title = title)
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Campo di ricerca
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
                     .padding(bottom = 14.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(PureWhite.copy(alpha = 0.06f))
@@ -1181,14 +1168,14 @@ private fun FollowersFollowingDialog(
                     }
                 )
             }
-            } // fine header trascinabile
 
             // Lista utenti o empty state (senza riquadri grigi di sfondo)
             if (filtered.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
@@ -1204,6 +1191,7 @@ private fun FollowersFollowingDialog(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
+                        .padding(horizontal = 24.dp)
                         .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m },
                     contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
