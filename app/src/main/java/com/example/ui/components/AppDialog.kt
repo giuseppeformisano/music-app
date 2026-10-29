@@ -599,7 +599,6 @@ private fun ImmersiveOverlayScaffold(
         )
     else Modifier
 
-    val nav = LocalPanelNav.current
     Box(
         modifier = boxModifier
             .then(swipeAnywhereModifier)
@@ -614,9 +613,10 @@ private fun ImmersiveOverlayScaffold(
     ) {
         backdrop(offsetProvider, fractionProvider)
 
+        // Niente barra di navigazione negli overlay: la navigazione vive solo nelle pagine
+        // top-level (feed/live, profilo). Qui si chiude con swipe o back di sistema.
         Column(
             modifier = Modifier
-                .fillMaxSize()
                 .graphicsLayer {
                     translationY = offsetY.value
                     val contentBlurPx = if (dismissible) (fractionProvider() * 6f).coerceAtLeast(0f) else 0f
@@ -630,32 +630,13 @@ private fun ImmersiveOverlayScaffold(
                 },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Contenuto del pannello nella regione superiore (weight 1f); la barra di
-            // navigazione comune resta sempre in fondo (come profilo/feed).
-            Column(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                // I pannelli a tutto schermo riempiono; i popup piccoli (wrap) restano centrati.
-                verticalArrangement = Arrangement.Center
+            val columnScope = this
+            CompositionLocalProvider(
+                LocalDialogDragHandle provides dragHandle,
+                LocalDialogScrollConnection provides if (dismissible) childConnection else null
             ) {
-                val columnScope = this
-                CompositionLocalProvider(
-                    LocalDialogDragHandle provides dragHandle,
-                    LocalDialogScrollConnection provides if (dismissible) childConnection else null
-                ) {
-                    with(columnScope) { content() }
-                }
+                with(columnScope) { content() }
             }
-            BottomNavBar(
-                mode = BottomNavMode.PROFILE,
-                unreadMessages = nav.unreadMessages,
-                unreadNotifications = nav.unreadNotifications,
-                onSearchClick = nav.onSearch,
-                onMessagesClick = nav.onMessages,
-                onNotificationsClick = nav.onNotifications,
-                onSettingsClick = nav.onSettings,
-                onProfileOrBackClick = { dismissWithExit() }
-            )
         }
     }
 }

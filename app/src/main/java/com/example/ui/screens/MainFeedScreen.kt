@@ -260,6 +260,9 @@ fun MainFeedScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 28.dp)
+                // Prima l'inset in basso lo dava la BottomNavBar (ora rimossa): lo mettiamo qui
+                // così il contenuto non finisce sotto la barra di navigazione di sistema.
+                .navigationBarsPadding()
         ) {
             // ================= 1. HEADER SUPERIORE UNIVERSALE =================
             UniversalHeader(
@@ -270,7 +273,13 @@ fun MainFeedScreen(
                         val targetPage = if (pagerState.currentPage == 0) 1 else 0
                         pagerState.animateScrollToPage(targetPage, animationSpec = tween(490))
                     }
-                }
+                },
+                onSearchClick = onOpenPeopleSearch,
+                onNotificationsClick = onOpenNotifications,
+                onMessagesClick = onOpenChatList,
+                onProfileClick = { onOpenProfile(currentUser) },
+                unreadMessages = unreadMessages,
+                unreadNotifications = unreadNotifications
             )
 
             // ================= 2. PAGER A VENEZIANA CON BLUR =================
@@ -310,17 +319,7 @@ fun MainFeedScreen(
                 }
             }
 
-            // ================= 3. BOTTOM NAV =================
-            com.example.ui.components.BottomNavBar(
-                mode = com.example.ui.components.BottomNavMode.MAIN,
-                unreadMessages = unreadMessages,
-                unreadNotifications = unreadNotifications,
-                onSearchClick = onOpenPeopleSearch,
-                onMessagesClick = onOpenChatList,
-                onNotificationsClick = onOpenNotifications,
-                onSettingsClick = { showSettingsSheet = true },
-                onProfileOrBackClick = { onOpenProfile(currentUser) }
-            )
+            // Niente bottom nav: tutta la navigazione è nella top bar (UniversalHeader).
         }
 
         // ================= 4. FAB (+) SOLO NEL FEED =================
@@ -330,7 +329,8 @@ fun MainFeedScreen(
             exit = scaleOut(animationSpec = tween(200)) + fadeOut(),
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = 20.dp, bottom = 80.dp)
+                .navigationBarsPadding()
+                .padding(end = 20.dp, bottom = 24.dp)
         ) {
             // BeReal: un solo "brano del giorno". Se già condiviso oggi, FAB disattivato.
             val isExhausted = dailySharesUsed >= 1

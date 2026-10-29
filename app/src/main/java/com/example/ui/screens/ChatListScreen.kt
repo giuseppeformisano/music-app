@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -76,10 +77,11 @@ fun ChatListScreen(
     UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
             modifier = Modifier
-                // Fullscreen come profilo/feed, così la BottomNavBar sta in fondo allo schermo.
                 .fillMaxSize()
                 // Titolo sotto la barra di stato ma con un po' di distanza (regola pannelli).
                 .statusBarsPadding()
+                // Nessuna barra in basso: l'inset della barra di sistema va qui.
+                .navigationBarsPadding()
                 .padding(top = 16.dp)
                 .padding(horizontal = 16.dp)
         ) {

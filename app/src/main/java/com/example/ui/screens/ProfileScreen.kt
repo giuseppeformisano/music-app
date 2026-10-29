@@ -57,6 +57,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -228,11 +229,14 @@ fun ProfileScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(top = 28.dp)
+                // La bottom nav (rimossa) dava l'inset in basso: lo mettiamo qui.
+                .navigationBarsPadding()
         ) {
-            // Header superiore fisso — solo logo + logout
+            // Header superiore: indietro (sx) + logo + impostazioni (dx)
             ProfileTopHeader(
                 isCurrentUser = isCurrentUser,
-                onLogout = onLogout
+                onBack = onBack,
+                onSettings = { showSettingsSheet = true }
             )
 
             // Tutti i blocchi della pagina equidistanziati verticalmente entro lo spazio disponibile (Zero Scrolling)
@@ -283,17 +287,7 @@ fun ProfileScreen(
                 }
             }
 
-            // ================= BOTTOM NAV =================
-            com.example.ui.components.BottomNavBar(
-                mode = com.example.ui.components.BottomNavMode.PROFILE,
-                unreadMessages = 0,
-                unreadNotifications = notificationCount,
-                onSearchClick = {},
-                onMessagesClick = onOpenChatList,
-                onNotificationsClick = onOpenNotifications,
-                onSettingsClick = { showSettingsSheet = true },
-                onProfileOrBackClick = onBack
-            )
+            // Niente bottom nav: indietro e impostazioni sono nell'header in alto.
         }
 
         // ================= DIALOG: MODIFICA PROFILO =================
@@ -363,6 +357,7 @@ fun ProfileScreen(
                     onToggleLiveNotifications(newLiveNotifs)
                     showSettingsSheet = false
                 },
+                onLogout = onLogout,
                 onDismiss = { showSettingsSheet = false }
             )
         }
@@ -372,16 +367,33 @@ fun ProfileScreen(
 @Composable
 private fun ProfileTopHeader(
     isCurrentUser: Boolean,
-    onLogout: () -> Unit,
+    onBack: () -> Unit,
+    onSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 8.dp, vertical = 10.dp)
             .testTag("profile_top_header"),
         contentAlignment = Alignment.Center
     ) {
+        // Sinistra: indietro
+        IconButton(
+            onClick = onBack,
+            modifier = Modifier
+                .size(44.dp)
+                .align(Alignment.CenterStart)
+                .testTag("profile_back_button")
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Indietro",
+                tint = PureWhite,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
         // Centro: logo "m"
         Box(
             modifier = Modifier
@@ -401,20 +413,20 @@ private fun ProfileTopHeader(
             )
         }
 
-        // Destra: logout (solo utente corrente, azione rara)
+        // Destra: impostazioni (solo sul proprio profilo; logout è dentro Impostazioni)
         if (isCurrentUser) {
             IconButton(
-                onClick = onLogout,
+                onClick = onSettings,
                 modifier = Modifier
                     .size(44.dp)
                     .align(Alignment.CenterEnd)
-                    .testTag("profile_logout_button")
+                    .testTag("profile_settings_button")
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
-                    contentDescription = "Logout",
-                    tint = PureWhite.copy(alpha = 0.45f),
-                    modifier = Modifier.size(20.dp)
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Impostazioni",
+                    tint = PureWhite,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
@@ -1880,6 +1892,7 @@ internal fun SettingsDialog(
     applyCoverToFeed: Boolean,
     liveNotificationsEnabled: Boolean,
     onSave: (Boolean, Boolean) -> Unit,
+    onLogout: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var localApplyCoverToFeed by remember(applyCoverToFeed) { mutableStateOf(applyCoverToFeed) }
@@ -2024,6 +2037,35 @@ internal fun SettingsDialog(
                             uncheckedThumbColor = SubtitleGray,
                             uncheckedTrackColor = Color(0xFF1E1E24)
                         )
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                // Logout (spostato qui dall'header del profilo)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onLogout
+                        )
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                        contentDescription = null,
+                        tint = Color(0xFFE24B4A),
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Esci dall'account",
+                        color = Color(0xFFE24B4A),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold
                     )
                 }
             }
