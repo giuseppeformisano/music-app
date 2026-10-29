@@ -495,15 +495,22 @@ object FirebaseRepository {
             )
             // 1 batch atomico: richiesta incorporata nel doc del destinatario (mappa
             // pendingRequests.<fromId>) + id nell'array sentRequestIds del mittente.
+            // set(merge) invece di update(): update() fallisce (e fa fallire l'INTERO batch
+            // atomico) se il documento del destinatario non esiste ancora — tipico per gli
+            // utenti demo del feed. Con merge il doc viene creato/integrato senza sovrascrivere.
             val batch = db.batch()
-            batch.update(
+            batch.set(
                 db.collection(USERS_COLLECTION).document(to.id),
-                "pendingRequests.${from.id}", requestData,
-                "updatedAt", System.currentTimeMillis()
+                mapOf(
+                    "pendingRequests" to mapOf(from.id to requestData),
+                    "updatedAt" to System.currentTimeMillis()
+                ),
+                SetOptions.merge()
             )
-            batch.update(
+            batch.set(
                 db.collection(USERS_COLLECTION).document(from.id),
-                "sentRequestIds", FieldValue.arrayUnion(to.id)
+                mapOf("sentRequestIds" to FieldValue.arrayUnion(to.id)),
+                SetOptions.merge()
             )
             // Notifica in-app PERSISTENTE per il destinatario (traccia stile Instagram).
             // id stabile = "follow_<fromId>" → una re-richiesta riporta lo status a pending.
