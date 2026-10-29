@@ -128,6 +128,7 @@ private fun NotificationRow(
         "rejected" -> "Hai rifiutato @${notif.fromUserUsername}"
         else -> "@${notif.fromUserUsername} vuole seguirti"
     }
+    val timeAgo = relativeTime(notif.createdAt)
 
     Row(
         modifier = Modifier
@@ -156,7 +157,7 @@ private fun NotificationRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = subtitle,
+                text = if (timeAgo.isNotBlank()) "$subtitle · $timeAgo" else subtitle,
                 color = SubtitleGray.copy(alpha = 0.7f),
                 fontSize = 12.sp,
                 maxLines = 1,
@@ -219,6 +220,24 @@ private fun NotificationRow(
                 }
             }
         }
+    }
+}
+
+// Orario relativo stile social: "ora", "5m", "2h", "3g", "2sett", altrimenti data breve.
+private fun relativeTime(createdAt: Long): String {
+    if (createdAt <= 0L) return ""
+    val diff = System.currentTimeMillis() - createdAt
+    if (diff < 0L) return "ora"
+    val min = diff / 60_000L
+    val hours = diff / 3_600_000L
+    val days = diff / 86_400_000L
+    return when {
+        min < 1L -> "ora"
+        min < 60L -> "${min}m"
+        hours < 24L -> "${hours}h"
+        days < 7L -> "${days}g"
+        days < 28L -> "${days / 7L}sett"
+        else -> java.text.SimpleDateFormat("d MMM", java.util.Locale.getDefault()).format(java.util.Date(createdAt))
     }
 }
 

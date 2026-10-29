@@ -176,7 +176,6 @@ private fun HeaderIcon(
     Box(
         modifier = Modifier
             .size(40.dp)
-            .clip(CircleShape)
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
