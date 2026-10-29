@@ -27,6 +27,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Send
@@ -248,7 +249,7 @@ fun TrackDetailDialog(
                         }
                     }
 
-                    // 3. TITOLO, ARTISTA / ALBUM E PILL GENERE / ANNO
+                    // 3. TITOLO + ARTISTA / ALBUM (blocco equidistanziato)
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
@@ -280,10 +281,10 @@ fun TrackDetailDialog(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
+                    }
 
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        // Pill Genere e Anno di Rilascio
+                    // 4. PILL GENERE / ANNO (blocco equidistanziato)
+                    if (track.genre.isNotBlank() || track.releaseYear.isNotBlank()) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -322,9 +323,13 @@ fun TrackDetailDialog(
                                 }
                             }
                         }
+                    }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
+                    // 5. ASCOLTA SU + listener + stat (blocco equidistanziato)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         // Listener globali — carosello avatar chi ascolta ora
                         if (globalListeners.isNotEmpty()) {
                             Row(
@@ -525,6 +530,24 @@ fun TrackDetailDialog(
                         }
                     }
                 }
+            }
+
+            // Freccia indietro in alto a sinistra — stessa posizione degli altri pannelli.
+            val dismissPanel = LocalPanelDismiss.current
+            IconButton(
+                onClick = { dismissPanel() },
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(top = 10.dp, start = 4.dp)
+                    .size(44.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Indietro",
+                    tint = PureWhite,
+                    modifier = Modifier.size(22.dp)
+                )
             }
 
             // Pulsante Cestino in alto a destra (sotto la status bar)
