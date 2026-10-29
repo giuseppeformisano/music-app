@@ -17,8 +17,8 @@ android {
     applicationId = "com.aistudio.music.livefeed"
     minSdk = 24
     targetSdk = 36
-    versionCode = 295
-    versionName = "0.25.2-beta"
+    versionCode = 296
+    versionName = "0.25.3-beta"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
@@ -42,9 +42,13 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
+      // minify OFF: una release non offuscata è già molto più veloce della debug (ART ottimizza,
+      // Baseline Profiles attive); R8 si potrà abilitare dopo, con le regole keep verificate.
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
+      // Opzione A: firma la release con lo STESSO debug.keystore dell'attuale build installata,
+      // così l'aggiornamento entra sopra senza disinstallare (stessa firma).
+      signingConfig = signingConfigs.getByName("debugConfig")
     }
     debug { signingConfig = signingConfigs.getByName("debugConfig") }
   }
