@@ -95,3 +95,21 @@ jobs:
             --notes "Commit: ${{ github.sha }}" \
             app/build/outputs/apk/**/*.apk \
             version.json
+
+      # Migrazione: le vecchie installazioni DEBUG cercano aggiornamenti su `latest-debug`.
+      # Pubblicando la release anche lì (come app-debug.apk, stessa firma), si auto-aggiornano
+      # alla release senza download manuale; dopo useranno `latest-release`.
+      # (Rimuovibile quando tutti sono passati a release.)
+      - name: Migrazione — spingi la release anche su latest-debug
+        if: ${{ (inputs.build_type || 'release') == 'release' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk app-debug.apk
+          gh release delete latest-debug --yes 2>/dev/null || true
+          gh release create latest-debug \
+            --prerelease \
+            --title "Latest debug build" \
+            --notes "Migrazione automatica a release: ${{ github.sha }}" \
+            app-debug.apk \
+            version.json
