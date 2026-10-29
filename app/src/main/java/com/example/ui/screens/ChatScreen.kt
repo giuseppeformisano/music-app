@@ -145,12 +145,21 @@ fun ChatScreen(
                     .testTag("chat_screen_${recipient.id}")
             ) {
                 // Top Header minimale: trascinabile (swipe up/down chiude la chat)
+                val dismissPanel = com.example.ui.components.LocalPanelDismiss.current
                 Row(
                     modifier = com.example.ui.components.LocalDialogDragHandle.current
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 8.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    IconButton(onClick = dismissPanel, modifier = Modifier.size(40.dp)) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Indietro",
+                            tint = PureWhite,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

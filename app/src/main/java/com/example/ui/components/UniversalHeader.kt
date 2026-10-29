@@ -77,7 +77,7 @@ fun UniversalHeader(
         // Gruppo sinistro (peso uguale → logo centrato)
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             HeaderIcon(Icons.Default.Search, "Cerca", onClick = onSearchClick)
@@ -129,7 +129,7 @@ fun UniversalHeader(
         // Gruppo destro (peso uguale, allineato a fine)
         Row(
             modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.End),
+            horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End),
             verticalAlignment = Alignment.CenterVertically
         ) {
             HeaderIcon(Icons.Default.Email, "Messaggi", badge = unreadMessages, onClick = onMessagesClick)

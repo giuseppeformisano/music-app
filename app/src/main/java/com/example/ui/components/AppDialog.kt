@@ -95,6 +95,12 @@ data class PanelNav(
 val LocalPanelNav = compositionLocalOf { PanelNav() }
 
 /**
+ * Chiusura animata del pannello corrente, esposta ai contenuti (es. back arrow nell'header
+ * di chat/notifiche) così da avviare lo stesso slide-out orizzontale di swipe/back di sistema.
+ */
+val LocalPanelDismiss = compositionLocalOf<() -> Unit> { {} }
+
+/**
  * Backdrop condiviso dei pannelli: copertina sfocata + scrim quando attiva, altrimenti nero.
  * In entrambi i casi si dissolve/trasla con lo swipe (letto in draw, nessuna ricomposizione).
  */
@@ -418,7 +424,8 @@ private fun ImmersiveScaffold(
                 val columnScope = this
                 CompositionLocalProvider(
                     LocalDialogDragHandle provides dragHandle,
-                    LocalDialogScrollConnection provides if (dismissible) childConnection else null
+                    LocalDialogScrollConnection provides if (dismissible) childConnection else null,
+                    LocalPanelDismiss provides onDismiss
                 ) {
                     with(columnScope) { content() }
                 }
@@ -633,7 +640,8 @@ private fun ImmersiveOverlayScaffold(
             val columnScope = this
             CompositionLocalProvider(
                 LocalDialogDragHandle provides dragHandle,
-                LocalDialogScrollConnection provides if (dismissible) childConnection else null
+                LocalDialogScrollConnection provides if (dismissible) childConnection else null,
+                LocalPanelDismiss provides { dismissWithExit() }
             ) {
                 with(columnScope) { content() }
             }
