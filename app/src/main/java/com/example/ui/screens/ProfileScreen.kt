@@ -1303,24 +1303,12 @@ private fun EditProfileDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp),
+                .padding(top = 12.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header standardizzato in alto a sinistra (trascinabile per chiudere)
-            Row(
-                modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Modifica Profilo",
-                    color = PureWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp
-                )
-            }
+            // Header uniforme (freccia indietro + titolo, come gli altri pannelli)
+            com.example.ui.components.PanelHeader(title = "Modifica Profilo")
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -1330,6 +1318,7 @@ private fun EditProfileDialog(
                     .fillMaxWidth()
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 24.dp)
                     .padding(bottom = 16.dp)
             ) {
                 // ================= COPERTINA E IMMAGINE PROFILO SOVRAPPOSTE (ESATTAMENTE COME IN FOTO) =================
@@ -1554,6 +1543,7 @@ private fun EditProfileDialog(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 24.dp)
                     .height(48.dp)
                     .testTag("btn_save_profile"),
                 shape = RoundedCornerShape(24.dp),
@@ -1652,16 +1642,10 @@ private fun ConnectAccountsDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp)
+                .padding(top = 12.dp, bottom = 20.dp)
         ) {
-            // Header standardizzato in alto a sinistra (trascinabile per chiudere)
-            Row(
-                modifier = com.example.ui.components.LocalDialogDragHandle.current
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            // Header uniforme (freccia indietro + titolo, come gli altri pannelli)
+            com.example.ui.components.PanelHeaderBase {
                 Column {
                     Text(
                         text = "Collega Account",
@@ -1679,6 +1663,9 @@ private fun ConnectAccountsDialog(
                 }
             }
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+          Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
             // Spotify Premium e Spotify Free sono MUTUAMENTE ESCLUSIVI: collegato uno,
             // l'altro viene oscurato e reso non cliccabile.
             val premiumConnected = connectedServices["spotify"] == true
@@ -1733,6 +1720,7 @@ private fun ConnectAccountsDialog(
                 onToggle = { onToggleService("amazon_music") },
                 testTag = "service_amazon_music"
             )
+          }
         }
     }
 }

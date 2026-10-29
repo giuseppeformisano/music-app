@@ -539,7 +539,7 @@ fun TrackDetailDialog(
                 modifier = Modifier
                     .align(Alignment.TopStart)
                     .statusBarsPadding()
-                    .padding(top = 10.dp, start = 4.dp)
+                    .padding(top = 12.dp, start = 4.dp)
                     .size(44.dp)
             ) {
                 Icon(
@@ -560,8 +560,8 @@ fun TrackDetailDialog(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .statusBarsPadding()
-                        .padding(top = 10.dp, end = 16.dp) // Stesso padding del profilo (16.dp laterale, 10.dp dall'alto)
-                        .size(44.dp) 
+                        .padding(top = 12.dp, end = 16.dp) // Stessa quota della freccia indietro (top 12)
+                        .size(44.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.Delete,

@@ -143,14 +143,14 @@ fun ChatScreen(
                     .testTag("chat_screen_${recipient.id}")
             ) {
                 // Top Header uniforme: freccia indietro (PanelHeaderBase) + info destinatario
-                com.example.ui.components.PanelHeaderBase(modifier = Modifier.padding(vertical = 2.dp)) {
+                com.example.ui.components.PanelHeaderBase {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .weight(1f)
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { onOpenProfile(recipient) }
-                            .padding(vertical = 4.dp, horizontal = 2.dp)
+                            .padding(horizontal = 2.dp)
                     ) {
                         Box(
                             modifier = Modifier

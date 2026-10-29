@@ -1132,7 +1132,7 @@ fun LiveDetailScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .statusBarsPadding()
-                .padding(top = 10.dp, start = 4.dp)
+                .padding(top = 12.dp, start = 4.dp)
                 .size(44.dp)
         ) {
             Icon(

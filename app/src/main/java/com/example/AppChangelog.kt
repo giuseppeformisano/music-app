@@ -5,9 +5,9 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.26.7"
+    const val TITLE = "Novità · 0.26.8"
     val LINES = listOf(
-        "Freccia indietro in alto a sinistra anche nel dettaglio feed e nel dettaglio live, nella stessa posizione degli altri pannelli.",
-        "Dettaglio feed: nome, copertina, titolo, artista, genere/anno e ascolto ora equidistanziati verticalmente.",
+        "Collega account e Modifica profilo ora hanno l'header uniforme come gli altri pannelli.",
+        "Freccia indietro e titolo allineati nella stessa identica posizione in tutti i pannelli (chat e dettagli inclusi).",
     )
 }
