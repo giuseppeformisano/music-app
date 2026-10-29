@@ -78,23 +78,13 @@ fun ChatListScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                // Titolo sotto la barra di stato ma con un po' di distanza (regola pannelli).
                 .statusBarsPadding()
-                // Nessuna barra in basso: l'inset della barra di sistema va qui.
                 .navigationBarsPadding()
-                .padding(top = 16.dp)
-                .padding(horizontal = 16.dp)
+                .padding(top = 12.dp)
         ) {
-            // Header trascinabile: swipe up/down su titolo o barra di ricerca chiude la dialog
-            Column(modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth()) {
-            Text(
-                text = "Messaggi",
-                color = PureWhite,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = (-0.4).sp,
-                modifier = Modifier.padding(start = 4.dp, bottom = 14.dp)
-            )
+            com.example.ui.components.PanelHeader(title = "Messaggi")
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Barra di ricerca: cerca una persona a cui scrivere (click → apre la chat)
             OutlinedTextField(
@@ -114,7 +104,7 @@ fun ChatListScreen(
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide(); focusManager.clearFocus() }),
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 shape = RoundedCornerShape(12.dp),
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedBorderColor = PureWhite.copy(alpha = 0.15f),
@@ -126,12 +116,11 @@ fun ChatListScreen(
                     cursorColor = PureWhite
                 )
             )
-            } // fine header trascinabile
 
             Spacer(modifier = Modifier.height(10.dp))
 
             val dialogScrollConn = LocalDialogScrollConnection.current
-            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp)) {
             when {
                 isSearching -> {
                     if (searchResults.isEmpty()) {

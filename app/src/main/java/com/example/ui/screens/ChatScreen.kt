@@ -137,29 +137,13 @@ fun ChatScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    // Solo top=28 come feed/profilo (NO statusBarsPadding): evita il doppio
-                    // margine superiore che faceva sembrare l'header troppo ribassato.
-                    .padding(top = 28.dp)
-                    // Nav bar + tastiera gestiti sulla barra input in basso (vedi sotto):
-                    // niente navigationBarsPadding qui per non sommarlo all'IME.
+                    // Stessa quota degli altri pannelli: barra di stato + 12.
+                    .statusBarsPadding()
+                    .padding(top = 12.dp)
                     .testTag("chat_screen_${recipient.id}")
             ) {
-                // Top Header minimale: trascinabile (swipe up/down chiude la chat)
-                val dismissPanel = com.example.ui.components.LocalPanelDismiss.current
-                Row(
-                    modifier = com.example.ui.components.LocalDialogDragHandle.current
-                        .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = dismissPanel, modifier = Modifier.size(40.dp)) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Indietro",
-                            tint = PureWhite,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+                // Top Header uniforme: freccia indietro (PanelHeaderBase) + info destinatario
+                com.example.ui.components.PanelHeaderBase(modifier = Modifier.padding(vertical = 2.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier

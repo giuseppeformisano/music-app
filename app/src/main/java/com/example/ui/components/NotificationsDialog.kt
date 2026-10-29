@@ -64,56 +64,14 @@ fun NotificationsDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp)
+                .padding(top = 12.dp, bottom = 20.dp)
         ) {
-            Row(
-                modifier = LocalDialogDragHandle.current
-                    .fillMaxWidth()
-                    .padding(bottom = 20.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = LocalPanelDismiss.current, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Indietro",
-                        tint = PureWhite,
-                        modifier = Modifier.size(22.dp)
-                    )
-                }
-                Spacer(modifier = Modifier.width(4.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = "Notifiche",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
-                    )
-                    if (pendingCount > 0) {
-                        Box(
-                            modifier = Modifier
-                                .clip(CircleShape)
-                                .background(Color(0xFFFF3B30))
-                                .padding(horizontal = 7.dp, vertical = 2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = pendingCount.toString(),
-                                color = PureWhite,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-                }
-            }
+            PanelHeader(title = "Notifiche", badge = pendingCount)
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             if (notifications.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
                             imageVector = Icons.Default.Notifications,
@@ -135,6 +93,7 @@ fun NotificationsDialog(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
+                        .padding(horizontal = 24.dp)
                         .let { m -> if (dialogScrollConn != null) m.nestedScroll(dialogScrollConn) else m },
                     contentPadding = PaddingValues(vertical = 4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)

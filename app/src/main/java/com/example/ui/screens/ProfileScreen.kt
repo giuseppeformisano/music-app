@@ -1904,32 +1904,20 @@ internal fun SettingsDialog(
                 .fillMaxSize()
                 .statusBarsPadding()
                 .navigationBarsPadding()
-                .padding(horizontal = 24.dp)
-                .padding(top = 36.dp, bottom = 20.dp),
+                .padding(top = 12.dp, bottom = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // Header standardizzato in alto a sinistra (trascinabile per chiudere)
-            Row(
-                modifier = com.example.ui.components.LocalDialogDragHandle.current.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Impostazioni",
-                    color = PureWhite,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-0.4).sp
-                )
-            }
+            com.example.ui.components.PanelHeader(title = "Impostazioni")
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Contenuto scrollabile delle impostazioni (fuso direttamente con lo sfondo)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
+                    .padding(horizontal = 24.dp)
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
@@ -2074,6 +2062,7 @@ internal fun SettingsDialog(
             Button(
                 onClick = { onSave(localApplyCoverToFeed, localLiveNotificationsEnabled) },
                 modifier = Modifier
+                    .padding(horizontal = 24.dp)
                     .fillMaxWidth()
                     .height(48.dp),
                 shape = RoundedCornerShape(24.dp),

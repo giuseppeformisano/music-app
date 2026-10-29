@@ -5,10 +5,9 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.26.2"
+    const val TITLE = "Novità · 0.26.3"
     val LINES = listOf(
-        "Chat e notifiche: tasto indietro nell'header.",
-        "Top bar: più spazio tra messaggi e profilo.",
-        "Corretto un errore di compilazione della build precedente.",
+        "Header uniformi in notifiche, messaggi, chat e impostazioni: titolo alla stessa altezza e freccia indietro nella stessa posizione.",
+        "Aggiunta la freccia indietro anche in lista messaggi e impostazioni.",
     )
 }
