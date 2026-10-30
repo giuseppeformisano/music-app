@@ -5,8 +5,8 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.26.10"
+    const val TITLE = "Novità · 0.26.11"
     val LINES = listOf(
-        "Collega Account: header uniforme come le altre schermate (solo freccia e titolo), rimosse la descrizione e il badge \"Collegato\".",
+        "Dettaglio feed: elementi centrati verticalmente e distanziati come il dettaglio live.",
     )
 }
