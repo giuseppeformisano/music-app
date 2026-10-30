@@ -5,8 +5,10 @@ package com.example
  * Aggiornare TITLE e LINES ad ogni push con le novità/fix di quella versione.
  */
 object AppChangelog {
-    const val TITLE = "Novità · 0.26.12"
+    const val TITLE = "Novità · 0.26.13"
     val LINES = listOf(
-        "Live Spotify Premium: il cambio traccia spontaneo ora si aggiorna subito e col brano giusto (niente più traccia precedente).",
+        "Ora puoi aprire il dettaglio di un brano condiviso toccandone la copertina nel feed.",
+        "Condividi nel tuo feed direttamente dal dettaglio live e dal dettaglio di una condivisione altrui.",
+        "Schermata di condivisione brano rinnovata: header uniforme, ricerca in alto e brano in ascolto in evidenza.",
     )
 }

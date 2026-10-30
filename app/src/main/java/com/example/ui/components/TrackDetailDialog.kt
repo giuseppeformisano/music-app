@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Wallpaper
 import kotlinx.coroutines.delay
@@ -88,7 +89,7 @@ fun TrackDetailDialog(
     onSendMessage: (User, Track) -> Unit = { _, _ -> },
     onSendTextMessage: ((User, String, Track) -> Unit)? = null,
     onOpenUserProfile: (User) -> Unit = {},
-    onShareToMyFeed: (Track) -> Unit = {},
+    onShareToMyFeed: ((Track) -> Unit)? = null,
     isMyTrack: Boolean = false,
     onDeleteTrack: ((Track) -> Unit)? = null,
     onSetAsCover: ((Track) -> Unit)? = null,
@@ -552,7 +553,7 @@ fun TrackDetailDialog(
                 )
             }
 
-            // Pulsante Cestino in alto a destra (sotto la status bar)
+            // Pulsante Cestino in alto a destra (sotto la status bar) — solo i MIEI brani
             if (isMyTrack && onDeleteTrack != null) {
                 IconButton(
                     onClick = {
@@ -568,6 +569,27 @@ fun TrackDetailDialog(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Elimina canzone dal feed",
+                        tint = PureWhite,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+            } else if (onShareToMyFeed != null && !isMyTrack) {
+                // Condividi nel mio feed — solo sul dettaglio feed di una condivisione altrui
+                // (non compare se aperto dalla live: lì il callback non viene passato).
+                IconButton(
+                    onClick = {
+                        onShareToMyFeed(track)
+                        onDismiss()
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(top = 12.dp, end = 16.dp)
+                        .size(44.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.IosShare,
+                        contentDescription = "Condividi nel mio feed",
                         tint = PureWhite,
                         modifier = Modifier.size(22.dp)
                     )

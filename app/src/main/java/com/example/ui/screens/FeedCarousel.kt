@@ -212,12 +212,6 @@ fun FeedCarousel(
                     onHorizontalDrag = { _, delta -> dragAccumulated += delta }
                 )
             }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) {
-                if (!progress.isRunning) onTrackClick(tracks[currentIndex])
-            }
     ) {
         val widthPx = with(LocalDensity.current) { maxWidth.toPx() }
 
@@ -264,7 +258,7 @@ fun FeedCarousel(
         } else {
             CarouselCard(
                 track = tracks[currentIndex],
-                onClick = {},
+                onClick = { onTrackClick(tracks[currentIndex]) },
                 modifier = Modifier.fillMaxSize()
             )
         }
@@ -299,7 +293,13 @@ internal fun CarouselCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Box(modifier = modifier) {
+    Box(
+        modifier = modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
+    ) {
         AsyncImage(
             model = track.coverUrl,
             contentDescription = "Copertina ${track.title}",

@@ -43,6 +43,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Headphones
+import androidx.compose.material.icons.filled.IosShare
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Smartphone
@@ -137,6 +138,7 @@ fun LiveDetailScreen(
     onOpenUserProfile: (User) -> Unit,
     onSendPulse: (User, String, String?) -> Unit = { _, _, _ -> },
     onSetTrackAsCover: (Track) -> Unit = {},
+    onShareToFeed: (Track) -> Unit = {},
     onHeart: () -> Unit = {},
     listeners: List<User> = emptyList(),
     globalListeners: List<User> = emptyList(),
@@ -1138,6 +1140,23 @@ fun LiveDetailScreen(
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Indietro",
+                tint = PureWhite,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        // Condividi nel mio feed — in alto a destra, stessa quota della freccia.
+        IconButton(
+            onClick = { onShareToFeed(track) },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(top = 12.dp, end = 16.dp)
+                .size(44.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.IosShare,
+                contentDescription = "Condividi nel mio feed",
                 tint = PureWhite,
                 modifier = Modifier.size(22.dp)
             )
