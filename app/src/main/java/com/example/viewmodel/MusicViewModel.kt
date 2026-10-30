@@ -528,12 +528,26 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // Chiamata singola (senza polling) per arricchire i metadati Spotify quando il listener
     // ha già rilevato un cambio traccia. Ignora NotPlaying/Unknown: la stop-detection è del listener.
-    private suspend fun enrichFromApi() {
+    private suspend fun enrichFromApi(expectedTitle: String? = null) {
         if (com.example.MusicNotificationListenerService.isNonSpotifyDevicePlaybackActive()) return
-        when (val result = SpotifyWebApiRepository.getCurrentlyPlaying(appContext)) {
-            is SpotifyWebApiRepository.PlaybackResult.Playing -> applyLiveTrack(result.track, result.progressMs)
-            is SpotifyWebApiRepository.PlaybackResult.Paused -> applyLiveTrack(result.track, result.progressMs)
-            else -> {} // NotPlaying/Unknown: listener gestisce stop, niente da fare qui
+        // La Web API è in ritardo di qualche secondo dopo un cambio traccia: può ancora
+        // riportare il brano PRECEDENTE. Se so quale brano aspettarmi (dal listener), riprovo
+        // finché l'API non conferma lo stesso titolo, poi arricchisco; se non lo fa entro i
+        // tentativi, lascio i metadati del listener (già applicati) senza sovrascriverli.
+        val maxAttempts = if (expectedTitle != null) 5 else 1
+        repeat(maxAttempts) { attempt ->
+            val result = SpotifyWebApiRepository.getCurrentlyPlaying(appContext)
+            val track = when (result) {
+                is SpotifyWebApiRepository.PlaybackResult.Playing -> result.track to result.progressMs
+                is SpotifyWebApiRepository.PlaybackResult.Paused -> result.track to result.progressMs
+                else -> null // NotPlaying/Unknown: listener gestisce stop, niente da fare qui
+            } ?: return
+            if (expectedTitle == null || track.first.title.equals(expectedTitle, ignoreCase = true)) {
+                applyLiveTrack(track.first, track.second)
+                return
+            }
+            // API ancora disallineata (brano vecchio): attendi e riprova.
+            if (attempt < maxAttempts - 1) kotlinx.coroutines.delay(800)
         }
     }
 
@@ -737,15 +751,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         com.example.MusicNotificationListenerService.onTrackChanged = { trackName, artist, durationMs, positionMs, artUrl, source ->
             val isPremium = _uiState.value.connectedServices["spotify"] == true && SpotifyAuthRepository.isAuthorized
             if (source == "spotify" && isPremium) {
-                // Listener ha rilevato il cambio istantaneamente; ora arricchiamo con una
-                // singola chiamata API (trackId canonico, artwork HD, album, device).
-                // Se l'API fallisce o restituisce Unknown, usiamo i metadati del listener come fallback.
-                viewModelScope.launch {
-                    enrichFromApi()
-                    if (_uiState.value.nowPlayingTrack == null) {
-                        updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source)
-                    }
-                }
+                // 1) Applica SUBITO i metadati del listener: è istantaneo e sempre corretto,
+                //    così la live è reattiva e mostra il brano giusto senza attese.
+                updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source)
+                // 2) Arricchisci con una singola chiamata API (trackId canonico, artwork HD,
+                //    album, device) MA solo se l'API conferma lo stesso brano: subito dopo un
+                //    cambio la Web API è in ritardo e può riportare ancora la traccia precedente
+                //    → quel dato stantio va ignorato, non deve sovrascrivere il brano corrente.
+                viewModelScope.launch { enrichFromApi(expectedTitle = trackName) }
             } else {
                 updateNowPlayingFromBroadcast("", trackName, artist, "", durationMs, positionMs, artUrl, source = source)
             }
