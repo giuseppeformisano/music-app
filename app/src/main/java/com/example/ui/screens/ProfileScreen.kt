@@ -1645,23 +1645,7 @@ private fun ConnectAccountsDialog(
                 .padding(top = 12.dp, bottom = 20.dp)
         ) {
             // Header uniforme (freccia indietro + titolo, come gli altri pannelli)
-            com.example.ui.components.PanelHeaderBase {
-                Column {
-                    Text(
-                        text = "Collega Account",
-                        color = PureWhite,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.4).sp
-                    )
-                    Text(
-                        text = "Scegli i tuoi servizi di streaming",
-                        color = SubtitleGray,
-                        fontSize = 13.sp,
-                        letterSpacing = 0.2.sp
-                    )
-                }
-            }
+            com.example.ui.components.PanelHeader(title = "Collega Account")
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -1770,34 +1754,12 @@ private fun StreamingAccountItem(
 
         // Info Nome e Descrizione
         Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = serviceName,
-                    color = PureWhite,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Bold
-                )
-
-                if (isConnected) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(brandColor.copy(alpha = 0.20f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = "COLLEGATO",
-                            color = brandColor,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Black,
-                            letterSpacing = 0.5.sp
-                        )
-                    }
-                }
-            }
+            Text(
+                text = serviceName,
+                color = PureWhite,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold
+            )
 
             Spacer(modifier = Modifier.height(2.dp))
 
