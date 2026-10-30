@@ -1655,6 +1655,11 @@ private fun ConnectAccountsDialog(
             val premiumConnected = connectedServices["spotify"] == true
             val freeConnected = connectedServices["spotify_free"] == true
 
+            // UNIFICAZIONE Spotify: per ora l'accesso via API (Spotify Premium / OAuth) è
+            // disattivato dalla UI — si usa un unico Spotify basato sulle notifiche. Il codice
+            // sottostante (onConnectSpotify/onDisconnectSpotify e il percorso API) resta
+            // intatto: basta riattivare questo blocco per ripristinare la voce Premium.
+            /*
             StreamingAccountItem(
                 serviceName = "Spotify Premium",
                 serviceDesc = "Collega l'account: dati in tempo reale via API",
@@ -1679,11 +1684,12 @@ private fun ConnectAccountsDialog(
             }
 
             Spacer(modifier = Modifier.height(12.dp))
+            */
 
             // Stato "collegato" RICORDATO (scelta esplicita dell'utente), anche se
             // funzionalmente dipende dalle notifiche.
             StreamingAccountItem(
-                serviceName = "Spotify Free",
+                serviceName = "Spotify",
                 serviceDesc = "Rileva l'ascolto dalle notifiche",
                 isConnected = freeConnected,
                 enabled = !premiumConnected,
