@@ -1279,7 +1279,7 @@ private fun EditProfileDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "avatar", user.id, maxDimension = 320, quality = 80)
+            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "avatar", user.id, maxDimension = 720, quality = 88)
             if (localPath != null) {
                 avatarUrlInput = localPath
             }
@@ -1290,7 +1290,7 @@ private fun EditProfileDialog(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
-            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "cover", user.id, maxDimension = 640, quality = 75)
+            val localPath = com.example.data.ImageUtils.saveImageLocally(context, it, "cover", user.id, maxDimension = 1440, quality = 85)
             if (localPath != null) {
                 coverUrlInput = localPath
             }

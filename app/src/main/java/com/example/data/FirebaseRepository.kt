@@ -300,26 +300,25 @@ object FirebaseRepository {
             }
     }
 
+    // Risolve un'immagine di profilo (avatar/cover) per la scrittura su Firestore.
+    // - File locale → caricato su Cloudinary (URL https, nessun limite 1MB → alta qualità).
+    //   Se l'upload fallisce, fallback su Base64 (comportamento storico) così nulla si blocca.
+    // - URL http già remoto → invariato.
+    private suspend fun resolveProfileImage(raw: String?, filename: String): String? {
+        if (raw.isNullOrBlank()) return null
+        val isLocal = raw.startsWith("file:", ignoreCase = true) || raw.startsWith("/")
+        if (!isLocal) return raw
+        val base64 = ImageUtils.fileUriToBase64(raw) ?: return null
+        return uploadFileToCloudinary(base64, "image/jpeg", filename) ?: base64
+    }
+
     fun syncCurrentUser(user: User) {
         val db = firestore ?: return
+        CoroutineScope(Dispatchers.IO).launch {
         try {
-            // Converte SEMPRE i percorsi file:/// locali in Base64 prima di scrivere su Firestore.
-            // In questo modo nessun altro dispositivo riceverà percorsi file:/// inesistenti nel proprio sandbox.
-            val cleanAvatar = when {
-                user.avatarUrl.startsWith("file:", ignoreCase = true) || user.avatarUrl.startsWith("/") -> {
-                    ImageUtils.fileUriToBase64(user.avatarUrl)
-                }
-                user.avatarUrl.isNotBlank() -> user.avatarUrl
-                else -> null
-            }
-
-            val cleanCover = when {
-                !user.coverUrl.isNullOrBlank() && (user.coverUrl!!.startsWith("file:", ignoreCase = true) || user.coverUrl!!.startsWith("/")) -> {
-                    ImageUtils.fileUriToBase64(user.coverUrl)
-                }
-                !user.coverUrl.isNullOrBlank() -> user.coverUrl
-                else -> null
-            }
+            // Avatar e cover: caricati su Cloudinary se sono file locali (vedi resolveProfileImage).
+            val cleanAvatar = resolveProfileImage(user.avatarUrl, "avatar_${user.id}_${System.currentTimeMillis()}.jpg")
+            val cleanCover = resolveProfileImage(user.coverUrl, "cover_${user.id}_${System.currentTimeMillis()}.jpg")
 
             val userMap = hashMapOf<String, Any?>(
                 "id" to user.id,
@@ -358,6 +357,7 @@ object FirebaseRepository {
                 }
         } catch (e: Exception) {
             Log.e(TAG, "Errore durante syncCurrentUser: ${e.message}")
+        }
         }
     }
 
