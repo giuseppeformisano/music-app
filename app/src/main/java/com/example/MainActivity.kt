@@ -540,7 +540,14 @@ fun MusicApp(viewModel: MusicViewModel) {
                     listeners = uiState.feedUsers.filter {
                         it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive
                     },
-                    globalListeners = uiState.globalListenersRanked.map { it.first }
+                    globalListeners = run {
+                        // Includi anche TE tra gli avatar se stai ascoltando lo stesso brano.
+                        val me = uiState.currentUser.takeIf {
+                            it.currentTrack?.id == liveUser.currentTrack?.id
+                        }
+                        (listOfNotNull(me) + uiState.globalListenersRanked.map { it.first })
+                            .distinctBy { it.id }
+                    }
                 )
             } else {
                 // L'utente ha chiuso la live: chiudi il dettaglio e torna alla lista

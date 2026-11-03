@@ -73,7 +73,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -120,6 +122,7 @@ import com.example.ui.theme.Zinc400
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 private data class FloatingReaction(
     val id: Long,
@@ -364,7 +367,7 @@ fun LiveDetailScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .padding(top = 36.dp, bottom = 12.dp),
+                    .padding(top = 12.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.SpaceEvenly
             ) {
                 // 0. CAROSELLO ASCOLTATORI NEL MONDO — elemento equidistante, sopra il badge
@@ -1088,33 +1091,42 @@ private fun ListenersWorldCarousel(
         )
     ) {
         if (users.isNotEmpty()) {
-            val windowSize = minOf(4, users.size)
-            var start by remember(users.size) { mutableIntStateOf(0) }
-            LaunchedEffect(users.size) {
-                if (users.size > windowSize) {
-                    while (true) {
-                        delay(1900)
-                        start = (start + 1) % users.size
-                    }
-                }
-            }
-            AnimatedContent(
-                targetState = start,
-                transitionSpec = {
-                    (fadeIn(tween(500)) + slideInHorizontally(tween(500)) { it / 3 }) togetherWith
-                        (fadeOut(tween(500)) + slideOutHorizontally(tween(500)) { -it / 3 })
-                },
-                label = "listenersCarousel"
-            ) { s ->
+            val visibleCount = minOf(4, users.size)
+            val avatarDp = 26.dp
+            val stepDp = 18.dp // avatar 26 - sovrapposizione 8
+            val viewportW = avatarDp + stepDp * (visibleCount - 1)
+            val stepPx = with(LocalDensity.current) { stepDp.toPx() }
+            val loopPx = stepPx * users.size
+            // Scorrimento orizzontale continuo: la fila trasla a sinistra senza sosta e, grazie
+            // alla lista duplicata, rientra da destra in modo continuo (marquee).
+            val scroll = if (users.size > visibleCount) {
+                val transition = rememberInfiniteTransition(label = "marquee")
+                transition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 1f,
+                    animationSpec = infiniteRepeatable(
+                        tween(users.size * 1100, easing = LinearEasing),
+                        RepeatMode.Restart
+                    ),
+                    label = "scroll"
+                ).value
+            } else 0f
+            Box(
+                modifier = Modifier
+                    .width(viewportW)
+                    .height(avatarDp)
+                    .clipToBounds()
+            ) {
+                val loop = if (users.size > visibleCount) users + users else users
                 Row(
                     horizontalArrangement = Arrangement.spacedBy((-8).dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.offset { IntOffset(-(scroll * loopPx).roundToInt(), 0) }
                 ) {
-                    for (k in 0 until windowSize) {
-                        val u = users[(s + k) % users.size]
+                    loop.forEach { u ->
                         Box(
                             modifier = Modifier
-                                .size(26.dp)
+                                .size(avatarDp)
                                 .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
                                 .clip(CircleShape)
                                 .background(Color(0xFF1A1A1E))
