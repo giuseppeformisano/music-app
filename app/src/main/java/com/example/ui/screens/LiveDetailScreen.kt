@@ -1097,9 +1097,9 @@ private fun ListenersWorldCarousel(
     ) {
         run {
             val visibleCount = 5
-            val avatarDp = 28.dp
+            val avatarDp = 32.dp
             val overlapDp = 8.dp
-            val stepDp = avatarDp - overlapDp // passo tra un avatar e il successivo
+            val stepDp = avatarDp - overlapDp // passo tra un avatar e il successivo (24dp)
             val viewportW = avatarDp + stepDp * (visibleCount - 1)
             // Anello di 8 slot: se gli ascoltatori sono più di 8 ne prendo 8 a caso; se meno,
             // riempio fino a 8 con tondini grigi accennati (null). remember evita di rimescolare
@@ -1110,27 +1110,28 @@ private fun ListenersWorldCarousel(
             }
             val stepPx = with(LocalDensity.current) { stepDp.toPx() }
             val loopPx = stepPx * slots.size
-            // Scorrimento orizzontale continuo ad anello, lento: la fila trasla a sinistra e,
-            // grazie alla lista duplicata, rientra da destra senza salti.
+            // Rotazione circolare continua: la fila trasla a sinistra e, grazie alla lista
+            // duplicata, rientra da destra senza salti (~8s a giro).
             val transition = rememberInfiniteTransition(label = "marquee")
             val scroll by transition.animateFloat(
                 initialValue = 0f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    tween(slots.size * 2600, easing = LinearEasing),
+                    tween(8000, easing = LinearEasing),
                     RepeatMode.Restart
                 ),
                 label = "scroll"
             )
-            // Dissolvenza FISSA ai bordi: la maschera sta sul contenitore FERMO (non sulla fila
-            // che scorre), così i lati sfumano sempre in entrata/uscita senza taglio netto.
+            // Dissolvenza FISSA ai bordi (maschera sul contenitore fermo) + CLIP: mostra ~5
+            // avatar per volta e li sfuma in entrata/uscita, niente taglio netto né sbordatura.
             val edgeFade = Brush.horizontalGradient(
-                0f to Color.Transparent, 0.20f to Color.Black, 0.80f to Color.Black, 1f to Color.Transparent
+                0f to Color.Transparent, 0.16f to Color.Black, 0.84f to Color.Black, 1f to Color.Transparent
             )
             Box(
                 modifier = Modifier
                     .width(viewportW)
                     .height(avatarDp)
+                    .clipToBounds()
                     .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                     .drawWithContent {
                         drawContent()
@@ -1140,8 +1141,6 @@ private fun ListenersWorldCarousel(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(-overlapDp),
                     verticalAlignment = Alignment.CenterVertically,
-                    // translationX (float, draw-phase) = movimento sub-pixel fluido, senza
-                    // relayout a ogni frame e senza scatti da arrotondamento a pixel interi.
                     modifier = Modifier.graphicsLayer { translationX = -scroll * loopPx }
                 ) {
                     (slots + slots).forEach { u -> AvatarDot(user = u, size = avatarDp) }
