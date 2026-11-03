@@ -223,6 +223,16 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         prefs.edit().putString(KEY_SHARE_DATE, todayKey()).putInt(KEY_SHARE_COUNT, count).apply()
     }
 
+    // Aggiorna la "firma dei gusti" (per il calcolo sintonia) al massimo una volta al giorno:
+    // è un riassunto derivato dai minuti d'ascolto, non serve riscriverlo più spesso.
+    private fun updateTasteSignatureIfDue(userId: String) {
+        if (userId.isBlank()) return
+        val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
+        if (prefs.getString(KEY_TASTE_SIG_DATE, "") == todayKey()) return
+        prefs.edit().putString(KEY_TASTE_SIG_DATE, todayKey()).apply()
+        FirebaseRepository.updateTasteSignature(userId)
+    }
+
     // Firestore è la fonte autoritativa del limite "brano del giorno": al login riallinea la
     // cache locale (così il limite vale cross-device e non si azzera cancellando i dati app).
     private fun syncDailyShareFromFirestore(userId: String) {
@@ -293,6 +303,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 saveFcmToken(initialUser.id)
                 startConversationsListener(initialUser.id)
                 syncDailyShareFromFirestore(initialUser.id)
+                updateTasteSignatureIfDue(initialUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }
         }
@@ -371,6 +382,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 saveFcmToken(loggedUser.id)
                 startConversationsListener(loggedUser.id)
                 syncDailyShareFromFirestore(loggedUser.id)
+                updateTasteSignatureIfDue(loggedUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }.onFailure { error ->
                 _uiState.update {
@@ -1948,6 +1960,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         private const val PREFS_SHARE = "daily_share_prefs"
         private const val KEY_SHARE_DATE = "share_date"
         private const val KEY_SHARE_COUNT = "share_count"
+        private const val KEY_TASTE_SIG_DATE = "taste_sig_date"
 
         const val FRIEND_REQUEST_CHANNEL_ID = "friend_requests_channel"
         // Un utente è considerato live solo se il suo documento è stato aggiornato entro questo

@@ -410,6 +410,50 @@ object FirebaseRepository {
     }
 
     /**
+     * "Firma dei gusti" compatta per il calcolo della sintonia: top artisti e generi espressi
+     * come QUOTA del tempo totale d'ascolto (0..1), così è leggera da leggere e confrontare.
+     * Va aggiornata di rado (~1 volta al giorno), non a ogni brano.
+     */
+    fun updateTasteSignature(userId: String) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(userId).get()
+            .addOnSuccessListener { doc ->
+                val artistMs = longMap(doc.get("listenedByArtist"))
+                val genreMs = longMap(doc.get("listenedByGenre"))
+                if (artistMs.isEmpty() && genreMs.isEmpty()) return@addOnSuccessListener
+                val signature = mapOf(
+                    "artists" to topFractions(artistMs, 8),
+                    "genres" to topFractions(genreMs, 8),
+                    "updatedAt" to System.currentTimeMillis()
+                )
+                db.collection(USERS_COLLECTION).document(userId)
+                    .set(mapOf("tasteSignature" to signature), SetOptions.merge())
+            }
+    }
+
+    private fun longMap(raw: Any?): Map<String, Long> {
+        val m = raw as? Map<*, *> ?: return emptyMap()
+        val out = HashMap<String, Long>()
+        for ((k, v) in m) {
+            val key = k as? String ?: continue
+            val ms = (v as? Number)?.toLong() ?: continue
+            if (ms > 0) out[key] = ms
+        }
+        return out
+    }
+
+    // Prende i top N per ms e li esprime come quota sul tempo totale (somma di TUTTA la mappa),
+    // così le percentuali restano confrontabili tra chi ascolta molto e chi ascolta poco.
+    private fun topFractions(msByKey: Map<String, Long>, n: Int): Map<String, Double> {
+        val total = msByKey.values.sum().toDouble()
+        if (total <= 0.0) return emptyMap()
+        return msByKey.entries
+            .sortedByDescending { it.value }
+            .take(n)
+            .associate { it.key to (it.value / total) }
+    }
+
+    /**
      * Limite "brano del giorno" autoritativo su Firestore (oltre alla cache locale).
      * Salva la data (yyyy-MM-dd) e il conteggio del giorno + un timestamp server d'audit.
      */
