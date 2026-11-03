@@ -410,6 +410,37 @@ object FirebaseRepository {
     }
 
     /**
+     * Limite "brano del giorno" autoritativo su Firestore (oltre alla cache locale).
+     * Salva la data (yyyy-MM-dd) e il conteggio del giorno + un timestamp server d'audit.
+     */
+    fun recordDailyShare(userId: String, date: String, count: Int) {
+        val db = firestore ?: return
+        db.collection(USERS_COLLECTION).document(userId).set(
+            mapOf(
+                "lastShareDate" to date,
+                "dailyShareCount" to count,
+                "lastSharedAt" to FieldValue.serverTimestamp()
+            ),
+            SetOptions.merge()
+        )
+    }
+
+    /**
+     * Legge dal doc utente quante condivisioni risultano per OGGI (0 se la data salvata
+     * non è quella odierna). Usato al login per riallineare la cache locale.
+     */
+    fun fetchDailyShareCount(userId: String, today: String, onResult: (Int) -> Unit) {
+        val db = firestore ?: return onResult(0)
+        db.collection(USERS_COLLECTION).document(userId).get()
+            .addOnSuccessListener { doc ->
+                val date = doc.getString("lastShareDate")
+                val count = (doc.getLong("dailyShareCount") ?: 0L).toInt()
+                onResult(if (date == today) count else 0)
+            }
+            .addOnFailureListener { onResult(0) }
+    }
+
+    /**
      * Rimuove un brano condiviso dal feed dell'utente su Firestore.
      */
     fun deleteSharedTrack(userId: String, trackId: String) {

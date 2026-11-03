@@ -209,17 +209,33 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
     }
 
 
+    private fun todayKey(): String =
+        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
+
     private fun loadDailyShareCount(): Int {
         val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
-        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
         val savedDate = prefs.getString(KEY_SHARE_DATE, "")
-        return if (savedDate == today) prefs.getInt(KEY_SHARE_COUNT, 0) else 0
+        return if (savedDate == todayKey()) prefs.getInt(KEY_SHARE_COUNT, 0) else 0
     }
 
     private fun saveDailyShareCount(count: Int) {
         val prefs = appContext.getSharedPreferences(PREFS_SHARE, Context.MODE_PRIVATE)
-        val today = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(java.util.Date())
-        prefs.edit().putString(KEY_SHARE_DATE, today).putInt(KEY_SHARE_COUNT, count).apply()
+        prefs.edit().putString(KEY_SHARE_DATE, todayKey()).putInt(KEY_SHARE_COUNT, count).apply()
+    }
+
+    // Firestore è la fonte autoritativa del limite "brano del giorno": al login riallinea la
+    // cache locale (così il limite vale cross-device e non si azzera cancellando i dati app).
+    private fun syncDailyShareFromFirestore(userId: String) {
+        if (userId.isBlank()) return
+        val today = todayKey()
+        FirebaseRepository.fetchDailyShareCount(userId, today) { remote ->
+            val local = loadDailyShareCount()
+            val used = maxOf(local, remote)
+            if (used != local) saveDailyShareCount(used)
+            // Se localmente risultava una condivisione non ancora salvata su Firestore, la spinge.
+            if (local > remote) FirebaseRepository.recordDailyShare(userId, today, used)
+            _uiState.update { it.copy(dailySharesUsed = used) }
+        }
     }
 
     init {
@@ -276,6 +292,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 startFirebaseListener()
                 saveFcmToken(initialUser.id)
                 startConversationsListener(initialUser.id)
+                syncDailyShareFromFirestore(initialUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }
         }
@@ -353,6 +370,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 startFirebaseListener()
                 saveFcmToken(loggedUser.id)
                 startConversationsListener(loggedUser.id)
+                syncDailyShareFromFirestore(loggedUser.id)
                 if (spotifyConnected) startSpotifyPolling()
             }.onFailure { error ->
                 _uiState.update {
@@ -1429,6 +1447,8 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
         val newUsed = currentUsed + 1
         saveDailyShareCount(newUsed)
+        // Firestore autoritativo: registra la condivisione del giorno (cross-device).
+        FirebaseRepository.recordDailyShare(_uiState.value.currentUser.id, todayKey(), newUsed)
 
         val trackWithTimestamp = track.copy(sharedAt = System.currentTimeMillis())
         val updatedUser = _uiState.value.currentUser.copy(
