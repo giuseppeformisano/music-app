@@ -32,8 +32,10 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1141,7 +1143,11 @@ private fun ListenersWorldCarousel(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(-overlapDp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.graphicsLayer { translationX = -scroll * loopPx }
+                    // unbounded: la fila può essere più larga del contenitore senza che gli
+                    // avatar oltre il bordo vengano compressi (niente più cerchi ovali).
+                    modifier = Modifier
+                        .wrapContentWidth(align = Alignment.Start, unbounded = true)
+                        .graphicsLayer { translationX = -scroll * loopPx }
                 ) {
                     (slots + slots).forEach { u -> AvatarDot(user = u, size = avatarDp) }
                 }
@@ -1169,7 +1175,7 @@ private fun AvatarDot(user: User?, size: Dp) {
     if (user != null) {
         Box(
             modifier = Modifier
-                .size(size)
+                .requiredSize(size)
                 .clip(CircleShape)
                 .background(Color(0xFF1A1A1E))
                 .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
@@ -1184,7 +1190,7 @@ private fun AvatarDot(user: User?, size: Dp) {
     } else {
         Box(
             modifier = Modifier
-                .size(size)
+                .requiredSize(size)
                 .clip(CircleShape)
                 .background(PureWhite.copy(alpha = 0.09f))
                 .border(1.dp, PureWhite.copy(alpha = 0.16f), CircleShape)
