@@ -1128,9 +1128,9 @@ private fun ListenersWorldCarousel(
                             Box(
                                 modifier = Modifier
                                     .size(avatarDp)
-                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
                                     .clip(CircleShape)
                                     .background(Color(0xFF1A1A1E))
+                                    .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
                             ) {
                                 AsyncImage(
                                     model = u.avatarUrl,
@@ -1144,10 +1144,9 @@ private fun ListenersWorldCarousel(
                             Box(
                                 modifier = Modifier
                                     .size(avatarDp)
-                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
                                     .clip(CircleShape)
                                     .background(PureWhite.copy(alpha = 0.05f))
-                                    .border(1.dp, PureWhite.copy(alpha = 0.08f), CircleShape)
+                                    .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
                             )
                         }
                     }
