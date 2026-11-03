@@ -1090,52 +1090,64 @@ private fun ListenersWorldCarousel(
             onClick = onClick
         )
     ) {
-        if (users.isNotEmpty()) {
-            val visibleCount = minOf(4, users.size)
+        run {
+            val visibleCount = 4
             val avatarDp = 26.dp
             val stepDp = 18.dp // avatar 26 - sovrapposizione 8
             val viewportW = avatarDp + stepDp * (visibleCount - 1)
+            // Slot = ascoltatori reali; se sono ≤4 riempio i restanti con tondini grigi accennati,
+            // così c'è sempre qualcosa che scorre. (null = placeholder vuoto)
+            val slots: List<User?> = users + List((visibleCount - users.size).coerceAtLeast(0)) { null }
             val stepPx = with(LocalDensity.current) { stepDp.toPx() }
-            val loopPx = stepPx * users.size
-            // Scorrimento orizzontale continuo: la fila trasla a sinistra senza sosta e, grazie
-            // alla lista duplicata, rientra da destra in modo continuo (marquee).
-            val scroll = if (users.size > visibleCount) {
-                val transition = rememberInfiniteTransition(label = "marquee")
-                transition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 1f,
-                    animationSpec = infiniteRepeatable(
-                        tween(users.size * 1100, easing = LinearEasing),
-                        RepeatMode.Restart
-                    ),
-                    label = "scroll"
-                ).value
-            } else 0f
+            val loopPx = stepPx * slots.size
+            // Scorrimento orizzontale continuo (marquee), SEMPRE attivo: la fila trasla a
+            // sinistra senza sosta e, grazie alla lista duplicata, rientra da destra senza salti.
+            val transition = rememberInfiniteTransition(label = "marquee")
+            val scroll by transition.animateFloat(
+                initialValue = 0f,
+                targetValue = 1f,
+                animationSpec = infiniteRepeatable(
+                    tween(slots.size * 1100, easing = LinearEasing),
+                    RepeatMode.Restart
+                ),
+                label = "scroll"
+            )
             Box(
                 modifier = Modifier
                     .width(viewportW)
                     .height(avatarDp)
                     .clipToBounds()
             ) {
-                val loop = if (users.size > visibleCount) users + users else users
                 Row(
                     horizontalArrangement = Arrangement.spacedBy((-8).dp),
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.offset { IntOffset(-(scroll * loopPx).roundToInt(), 0) }
                 ) {
-                    loop.forEach { u ->
-                        Box(
-                            modifier = Modifier
-                                .size(avatarDp)
-                                .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
-                                .clip(CircleShape)
-                                .background(Color(0xFF1A1A1E))
-                        ) {
-                            AsyncImage(
-                                model = u.avatarUrl,
-                                contentDescription = u.username,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier.fillMaxSize()
+                    (slots + slots).forEach { u ->
+                        if (u != null) {
+                            Box(
+                                modifier = Modifier
+                                    .size(avatarDp)
+                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF1A1A1E))
+                            ) {
+                                AsyncImage(
+                                    model = u.avatarUrl,
+                                    contentDescription = u.username,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        } else {
+                            // Tondino grigio accennato (slot vuoto)
+                            Box(
+                                modifier = Modifier
+                                    .size(avatarDp)
+                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
+                                    .clip(CircleShape)
+                                    .background(PureWhite.copy(alpha = 0.05f))
+                                    .border(1.dp, PureWhite.copy(alpha = 0.08f), CircleShape)
                             )
                         }
                     }
