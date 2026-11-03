@@ -1097,8 +1097,9 @@ private fun ListenersWorldCarousel(
     ) {
         run {
             val visibleCount = 5
-            val avatarDp = 26.dp
-            val stepDp = 18.dp // avatar 26 - sovrapposizione 8
+            val avatarDp = 28.dp
+            val overlapDp = 8.dp
+            val stepDp = avatarDp - overlapDp // passo tra un avatar e il successivo
             val viewportW = avatarDp + stepDp * (visibleCount - 1)
             // Anello di 8 slot: se gli ascoltatori sono più di 8 ne prendo 8 a caso; se meno,
             // riempio fino a 8 con tondini grigi accennati (null). remember evita di rimescolare
@@ -1116,38 +1117,33 @@ private fun ListenersWorldCarousel(
                 initialValue = 0f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    tween(slots.size * 2300, easing = LinearEasing),
+                    tween(slots.size * 2600, easing = LinearEasing),
                     RepeatMode.Restart
                 ),
                 label = "scroll"
             )
-            // Maschere a gradiente: il centro resta nitido, i bordi sfumano. Lo strato sfocato
-            // è visibile SOLO ai bordi (blur + maschera inversa) → entrata/uscita blurrata.
-            val centerMask = Brush.horizontalGradient(
-                0f to Color.Transparent, 0.26f to Color.Black, 0.74f to Color.Black, 1f to Color.Transparent
-            )
-            val edgeMask = Brush.horizontalGradient(
-                0f to Color.Black, 0.30f to Color.Transparent, 0.70f to Color.Transparent, 1f to Color.Black
+            // Dissolvenza FISSA ai bordi: la maschera sta sul contenitore FERMO (non sulla fila
+            // che scorre), così i lati sfumano sempre in entrata/uscita senza taglio netto.
+            val edgeFade = Brush.horizontalGradient(
+                0f to Color.Transparent, 0.20f to Color.Black, 0.80f to Color.Black, 1f to Color.Transparent
             )
             Box(
                 modifier = Modifier
                     .width(viewportW)
                     .height(avatarDp)
-                    .clipToBounds()
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawContent()
+                        drawRect(edgeFade, blendMode = BlendMode.DstIn)
+                    }
             ) {
-                CarouselRow(
-                    slots = slots, scroll = scroll, loopPx = loopPx, avatarDp = avatarDp,
-                    modifier = Modifier
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .blur(3.dp)
-                        .drawWithContent { drawContent(); drawRect(edgeMask, blendMode = BlendMode.DstIn) }
-                )
-                CarouselRow(
-                    slots = slots, scroll = scroll, loopPx = loopPx, avatarDp = avatarDp,
-                    modifier = Modifier
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent { drawContent(); drawRect(centerMask, blendMode = BlendMode.DstIn) }
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(-overlapDp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.offset { IntOffset(-(scroll * loopPx).roundToInt(), 0) }
+                ) {
+                    (slots + slots).forEach { u -> AvatarDot(user = u, size = avatarDp) }
+                }
             }
         }
         Text(
@@ -1163,24 +1159,6 @@ private fun ListenersWorldCarousel(
             tint = accent.copy(alpha = 0.6f),
             modifier = Modifier.size(13.dp)
         )
-    }
-}
-
-/** Fila di avatar del carosello (duplicata per il loop ad anello), traslata di [scroll]. */
-@Composable
-private fun CarouselRow(
-    slots: List<User?>,
-    scroll: Float,
-    loopPx: Float,
-    avatarDp: Dp,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy((-8).dp),
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier.offset { IntOffset(-(scroll * loopPx).roundToInt(), 0) }
-    ) {
-        (slots + slots).forEach { u -> AvatarDot(user = u, size = avatarDp) }
     }
 }
 
