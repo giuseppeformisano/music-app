@@ -72,10 +72,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -1091,26 +1096,38 @@ private fun ListenersWorldCarousel(
         )
     ) {
         run {
-            val visibleCount = 4
+            val visibleCount = 5
             val avatarDp = 26.dp
             val stepDp = 18.dp // avatar 26 - sovrapposizione 8
             val viewportW = avatarDp + stepDp * (visibleCount - 1)
-            // Slot = ascoltatori reali; se sono ≤4 riempio i restanti con tondini grigi accennati,
-            // così c'è sempre qualcosa che scorre. (null = placeholder vuoto)
-            val slots: List<User?> = users + List((visibleCount - users.size).coerceAtLeast(0)) { null }
+            // Anello di 8 slot: se gli ascoltatori sono più di 8 ne prendo 8 a caso; se meno,
+            // riempio fino a 8 con tondini grigi accennati (null). remember evita di rimescolare
+            // a ogni ricomposizione (solo quando cambiano gli id).
+            val slots: List<User?> = remember(users.map { it.id }) {
+                val base = if (users.size > 8) users.shuffled().take(8) else users
+                base + List((8 - base.size).coerceAtLeast(0)) { null }
+            }
             val stepPx = with(LocalDensity.current) { stepDp.toPx() }
             val loopPx = stepPx * slots.size
-            // Scorrimento orizzontale continuo (marquee), SEMPRE attivo: la fila trasla a
-            // sinistra senza sosta e, grazie alla lista duplicata, rientra da destra senza salti.
+            // Scorrimento orizzontale continuo ad anello, lento: la fila trasla a sinistra e,
+            // grazie alla lista duplicata, rientra da destra senza salti.
             val transition = rememberInfiniteTransition(label = "marquee")
             val scroll by transition.animateFloat(
                 initialValue = 0f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    tween(slots.size * 1100, easing = LinearEasing),
+                    tween(slots.size * 2300, easing = LinearEasing),
                     RepeatMode.Restart
                 ),
                 label = "scroll"
+            )
+            // Maschere a gradiente: il centro resta nitido, i bordi sfumano. Lo strato sfocato
+            // è visibile SOLO ai bordi (blur + maschera inversa) → entrata/uscita blurrata.
+            val centerMask = Brush.horizontalGradient(
+                0f to Color.Transparent, 0.26f to Color.Black, 0.74f to Color.Black, 1f to Color.Transparent
+            )
+            val edgeMask = Brush.horizontalGradient(
+                0f to Color.Black, 0.30f to Color.Transparent, 0.70f to Color.Transparent, 1f to Color.Black
             )
             Box(
                 modifier = Modifier
@@ -1118,39 +1135,19 @@ private fun ListenersWorldCarousel(
                     .height(avatarDp)
                     .clipToBounds()
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy((-8).dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.offset { IntOffset(-(scroll * loopPx).roundToInt(), 0) }
-                ) {
-                    (slots + slots).forEach { u ->
-                        if (u != null) {
-                            Box(
-                                modifier = Modifier
-                                    .size(avatarDp)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF1A1A1E))
-                                    .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
-                            ) {
-                                AsyncImage(
-                                    model = u.avatarUrl,
-                                    contentDescription = u.username,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        } else {
-                            // Tondino grigio accennato (slot vuoto)
-                            Box(
-                                modifier = Modifier
-                                    .size(avatarDp)
-                                    .clip(CircleShape)
-                                    .background(PureWhite.copy(alpha = 0.05f))
-                                    .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
-                            )
-                        }
-                    }
-                }
+                CarouselRow(
+                    slots = slots, scroll = scroll, loopPx = loopPx, avatarDp = avatarDp,
+                    modifier = Modifier
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .blur(3.dp)
+                        .drawWithContent { drawContent(); drawRect(edgeMask, blendMode = BlendMode.DstIn) }
+                )
+                CarouselRow(
+                    slots = slots, scroll = scroll, loopPx = loopPx, avatarDp = avatarDp,
+                    modifier = Modifier
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent { drawContent(); drawRect(centerMask, blendMode = BlendMode.DstIn) }
+                )
             }
         }
         Text(
@@ -1165,6 +1162,53 @@ private fun ListenersWorldCarousel(
             contentDescription = null,
             tint = accent.copy(alpha = 0.6f),
             modifier = Modifier.size(13.dp)
+        )
+    }
+}
+
+/** Fila di avatar del carosello (duplicata per il loop ad anello), traslata di [scroll]. */
+@Composable
+private fun CarouselRow(
+    slots: List<User?>,
+    scroll: Float,
+    loopPx: Float,
+    avatarDp: Dp,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy((-8).dp),
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.offset { IntOffset(-(scroll * loopPx).roundToInt(), 0) }
+    ) {
+        (slots + slots).forEach { u -> AvatarDot(user = u, size = avatarDp) }
+    }
+}
+
+/** Singolo tondino del carosello: avatar reale oppure placeholder grigio accennato. */
+@Composable
+private fun AvatarDot(user: User?, size: Dp) {
+    if (user != null) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(Color(0xFF1A1A1E))
+                .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
+        ) {
+            AsyncImage(
+                model = user.avatarUrl,
+                contentDescription = user.username,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(PureWhite.copy(alpha = 0.05f))
+                .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
         )
     }
 }
