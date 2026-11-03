@@ -1117,7 +1117,7 @@ private fun ListenersWorldCarousel(
                 initialValue = 0f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    tween(8000, easing = LinearEasing),
+                    tween(4000, easing = LinearEasing),
                     RepeatMode.Restart
                 ),
                 label = "scroll"
@@ -1186,8 +1186,8 @@ private fun AvatarDot(user: User?, size: Dp) {
             modifier = Modifier
                 .size(size)
                 .clip(CircleShape)
-                .background(PureWhite.copy(alpha = 0.05f))
-                .border(1.dp, PureWhite.copy(alpha = 0.10f), CircleShape)
+                .background(PureWhite.copy(alpha = 0.09f))
+                .border(1.dp, PureWhite.copy(alpha = 0.16f), CircleShape)
         )
     }
 }
