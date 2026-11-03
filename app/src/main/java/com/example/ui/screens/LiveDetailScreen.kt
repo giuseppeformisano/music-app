@@ -358,76 +358,6 @@ fun LiveDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // CAROSELLO ASCOLTATORI — in cima a tutto
-            if (listeners.isNotEmpty()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "ascoltano",
-                        color = PureWhite.copy(alpha = 0.35f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Normal,
-                        letterSpacing = 0.3.sp
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    val visibleListeners = listeners.take(5)
-                    val extraCount = (listeners.size - 5).coerceAtLeast(0)
-                    val avatarDp = 26
-                    val stepDp = 20
-                    val totalSlots = visibleListeners.size + if (extraCount > 0) 1 else 0
-                    Box(
-                        modifier = Modifier
-                            .width((avatarDp + (totalSlots - 1) * stepDp).dp)
-                            .height(avatarDp.dp)
-                            .clickable(
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = null,
-                                onClick = { showListenersSheet = true }
-                            )
-                    ) {
-                        visibleListeners.forEachIndexed { index, u ->
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = (index * stepDp).dp)
-                                    .size(avatarDp.dp)
-                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF1A1A1E))
-                            ) {
-                                AsyncImage(
-                                    model = u.avatarUrl,
-                                    contentDescription = u.username,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        }
-                        if (extraCount > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = (visibleListeners.size * stepDp).dp)
-                                    .size(avatarDp.dp)
-                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF2A2A30)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "+$extraCount",
-                                    color = PureWhite.copy(alpha = 0.7f),
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
             // Sezione Centrale Equidistanziata: Tag, Avatar+Equalizzatori, Player Brano
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -437,19 +367,19 @@ fun LiveDetailScreen(
                     .padding(top = 36.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                // 1. HEADER: carosello ascoltatori nel mondo (centrato) sopra il badge LIVE @username
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                  val worldN = maxOf(globalCount, globalListeners.size)
-                  if (worldN > 0) {
+                // 0. CAROSELLO ASCOLTATORI NEL MONDO — elemento equidistante, sopra il badge
+                val worldN = maxOf(globalCount, globalListeners.size)
+                if (worldN > 0) {
                     ListenersWorldCarousel(
                         users = globalListeners,
                         count = worldN,
                         accent = primaryColor,
                         onClick = { onOpenGlobalListeners(track) }
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                  }
-                  Row(
+                }
+
+                // 1. HEADER: LIVE @username
+                Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
@@ -458,7 +388,7 @@ fun LiveDetailScreen(
                             indication = null,
                             onClick = { onOpenUserProfile(user) }
                         )
-                  ) {
+                ) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
@@ -485,7 +415,6 @@ fun LiveDetailScreen(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.2).sp
                     )
-                  }
                 }
 
                 // 2. ONDA AUDIO DINAMICA COLORATA (colori dall'artwork) + AVATAR AL CENTRO
