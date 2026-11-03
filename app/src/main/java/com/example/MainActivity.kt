@@ -540,9 +540,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     listeners = uiState.feedUsers.filter {
                         it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive
                     },
-                    globalListeners = uiState.feedUsers.filter {
-                        it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id
-                    }
+                    globalListeners = uiState.globalListenersRanked.map { it.first }
                 )
             } else {
                 // L'utente ha chiuso la live: chiudi il dettaglio e torna alla lista

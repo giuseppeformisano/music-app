@@ -1565,15 +1565,29 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         _uiState.update { it.copy(activeStoryUserId = user.id) }
-        refreshGlobalListenersCount(user.currentTrack)
+        loadGlobalListeners(user.currentTrack)
     }
 
-    // Conteggio "chi ascolta ora nel mondo" per il brano live mostrato (indicatore nel dettaglio live).
-    private fun refreshGlobalListenersCount(track: Track?) {
-        _uiState.update { it.copy(globalListenersCount = 0) }
+    // Prefetch "chi ascolta ora nel mondo" per il brano live mostrato: conteggio reale (per il
+    // numero) + lista ordinata per sintonia (per il carosello di avatar e per la lista al tap).
+    private fun loadGlobalListeners(track: Track?) {
+        _uiState.update {
+            it.copy(globalListenersCount = 0, globalListenersRanked = emptyList(), globalListenersTrack = track)
+        }
         val id = track?.id ?: return
+        val myId = _uiState.value.currentUser.id
         FirebaseRepository.countGlobalListeners(id) { c ->
-            _uiState.update { it.copy(globalListenersCount = c) }
+            if (_uiState.value.globalListenersTrack?.id == id) _uiState.update { it.copy(globalListenersCount = c) }
+        }
+        FirebaseRepository.fetchTasteSignature(myId) { myArtists, myGenres ->
+            FirebaseRepository.fetchGlobalListeners(id, myId, 20L) { users ->
+                val ranked = users
+                    .map { u -> u to com.example.data.MusicAffinity.score(myArtists, myGenres, u.tasteArtists, u.tasteGenres) }
+                    .sortedByDescending { it.second }
+                if (_uiState.value.globalListenersTrack?.id == id) {
+                    _uiState.update { it.copy(globalListenersRanked = ranked, globalListenersLoading = false) }
+                }
+            }
         }
     }
 
@@ -1584,7 +1598,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (currentIndex != -1 && currentIndex < allStories.size - 1) {
             val next = allStories[currentIndex + 1]
             _uiState.update { it.copy(activeStoryUserId = next.id) }
-            refreshGlobalListenersCount(next.currentTrack)
+            loadGlobalListeners(next.currentTrack)
         } else closeStory()
     }
 
@@ -1595,7 +1609,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         if (currentIndex > 0) {
             val prev = allStories[currentIndex - 1]
             _uiState.update { it.copy(activeStoryUserId = prev.id) }
-            refreshGlobalListenersCount(prev.currentTrack)
+            loadGlobalListeners(prev.currentTrack)
         }
     }
 
@@ -1938,26 +1952,13 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
 
     // Apre la lista "chi ascolta ora nel mondo", ordinata per sintonia (affinità calcolata
     // lato client sulle firme dei gusti dei pochi ascoltatori letti).
+    // Apre la lista al tap: i dati sono già prefetchati da loadGlobalListeners all'apertura
+    // della live; se per qualche motivo mancano, li ricarica.
     fun openGlobalListeners(track: Track) {
-        _uiState.update {
-            it.copy(
-                showGlobalListeners = true,
-                globalListenersTrack = track,
-                globalListenersLoading = true,
-                globalListenersRanked = emptyList()
-            )
-        }
-        val myId = _uiState.value.currentUser.id
-        FirebaseRepository.fetchTasteSignature(myId) { myArtists, myGenres ->
-            FirebaseRepository.fetchGlobalListeners(track.id, myId, 20L) { users ->
-                val ranked = users
-                    .map { u -> u to com.example.data.MusicAffinity.score(myArtists, myGenres, u.tasteArtists, u.tasteGenres) }
-                    .sortedByDescending { it.second }
-                if (_uiState.value.globalListenersTrack?.id == track.id) {
-                    _uiState.update { it.copy(globalListenersRanked = ranked, globalListenersLoading = false) }
-                }
-            }
-        }
+        val alreadyLoaded = _uiState.value.globalListenersTrack?.id == track.id &&
+            _uiState.value.globalListenersRanked.isNotEmpty()
+        _uiState.update { it.copy(showGlobalListeners = true, globalListenersLoading = !alreadyLoaded) }
+        if (!alreadyLoaded) loadGlobalListeners(track)
     }
 
     fun closeGlobalListeners() {

@@ -1,5 +1,11 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -422,86 +428,6 @@ fun LiveDetailScreen(
                 }
             }
 
-            // Chi ascolta ORA questo brano nel mondo: avatar (campione) + conteggio globale,
-            // toccabile per aprire la lista ordinata per sintonia.
-            val worldN = maxOf(globalCount, globalListeners.size)
-            if (worldN > 0) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = { onOpenGlobalListeners(track) }
-                        ),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                  if (globalListeners.isNotEmpty()) {
-                    val visibleG = globalListeners.take(6)
-                    val extraG = (globalListeners.size - 6).coerceAtLeast(0)
-                    val avDp = 22; val stepDp = 16
-                    val slots = visibleG.size + if (extraG > 0) 1 else 0
-                    Box(
-                        modifier = Modifier
-                            .width((avDp + (slots - 1) * stepDp).dp)
-                            .height(avDp.dp)
-                    ) {
-                        visibleG.forEachIndexed { idx, u ->
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = (idx * stepDp).dp)
-                                    .size(avDp.dp)
-                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF1A1A1E))
-                            ) {
-                                AsyncImage(
-                                    model = u.avatarUrl,
-                                    contentDescription = u.username,
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            }
-                        }
-                        if (extraG > 0) {
-                            Box(
-                                modifier = Modifier
-                                    .offset(x = (visibleG.size * stepDp).dp)
-                                    .size(avDp.dp)
-                                    .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
-                                    .clip(CircleShape)
-                                    .background(Color(0xFF2A2A2E)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "+$extraG",
-                                    color = PureWhite.copy(alpha = 0.7f),
-                                    fontSize = 7.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(10.dp))
-                  }
-                    Text(
-                        text = if (worldN == 1) "1 ascolta nel mondo" else "$worldN ascoltano nel mondo",
-                        color = PureWhite.copy(alpha = 0.35f),
-                        fontSize = 11.sp,
-                        letterSpacing = 0.2.sp
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Filled.ChevronRight,
-                        contentDescription = null,
-                        tint = PureWhite.copy(alpha = 0.3f),
-                        modifier = Modifier.size(14.dp)
-                    )
-                }
-            }
-
             // Sezione Centrale Equidistanziata: Tag, Avatar+Equalizzatori, Player Brano
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -511,8 +437,19 @@ fun LiveDetailScreen(
                     .padding(top = 36.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                // 1. HEADER: LIVE @username
-                Row(
+                // 1. HEADER: carosello ascoltatori nel mondo (centrato) sopra il badge LIVE @username
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                  val worldN = maxOf(globalCount, globalListeners.size)
+                  if (worldN > 0) {
+                    ListenersWorldCarousel(
+                        users = globalListeners,
+                        count = worldN,
+                        accent = primaryColor,
+                        onClick = { onOpenGlobalListeners(track) }
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                  }
+                  Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                     modifier = Modifier
@@ -521,7 +458,7 @@ fun LiveDetailScreen(
                             indication = null,
                             onClick = { onOpenUserProfile(user) }
                         )
-                ) {
+                  ) {
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
@@ -548,6 +485,7 @@ fun LiveDetailScreen(
                         fontWeight = FontWeight.Bold,
                         letterSpacing = (-0.2).sp
                     )
+                  }
                 }
 
                 // 2. ONDA AUDIO DINAMICA COLORATA (colori dall'artwork) + AVATAR AL CENTRO
@@ -1195,6 +1133,91 @@ fun LiveDetailScreen(
             onOpenUserProfile = { u -> onOpenUserProfile(u) },
             onSetAsCover = { trk -> onSetTrackAsCover(trk) }
         )
+    }
+}
+
+/**
+ * Carosello di avatar degli ascoltatori nel mondo, centrato sopra il badge LIVE.
+ * Mostra ~4 avatar sovrapposti per volta; se ce ne sono di più, la finestra scorre in
+ * automatico (slide + dissolvenza) ciclando su tutti. Sotto, il conteggio totale, toccabile.
+ */
+@Composable
+private fun ListenersWorldCarousel(
+    users: List<User>,
+    count: Int,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onClick
+        )
+    ) {
+        if (users.isNotEmpty()) {
+            val windowSize = minOf(4, users.size)
+            var start by remember(users.size) { mutableIntStateOf(0) }
+            LaunchedEffect(users.size) {
+                if (users.size > windowSize) {
+                    while (true) {
+                        delay(1900)
+                        start = (start + 1) % users.size
+                    }
+                }
+            }
+            AnimatedContent(
+                targetState = start,
+                transitionSpec = {
+                    (fadeIn(tween(500)) + slideInHorizontally(tween(500)) { it / 3 }) togetherWith
+                        (fadeOut(tween(500)) + slideOutHorizontally(tween(500)) { -it / 3 })
+                },
+                label = "listenersCarousel"
+            ) { s ->
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy((-8).dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    for (k in 0 until windowSize) {
+                        val u = users[(s + k) % users.size]
+                        Box(
+                            modifier = Modifier
+                                .size(30.dp)
+                                .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
+                                .clip(CircleShape)
+                                .background(Color(0xFF1A1A1E))
+                        ) {
+                            AsyncImage(
+                                model = u.avatarUrl,
+                                contentDescription = u.username,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = if (count == 1) "1 ascolta nel mondo" else "$count ascoltano nel mondo",
+                color = accent.copy(alpha = 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.2.sp
+            )
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                tint = accent.copy(alpha = 0.6f),
+                modifier = Modifier.size(13.dp)
+            )
+        }
     }
 }
 
