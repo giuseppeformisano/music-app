@@ -276,14 +276,27 @@ fun ProfileScreen(
                     UserStatsSection(user = user)
                 }
 
-                // 4. Blocco Live Footer — visibile solo se si segue l'utente o è il profilo proprio
-                if (canSeeContent && user.currentTrack != null) {
-                    FloatingLiveBar(
-                        track = user.currentTrack,
-                        onClick = { onOpenLiveDetail(user) },
-                        onShare = { user.currentTrack?.let { onShareTrack(it) } },
-                        modifier = Modifier.fillMaxWidth()
-                    )
+                // 4. Blocco Live Footer — visibile solo se si segue l'utente o è il profilo proprio.
+                // Entra/esce con slide verticale + fade; durante l'uscita mantiene l'ultimo brano
+                // così la barra scorre via invece di sparire di colpo quando la live finisce.
+                val liveVisible = canSeeContent && user.currentTrack != null
+                val lastLiveTrack = remember { mutableStateOf(user.currentTrack) }
+                if (user.currentTrack != null) lastLiveTrack.value = user.currentTrack
+                AnimatedVisibility(
+                    visible = liveVisible,
+                    enter = fadeIn(animationSpec = tween(260)) +
+                        slideInVertically(animationSpec = tween(320, easing = FastOutSlowInEasing)) { it },
+                    exit = fadeOut(animationSpec = tween(220)) +
+                        slideOutVertically(animationSpec = tween(280, easing = FastOutSlowInEasing)) { it }
+                ) {
+                    lastLiveTrack.value?.let { liveTrack ->
+                        FloatingLiveBar(
+                            track = liveTrack,
+                            onClick = { onOpenLiveDetail(user) },
+                            onShare = { onShareTrack(liveTrack) },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
                 }
             }
 
