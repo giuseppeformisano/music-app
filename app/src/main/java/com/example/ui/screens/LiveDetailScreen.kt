@@ -1140,7 +1140,9 @@ private fun ListenersWorldCarousel(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(-overlapDp),
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.offset { IntOffset(-(scroll * loopPx).roundToInt(), 0) }
+                    // translationX (float, draw-phase) = movimento sub-pixel fluido, senza
+                    // relayout a ogni frame e senza scatti da arrotondamento a pixel interi.
+                    modifier = Modifier.graphicsLayer { translationX = -scroll * loopPx }
                 ) {
                     (slots + slots).forEach { u -> AvatarDot(user = u, size = avatarDp) }
                 }
