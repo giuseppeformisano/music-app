@@ -1148,8 +1148,10 @@ private fun ListenersWorldCarousel(
     accent: Color,
     onClick: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+    // Tutto su UNA riga: avatar che scorrono + "N ascoltano nel mondo" + freccetta.
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.clickable(
             interactionSource = remember { MutableInteractionSource() },
             indication = null,
@@ -1183,7 +1185,7 @@ private fun ListenersWorldCarousel(
                         val u = users[(s + k) % users.size]
                         Box(
                             modifier = Modifier
-                                .size(30.dp)
+                                .size(26.dp)
                                 .border(1.5.dp, Color(0xFF0A0A0A), CircleShape)
                                 .clip(CircleShape)
                                 .background(Color(0xFF1A1A1E))
@@ -1198,26 +1200,20 @@ private fun ListenersWorldCarousel(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(6.dp))
         }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = if (count == 1) "1 ascolta nel mondo" else "$count ascoltano nel mondo",
-                color = accent.copy(alpha = 0.85f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.2.sp
-            )
-            Icon(
-                imageVector = Icons.Filled.ChevronRight,
-                contentDescription = null,
-                tint = accent.copy(alpha = 0.6f),
-                modifier = Modifier.size(13.dp)
-            )
-        }
+        Text(
+            text = if (count == 1) "1 ascolta nel mondo" else "$count ascoltano nel mondo",
+            color = accent.copy(alpha = 0.85f),
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 0.2.sp
+        )
+        Icon(
+            imageVector = Icons.Filled.ChevronRight,
+            contentDescription = null,
+            tint = accent.copy(alpha = 0.6f),
+            modifier = Modifier.size(13.dp)
+        )
     }
 }
 

@@ -17,8 +17,8 @@ android {
     applicationId = "com.aistudio.music.livefeed"
     minSdk = 24
     targetSdk = 36
-    versionCode = 319
-    versionName = "0.26.21-beta"
+    versionCode = 320
+    versionName = "0.26.22-beta"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
