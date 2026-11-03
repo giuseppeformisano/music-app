@@ -410,6 +410,36 @@ object FirebaseRepository {
     }
 
     /**
+     * Opt-out presenza globale: se false l'utente NON compare (né viene contato) tra gli
+     * ascoltatori mondiali di un brano. Campo persistente sul doc utente (default: visibile).
+     */
+    fun setGlobalVisible(userId: String, visible: Boolean) {
+        val db = firestore ?: return
+        if (userId.isBlank()) return
+        db.collection(USERS_COLLECTION).document(userId)
+            .set(mapOf("globalVisible" to visible), SetOptions.merge())
+    }
+
+    /**
+     * Conta quante persone nel MONDO stanno ascoltando ORA questo brano (live, visibili).
+     * Usa l'aggregazione count(): non legge i documenti, costa pochissimo anche con molti utenti.
+     * NB: richiede un indice composito su Firestore (presenceState, currentTrack.id, globalVisible);
+     * al primo utilizzo la console fornisce il link per crearlo.
+     */
+    fun countGlobalListeners(trackId: String, onResult: (Int) -> Unit) {
+        val db = firestore ?: return onResult(0)
+        if (trackId.isBlank()) return onResult(0)
+        db.collection(USERS_COLLECTION)
+            .whereEqualTo("presenceState", com.example.model.UserPresenceState.LIVE.value)
+            .whereEqualTo("currentTrack.id", trackId)
+            .whereEqualTo("globalVisible", true)
+            .count()
+            .get(com.google.firebase.firestore.AggregateSource.SERVER)
+            .addOnSuccessListener { onResult(it.count.toInt()) }
+            .addOnFailureListener { onResult(0) }
+    }
+
+    /**
      * "Firma dei gusti" compatta per il calcolo della sintonia: top artisti e generi espressi
      * come QUOTA del tempo totale d'ascolto (0..1), così è leggera da leggere e confrontare.
      * Va aggiornata di rado (~1 volta al giorno), non a ogni brano.

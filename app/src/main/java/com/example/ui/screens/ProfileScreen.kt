@@ -168,6 +168,8 @@ fun ProfileScreen(
     onToggleApplyCoverToFeed: (Boolean) -> Unit = {},
     liveNotificationsEnabled: Boolean = true,
     onToggleLiveNotifications: (Boolean) -> Unit = {},
+    globalPresenceVisible: Boolean = true,
+    onToggleGlobalPresence: (Boolean) -> Unit = {},
     onOpenChatList: () -> Unit = {},
     onShareTrack: (Track) -> Unit = {},
     modifier: Modifier = Modifier
@@ -365,9 +367,11 @@ fun ProfileScreen(
             SettingsDialog(
                 applyCoverToFeed = applyCoverToFeed,
                 liveNotificationsEnabled = liveNotificationsEnabled,
-                onSave = { newApplyCoverToFeed, newLiveNotifs ->
+                globalPresenceVisible = globalPresenceVisible,
+                onSave = { newApplyCoverToFeed, newLiveNotifs, newGlobalVisible ->
                     onToggleApplyCoverToFeed(newApplyCoverToFeed)
                     onToggleLiveNotifications(newLiveNotifs)
+                    onToggleGlobalPresence(newGlobalVisible)
                     showSettingsSheet = false
                 },
                 onLogout = onLogout,
@@ -1848,12 +1852,14 @@ private fun AmazonMusicBrandLogo() {
 internal fun SettingsDialog(
     applyCoverToFeed: Boolean,
     liveNotificationsEnabled: Boolean,
-    onSave: (Boolean, Boolean) -> Unit,
+    globalPresenceVisible: Boolean = true,
+    onSave: (Boolean, Boolean, Boolean) -> Unit,
     onLogout: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     var localApplyCoverToFeed by remember(applyCoverToFeed) { mutableStateOf(applyCoverToFeed) }
     var localLiveNotificationsEnabled by remember(liveNotificationsEnabled) { mutableStateOf(liveNotificationsEnabled) }
+    var localGlobalPresenceVisible by remember(globalPresenceVisible) { mutableStateOf(globalPresenceVisible) }
 
     com.example.ui.components.UtilityOverlay(onDismiss = onDismiss, swipeAnywhere = true) {
         Column(
@@ -1985,6 +1991,61 @@ internal fun SettingsDialog(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "PRIVACY",
+                    color = SubtitleGray,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { localGlobalPresenceVisible = !localGlobalPresenceVisible }
+                        )
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 16.dp)
+                    ) {
+                        Text(
+                            text = "Mostrami tra gli ascoltatori nel mondo",
+                            color = PureWhite,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Quando ascolti un brano, le altre persone possono vederti tra chi lo sta ascoltando in quel momento",
+                            color = SubtitleGray,
+                            fontSize = 13.sp,
+                            lineHeight = 17.sp
+                        )
+                    }
+
+                    Switch(
+                        checked = localGlobalPresenceVisible,
+                        onCheckedChange = { localGlobalPresenceVisible = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = PureWhite,
+                            checkedTrackColor = Color(0xFF383842),
+                            uncheckedThumbColor = SubtitleGray,
+                            uncheckedTrackColor = Color(0xFF1E1E24)
+                        )
+                    )
+                }
+
                 Spacer(modifier = Modifier.height(20.dp))
 
                 // Logout (spostato qui dall'header del profilo)
@@ -2017,7 +2078,7 @@ internal fun SettingsDialog(
 
             // Pulsante Salva modifiche coerente con Modifica Profilo
             Button(
-                onClick = { onSave(localApplyCoverToFeed, localLiveNotificationsEnabled) },
+                onClick = { onSave(localApplyCoverToFeed, localLiveNotificationsEnabled, localGlobalPresenceVisible) },
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth()

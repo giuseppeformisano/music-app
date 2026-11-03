@@ -95,7 +95,9 @@ fun TrackDetailDialog(
     onSetAsCover: ((Track) -> Unit)? = null,
     appListenersCount: Int = 0,
     myListenCount: Int = 0,
-    globalListeners: List<User> = emptyList()
+    globalListeners: List<User> = emptyList(),
+    // Conteggio globale "chi ascolta ora nel mondo" (dall'aggregazione Firestore).
+    globalCount: Int = 0
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -333,14 +335,16 @@ fun TrackDetailDialog(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Listener globali — carosello avatar chi ascolta ora
-                        if (globalListeners.isNotEmpty()) {
+                        // Chi ascolta ORA nel mondo: avatar (campione dai tuoi contatti) + conteggio globale
+                        val worldCount = maxOf(globalCount, globalListeners.size)
+                        if (worldCount > 0) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(bottom = 12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                              if (globalListeners.isNotEmpty()) {
                                 val visibleG = globalListeners.take(6)
                                 val extraG = (globalListeners.size - 6).coerceAtLeast(0)
                                 val avDp = 24; val stepDp = 18
@@ -387,8 +391,10 @@ fun TrackDetailDialog(
                                     }
                                 }
                                 Spacer(modifier = Modifier.width(10.dp))
+                              }
                                 Text(
-                                    text = "ascoltano ora",
+                                    text = if (worldCount == 1) "1 in ascolto ora"
+                                           else "$worldCount in ascolto ora nel mondo",
                                     color = PureWhite.copy(alpha = 0.4f),
                                     fontSize = 11.sp,
                                     letterSpacing = 0.2.sp

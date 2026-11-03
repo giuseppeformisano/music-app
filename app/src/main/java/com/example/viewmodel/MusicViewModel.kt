@@ -101,7 +101,11 @@ data class MusicUiState(
     val dailySharesUsed: Int = 0,
     val showShareLimitSheet: Boolean = false,
     val appListenersForTrack: Int = 0,
-    val myListenCountForTrack: Int = 0
+    val myListenCountForTrack: Int = 0,
+    // Quante persone nel mondo ascoltano ORA il brano aperto nel dettaglio (conteggio globale).
+    val globalListenersCount: Int = 0,
+    // Opt-out: se false non comparo tra gli ascoltatori globali (default: visibile).
+    val globalPresenceVisible: Boolean = true
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -252,11 +256,12 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val userSettingsPrefs = appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
         val initialApplyCover = userSettingsPrefs.getBoolean("apply_cover_to_feed", false)
         val initialLiveNotifs = userSettingsPrefs.getBoolean("live_notifications_enabled", true)
+        val initialGlobalVisible = userSettingsPrefs.getBoolean("global_presence_visible", true)
         // Changelog: mostralo una sola volta dopo un aggiornamento (non al primissimo avvio).
         val lastChangelogCode = userSettingsPrefs.getInt("last_changelog_code", 0)
         val showChangelog = BuildConfig.VERSION_CODE > lastChangelogCode
         val dailyUsed = loadDailyShareCount()
-        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs, showChangelog = showChangelog, dailySharesUsed = dailyUsed) }
+        _uiState.update { it.copy(applyCoverToFeed = initialApplyCover, liveNotificationsEnabled = initialLiveNotifs, globalPresenceVisible = initialGlobalVisible, showChangelog = showChangelog, dailySharesUsed = dailyUsed) }
 
         // Avvia il watcher del brano corrente per il contatore ascolti personale
         viewModelScope.launch {
@@ -304,6 +309,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 startConversationsListener(initialUser.id)
                 syncDailyShareFromFirestore(initialUser.id)
                 updateTasteSignatureIfDue(initialUser.id)
+                FirebaseRepository.setGlobalVisible(initialUser.id, initialGlobalVisible)
                 if (spotifyConnected) startSpotifyPolling()
             }
         }
@@ -383,6 +389,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
                 startConversationsListener(loggedUser.id)
                 syncDailyShareFromFirestore(loggedUser.id)
                 updateTasteSignatureIfDue(loggedUser.id)
+                FirebaseRepository.setGlobalVisible(loggedUser.id, _uiState.value.globalPresenceVisible)
                 if (spotifyConnected) startSpotifyPolling()
             }.onFailure { error ->
                 _uiState.update {
@@ -1903,9 +1910,25 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 selectedTrackDetail = Pair(track, user),
                 appListenersForTrack = appListeners,
-                myListenCountForTrack = myListenCount
+                myListenCountForTrack = myListenCount,
+                globalListenersCount = 0
             )
         }
+        // Conteggio globale "chi ascolta ora nel mondo" (aggregazione, on-demand all'apertura).
+        val trackId = track.id
+        FirebaseRepository.countGlobalListeners(trackId) { count ->
+            if (_uiState.value.selectedTrackDetail?.first?.id == trackId) {
+                _uiState.update { it.copy(globalListenersCount = count) }
+            }
+        }
+    }
+
+    // Opt-out presenza globale: persiste la scelta e la riflette subito sul doc Firestore.
+    fun setGlobalPresenceVisible(visible: Boolean) {
+        appContext.getSharedPreferences("user_settings", Context.MODE_PRIVATE)
+            .edit().putBoolean("global_presence_visible", visible).apply()
+        _uiState.update { it.copy(globalPresenceVisible = visible) }
+        FirebaseRepository.setGlobalVisible(_uiState.value.currentUser.id, visible)
     }
 
     fun closeTrackInspector() { _uiState.update { it.copy(selectedTrackDetail = null) } }

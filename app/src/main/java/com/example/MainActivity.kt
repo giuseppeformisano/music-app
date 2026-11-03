@@ -380,6 +380,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                         liveNotificationsEnabled = uiState.liveNotificationsEnabled,
                         onToggleApplyCoverToFeed = { viewModel.setApplyCoverToFeed(it) },
                         onToggleLiveNotifications = { viewModel.setLiveNotificationsEnabled(it) },
+                        globalPresenceVisible = uiState.globalPresenceVisible,
+                        onToggleGlobalPresence = { viewModel.setGlobalPresenceVisible(it) },
                         isNotificationListenerEnabled = uiState.isNotificationListenerEnabled,
                         onEnableNotificationListener = { viewModel.openNotificationListenerSettings(context) },
                         dailySharesUsed = uiState.dailySharesUsed
@@ -461,6 +463,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onToggleApplyCoverToFeed = { viewModel.setApplyCoverToFeed(it) },
                     liveNotificationsEnabled = uiState.liveNotificationsEnabled,
                     onToggleLiveNotifications = { viewModel.setLiveNotificationsEnabled(it) },
+                    globalPresenceVisible = uiState.globalPresenceVisible,
+                    onToggleGlobalPresence = { viewModel.setGlobalPresenceVisible(it) },
                     onOpenChatList = { viewModel.openChatList() }
                 )
             }
@@ -644,7 +648,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                 myListenCount = uiState.myListenCountForTrack,
                 globalListeners = uiState.feedUsers.filter { u ->
                     u.currentTrack?.id == track.id
-                }
+                },
+                globalCount = uiState.globalListenersCount
             )
         }
 

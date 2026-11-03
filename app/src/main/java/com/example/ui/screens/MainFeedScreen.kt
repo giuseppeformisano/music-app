@@ -165,6 +165,8 @@ fun MainFeedScreen(
     liveNotificationsEnabled: Boolean = true,
     onToggleApplyCoverToFeed: (Boolean) -> Unit = {},
     onToggleLiveNotifications: (Boolean) -> Unit = {},
+    globalPresenceVisible: Boolean = true,
+    onToggleGlobalPresence: (Boolean) -> Unit = {},
     isNotificationListenerEnabled: Boolean = true,
     onEnableNotificationListener: () -> Unit = {},
     dailySharesUsed: Int = 0,
@@ -413,9 +415,11 @@ fun MainFeedScreen(
             SettingsDialog(
                 applyCoverToFeed = applyCoverToFeed,
                 liveNotificationsEnabled = liveNotificationsEnabled,
-                onSave = { newApplyCoverToFeed, newLiveNotifs ->
+                globalPresenceVisible = globalPresenceVisible,
+                onSave = { newApplyCoverToFeed, newLiveNotifs, newGlobalVisible ->
                     onToggleApplyCoverToFeed(newApplyCoverToFeed)
                     onToggleLiveNotifications(newLiveNotifs)
+                    onToggleGlobalPresence(newGlobalVisible)
                     showSettingsSheet = false
                 },
                 onDismiss = { showSettingsSheet = false }
