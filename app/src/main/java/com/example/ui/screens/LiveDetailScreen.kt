@@ -37,6 +37,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cast
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.DirectionsCar
@@ -140,6 +141,9 @@ fun LiveDetailScreen(
     onSetTrackAsCover: (Track) -> Unit = {},
     onShareToFeed: (Track) -> Unit = {},
     onHeart: () -> Unit = {},
+    // Conteggio globale "chi ascolta ora nel mondo" + tap → lista per sintonia.
+    globalCount: Int = 0,
+    onOpenGlobalListeners: (Track) -> Unit = {},
     listeners: List<User> = emptyList(),
     globalListeners: List<User> = emptyList(),
     modifier: Modifier = Modifier
@@ -418,14 +422,23 @@ fun LiveDetailScreen(
                 }
             }
 
-            // Listener globali (tutti nell'app che ascoltano lo stesso brano)
-            if (globalListeners.isNotEmpty()) {
+            // Chi ascolta ORA questo brano nel mondo: avatar (campione) + conteggio globale,
+            // toccabile per aprire la lista ordinata per sintonia.
+            val worldN = maxOf(globalCount, globalListeners.size)
+            if (worldN > 0) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 8.dp),
+                        .padding(top = 8.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { onOpenGlobalListeners(track) }
+                        ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                  if (globalListeners.isNotEmpty()) {
                     val visibleG = globalListeners.take(6)
                     val extraG = (globalListeners.size - 6).coerceAtLeast(0)
                     val avDp = 22; val stepDp = 16
@@ -472,11 +485,19 @@ fun LiveDetailScreen(
                         }
                     }
                     Spacer(modifier = Modifier.width(10.dp))
+                  }
                     Text(
-                        text = "ascoltano questo brano",
+                        text = if (worldN == 1) "1 ascolta nel mondo" else "$worldN ascoltano nel mondo",
                         color = PureWhite.copy(alpha = 0.35f),
                         fontSize = 11.sp,
                         letterSpacing = 0.2.sp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(
+                        imageVector = Icons.Filled.ChevronRight,
+                        contentDescription = null,
+                        tint = PureWhite.copy(alpha = 0.3f),
+                        modifier = Modifier.size(14.dp)
                     )
                 }
             }

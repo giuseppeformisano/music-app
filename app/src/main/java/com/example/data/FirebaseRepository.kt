@@ -440,6 +440,41 @@ object FirebaseRepository {
     }
 
     /**
+     * Legge fino a [limit] ascoltatori live (visibili) di questo brano, escluso se stessi.
+     * Ogni User include la firma dei gusti → l'affinità si calcola lato client su questi pochi.
+     * Stesso indice composito di countGlobalListeners.
+     */
+    fun fetchGlobalListeners(trackId: String, excludeUserId: String, limit: Long, onResult: (List<User>) -> Unit) {
+        val db = firestore ?: return onResult(emptyList())
+        if (trackId.isBlank()) return onResult(emptyList())
+        db.collection(USERS_COLLECTION)
+            .whereEqualTo("presenceState", com.example.model.UserPresenceState.LIVE.value)
+            .whereEqualTo("currentTrack.id", trackId)
+            .whereEqualTo("globalVisible", true)
+            .limit(limit)
+            .get()
+            .addOnSuccessListener { snap ->
+                val users = snap.documents
+                    .mapNotNull { d -> mapDocToUser(d.data, d.id) }
+                    .filter { it.id != excludeUserId }
+                onResult(users)
+            }
+            .addOnFailureListener { onResult(emptyList()) }
+    }
+
+    /** Legge la firma dei gusti di un utente (artisti, generi) per il calcolo della sintonia. */
+    fun fetchTasteSignature(userId: String, onResult: (Map<String, Double>, Map<String, Double>) -> Unit) {
+        val db = firestore ?: return onResult(emptyMap(), emptyMap())
+        if (userId.isBlank()) return onResult(emptyMap(), emptyMap())
+        db.collection(USERS_COLLECTION).document(userId).get()
+            .addOnSuccessListener { doc ->
+                val sig = doc.get("tasteSignature") as? Map<String, Any?>
+                onResult(doubleMap(sig?.get("artists")), doubleMap(sig?.get("genres")))
+            }
+            .addOnFailureListener { onResult(emptyMap(), emptyMap()) }
+    }
+
+    /**
      * "Firma dei gusti" compatta per il calcolo della sintonia: top artisti e generi espressi
      * come QUOTA del tempo totale d'ascolto (0..1), così è leggera da leggere e confrontare.
      * Va aggiornata di rado (~1 volta al giorno), non a ogni brano.
@@ -1027,6 +1062,10 @@ object FirebaseRepository {
         val liveNotificationsEnabled = data["liveNotificationsEnabled"] as? Boolean ?: true
         val liveHearts = (data["liveHearts"] as? Number)?.toInt() ?: 0
 
+        val tasteSig = data["tasteSignature"] as? Map<String, Any?>
+        val tasteArtists = doubleMap(tasteSig?.get("artists"))
+        val tasteGenres = doubleMap(tasteSig?.get("genres"))
+
         return User(
             id = id,
             name = name,
@@ -1054,8 +1093,21 @@ object FirebaseRepository {
             pendingRequests = pendingRequests,
             sentRequestIds = sentRequestIds,
             liveNotificationsEnabled = liveNotificationsEnabled,
-            liveHearts = liveHearts
+            liveHearts = liveHearts,
+            tasteArtists = tasteArtists,
+            tasteGenres = tasteGenres
         )
+    }
+
+    private fun doubleMap(raw: Any?): Map<String, Double> {
+        val m = raw as? Map<*, *> ?: return emptyMap()
+        val out = HashMap<String, Double>()
+        for ((k, v) in m) {
+            val key = k as? String ?: continue
+            val d = (v as? Number)?.toDouble() ?: continue
+            out[key] = d
+        }
+        return out
     }
 
     private fun mapToTrack(map: Map<String, Any?>): Track? {

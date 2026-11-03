@@ -52,7 +52,10 @@ data class User(
     val pendingRequests: List<FriendRequest> = emptyList(),
     val sentRequestIds: List<String> = emptyList(),
     val liveNotificationsEnabled: Boolean = true,
-    val liveHearts: Int = 0
+    val liveHearts: Int = 0,
+    // Firma dei gusti per la sintonia: quota di tempo per artista/genere (0..1). Vedi MusicAffinity.
+    val tasteArtists: Map<String, Double> = emptyMap(),
+    val tasteGenres: Map<String, Double> = emptyMap()
 ) {
     val isOnline: Boolean
         get() = presenceState == UserPresenceState.ONLINE || presenceState == UserPresenceState.LIVE

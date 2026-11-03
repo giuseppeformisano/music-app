@@ -105,7 +105,12 @@ data class MusicUiState(
     // Quante persone nel mondo ascoltano ORA il brano aperto nel dettaglio (conteggio globale).
     val globalListenersCount: Int = 0,
     // Opt-out: se false non comparo tra gli ascoltatori globali (default: visibile).
-    val globalPresenceVisible: Boolean = true
+    val globalPresenceVisible: Boolean = true,
+    // Lista "chi ascolta ora nel mondo" ordinata per sintonia (utente + punteggio 0..100).
+    val showGlobalListeners: Boolean = false,
+    val globalListenersTrack: Track? = null,
+    val globalListenersLoading: Boolean = false,
+    val globalListenersRanked: List<Pair<User, Int>> = emptyList()
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -1560,22 +1565,38 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         _uiState.update { it.copy(activeStoryUserId = user.id) }
+        refreshGlobalListenersCount(user.currentTrack)
+    }
+
+    // Conteggio "chi ascolta ora nel mondo" per il brano live mostrato (indicatore nel dettaglio live).
+    private fun refreshGlobalListenersCount(track: Track?) {
+        _uiState.update { it.copy(globalListenersCount = 0) }
+        val id = track?.id ?: return
+        FirebaseRepository.countGlobalListeners(id) { c ->
+            _uiState.update { it.copy(globalListenersCount = c) }
+        }
     }
 
     fun nextStory() {
         val allStories = getStoriesList()
         val currentId = _uiState.value.activeStoryUserId ?: return
         val currentIndex = allStories.indexOfFirst { it.id == currentId }
-        if (currentIndex != -1 && currentIndex < allStories.size - 1)
-            _uiState.update { it.copy(activeStoryUserId = allStories[currentIndex + 1].id) }
-        else closeStory()
+        if (currentIndex != -1 && currentIndex < allStories.size - 1) {
+            val next = allStories[currentIndex + 1]
+            _uiState.update { it.copy(activeStoryUserId = next.id) }
+            refreshGlobalListenersCount(next.currentTrack)
+        } else closeStory()
     }
 
     fun previousStory() {
         val allStories = getStoriesList()
         val currentId = _uiState.value.activeStoryUserId ?: return
         val currentIndex = allStories.indexOfFirst { it.id == currentId }
-        if (currentIndex > 0) _uiState.update { it.copy(activeStoryUserId = allStories[currentIndex - 1].id) }
+        if (currentIndex > 0) {
+            val prev = allStories[currentIndex - 1]
+            _uiState.update { it.copy(activeStoryUserId = prev.id) }
+            refreshGlobalListenersCount(prev.currentTrack)
+        }
     }
 
     fun closeStory() { _uiState.update { it.copy(activeStoryUserId = null) } }
@@ -1910,17 +1931,37 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 selectedTrackDetail = Pair(track, user),
                 appListenersForTrack = appListeners,
-                myListenCountForTrack = myListenCount,
-                globalListenersCount = 0
+                myListenCountForTrack = myListenCount
             )
         }
-        // Conteggio globale "chi ascolta ora nel mondo" (aggregazione, on-demand all'apertura).
-        val trackId = track.id
-        FirebaseRepository.countGlobalListeners(trackId) { count ->
-            if (_uiState.value.selectedTrackDetail?.first?.id == trackId) {
-                _uiState.update { it.copy(globalListenersCount = count) }
+    }
+
+    // Apre la lista "chi ascolta ora nel mondo", ordinata per sintonia (affinità calcolata
+    // lato client sulle firme dei gusti dei pochi ascoltatori letti).
+    fun openGlobalListeners(track: Track) {
+        _uiState.update {
+            it.copy(
+                showGlobalListeners = true,
+                globalListenersTrack = track,
+                globalListenersLoading = true,
+                globalListenersRanked = emptyList()
+            )
+        }
+        val myId = _uiState.value.currentUser.id
+        FirebaseRepository.fetchTasteSignature(myId) { myArtists, myGenres ->
+            FirebaseRepository.fetchGlobalListeners(track.id, myId, 20L) { users ->
+                val ranked = users
+                    .map { u -> u to com.example.data.MusicAffinity.score(myArtists, myGenres, u.tasteArtists, u.tasteGenres) }
+                    .sortedByDescending { it.second }
+                if (_uiState.value.globalListenersTrack?.id == track.id) {
+                    _uiState.update { it.copy(globalListenersRanked = ranked, globalListenersLoading = false) }
+                }
             }
         }
+    }
+
+    fun closeGlobalListeners() {
+        _uiState.update { it.copy(showGlobalListeners = false) }
     }
 
     // Opt-out presenza globale: persiste la scelta e la riflette subito sul doc Firestore.

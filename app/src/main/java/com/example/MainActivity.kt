@@ -301,10 +301,12 @@ fun MusicApp(viewModel: MusicViewModel) {
                 uiState.activeChatUser != null ||
                 uiState.isChatListOpen ||
                 uiState.selectedTrackDetail != null ||
+                uiState.showGlobalListeners ||
                 uiState.showPeopleSearch ||
                 uiState.showNotifications
     ) {
         when {
+            uiState.showGlobalListeners -> viewModel.closeGlobalListeners()
             uiState.showPeopleSearch -> viewModel.closePeopleSearch()
             uiState.showNotifications -> viewModel.closeNotifications()
             uiState.selectedTrackDetail != null -> viewModel.closeTrackInspector()
@@ -532,6 +534,8 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onSendPulse = { u, samples, audio -> viewModel.sendPulse(u.id, samples, audio) },
                     onSetTrackAsCover = { trk -> viewModel.setTrackAsCover(trk) },
                     onShareToFeed = { trk -> viewModel.shareTrack(trk) },
+                    globalCount = uiState.globalListenersCount,
+                    onOpenGlobalListeners = { trk -> viewModel.openGlobalListeners(trk) },
                     onHeart = { viewModel.heartLive(liveUser.id) },
                     listeners = uiState.feedUsers.filter {
                         it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive
@@ -648,9 +652,25 @@ fun MusicApp(viewModel: MusicViewModel) {
                 myListenCount = uiState.myListenCountForTrack,
                 globalListeners = uiState.feedUsers.filter { u ->
                     u.currentTrack?.id == track.id
-                },
-                globalCount = uiState.globalListenersCount
+                }
             )
+        }
+
+        // Dialog: lista "chi ascolta ora nel mondo" ordinata per sintonia
+        if (uiState.showGlobalListeners) {
+            uiState.globalListenersTrack?.let { trk ->
+                com.example.ui.components.GlobalListenersDialog(
+                    track = trk,
+                    ranked = uiState.globalListenersRanked,
+                    loading = uiState.globalListenersLoading,
+                    followingIds = uiState.currentUser.followingIds.toSet(),
+                    sentRequestIds = uiState.sentRequestIds,
+                    onOpenProfile = { user -> viewModel.openProfile(user) },
+                    onSendFollow = { user -> viewModel.sendFollowRequest(user) },
+                    onOpenChat = { user -> viewModel.openChat(user) },
+                    onDismiss = { viewModel.closeGlobalListeners() }
+                )
+            }
         }
 
         // Dialog: Pulse ricevuto (dedicata, swipe-down)
