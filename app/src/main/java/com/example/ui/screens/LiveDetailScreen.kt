@@ -4,9 +4,13 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.EnterExitState
+import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -160,11 +164,15 @@ fun LiveDetailScreen(
     // Conteggio globale "chi ascolta ora nel mondo" + tap → lista per sintonia.
     globalCount: Int = 0,
     onOpenGlobalListeners: (Track) -> Unit = {},
+    onLiveTrackChanged: (Track) -> Unit = {},
     listeners: List<User> = emptyList(),
     globalListeners: List<User> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val track = user.currentTrack ?: return
+    // Quando il brano live cambia (anche per auto-avanzamento di Spotify), ri-interroga il
+    // conteggio "ascoltatori nel mondo" così il badge resta reale e si aggiorna da solo.
+    LaunchedEffect(track.id) { onLiveTrackChanged(track) }
     // Dettaglio brano (identico al dettaglio feed) aperto toccando la copertina dell'album
     var showTrackDetail by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -383,6 +391,7 @@ fun LiveDetailScreen(
                     ListenersWorldCarousel(
                         users = globalListeners,
                         count = worldN,
+                        trackId = track.id,
                         accent = primaryColor,
                         onClick = { onOpenGlobalListeners(track) }
                     )
@@ -1084,6 +1093,7 @@ fun LiveDetailScreen(
 private fun ListenersWorldCarousel(
     users: List<User>,
     count: Int,
+    trackId: String,
     accent: Color,
     onClick: () -> Unit
 ) {
@@ -1153,13 +1163,33 @@ private fun ListenersWorldCarousel(
                 }
             }
         }
-        Text(
-            text = if (count == 1) "1 ascolta nel mondo" else "$count ascoltano nel mondo",
-            color = accent.copy(alpha = 0.85f),
-            fontSize = 11.sp,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 0.2.sp
-        )
+        // Variante B: al cambio brano il badge esce verso l'alto sfocando e il nuovo conteggio
+        // entra dal basso mettendosi a fuoco (slide verticale + blur). trackId come chiave così
+        // la transizione parte a ogni cambio traccia, anche se il numero coincide.
+        AnimatedContent(
+            targetState = trackId,
+            transitionSpec = {
+                (slideInVertically(tween(300, easing = FastOutSlowInEasing)) { it / 2 } + fadeIn(tween(300)))
+                    .togetherWith(
+                        slideOutVertically(tween(260, easing = FastOutSlowInEasing)) { -it / 2 } + fadeOut(tween(220))
+                    )
+            },
+            label = "worldCountSwap"
+        ) { _ ->
+            val blurRadius by transition.animateDp(
+                transitionSpec = { tween(280, easing = FastOutSlowInEasing) },
+                label = "worldCountBlur"
+            ) { state -> if (state == EnterExitState.Visible) 0.dp else 7.dp }
+            Text(
+                text = if (count == 1) "1 ascolta nel mondo" else "$count ascoltano nel mondo",
+                color = accent.copy(alpha = 0.85f),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.2.sp,
+                maxLines = 1,
+                modifier = Modifier.blur(blurRadius)
+            )
+        }
         Icon(
             imageVector = Icons.Filled.ChevronRight,
             contentDescription = null,

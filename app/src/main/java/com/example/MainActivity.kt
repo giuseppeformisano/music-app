@@ -536,6 +536,7 @@ fun MusicApp(viewModel: MusicViewModel) {
                     onShareToFeed = { trk -> viewModel.shareTrack(trk) },
                     globalCount = uiState.globalListenersCount,
                     onOpenGlobalListeners = { trk -> viewModel.openGlobalListeners(trk) },
+                    onLiveTrackChanged = { trk -> viewModel.onLiveTrackChanged(trk) },
                     onHeart = { viewModel.heartLive(liveUser.id) },
                     listeners = uiState.feedUsers.filter {
                         it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive

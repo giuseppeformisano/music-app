@@ -1591,6 +1591,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // Il brano live è cambiato mentre il dettaglio è aperto (es. auto-avanzamento Spotify):
+    // ricarica conteggio e lista "ascoltatori nel mondo" per il nuovo brano. No-op se è lo stesso.
+    fun onLiveTrackChanged(track: Track?) {
+        val id = track?.id ?: return
+        if (_uiState.value.globalListenersTrack?.id == id) return
+        loadGlobalListeners(track)
+    }
+
     fun nextStory() {
         val allStories = getStoriesList()
         val currentId = _uiState.value.activeStoryUserId ?: return
