@@ -1119,7 +1119,7 @@ private fun ListenersWorldCarousel(
                 initialValue = 0f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    tween(7000, easing = LinearEasing),
+                    tween(9000, easing = LinearEasing),
                     RepeatMode.Restart
                 ),
                 label = "scroll"
@@ -1188,12 +1188,14 @@ private fun AvatarDot(user: User?, size: Dp) {
             )
         }
     } else {
+        // Placeholder PIENO (opaco): così il pallino di sinistra sparisce sotto quello di
+        // destra senza vedere attraverso (niente effetto "incrocio" trasparente).
         Box(
             modifier = Modifier
                 .requiredSize(size)
                 .clip(CircleShape)
-                .background(PureWhite.copy(alpha = 0.09f))
-                .border(1.dp, PureWhite.copy(alpha = 0.16f), CircleShape)
+                .background(Color(0xFF3A3A42))
+                .border(1.dp, PureWhite.copy(alpha = 0.12f), CircleShape)
         )
     }
 }
