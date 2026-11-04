@@ -105,6 +105,9 @@ fun LiveStoryScreen(
         modifier = modifier
             .fillMaxSize()
             .background(BlackPitch)
+            // SWIPE-TO-DISMISS TEMPORANEAMENTE DISATTIVATO (lo swipe giù non chiude la storia).
+            // Per riattivarlo, ripristina il blocco commentato qui sotto.
+            /*
             .pointerInput(activeUser.id) {
                 detectDragGestures { _, dragAmount ->
                     // Swipe down to dismiss
@@ -113,6 +116,7 @@ fun LiveStoryScreen(
                     }
                 }
             }
+            */
             .testTag("live_story_screen")
     ) {
         // Immersive Blurred Background Artwork

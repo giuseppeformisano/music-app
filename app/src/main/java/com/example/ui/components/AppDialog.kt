@@ -232,6 +232,10 @@ private fun ImmersiveScaffold(
         // è abbastanza veloce nella direzione giusta, chiude; altrimenti torna a riposo con spring.
         fun settle(velocity: Float = 0f) {
             scope.launch {
+                // SWIPE-TO-DISMISS TEMPORANEAMENTE DISATTIVATO: lo swipe su/giù non chiude più
+                // la finestra (rimbalza e basta). Per riattivarlo, ripristina il blocco commentato.
+                val shouldDismiss = false
+                /*
                 val shouldDismiss = when {
                     offsetY.value > DISMISS_THRESHOLD -> true
                     offsetY.value < -DISMISS_THRESHOLD -> true
@@ -239,6 +243,7 @@ private fun ImmersiveScaffold(
                     offsetY.value < 0f && velocity < -1200f -> true
                     else -> false
                 }
+                */
                 if (shouldDismiss) onDismiss()
                 else offsetY.animateTo(
                     0f,
@@ -470,6 +475,10 @@ private fun ImmersiveOverlayScaffold(
 
     fun settle(velocity: Float = 0f) {
         scope.launch {
+            // SWIPE-TO-DISMISS TEMPORANEAMENTE DISATTIVATO: lo swipe su/giù non chiude più
+            // la finestra (rimbalza e basta). Per riattivarlo, ripristina il blocco commentato.
+            val shouldDismiss = false
+            /*
             val shouldDismiss = when {
                 offsetY.value > DISMISS_THRESHOLD -> true
                 offsetY.value < -DISMISS_THRESHOLD -> true
@@ -477,6 +486,7 @@ private fun ImmersiveOverlayScaffold(
                 offsetY.value < 0f && velocity < -1200f -> true
                 else -> false
             }
+            */
             if (shouldDismiss) onDismiss()
             else offsetY.animateTo(
                 0f,
