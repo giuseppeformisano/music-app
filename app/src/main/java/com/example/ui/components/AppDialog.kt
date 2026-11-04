@@ -2,7 +2,7 @@
 
 package com.example.ui.components
 
-import androidx.compose.foundation.gestures.LocalOverscrollConfiguration
+import androidx.compose.foundation.LocalOverscrollConfiguration
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
