@@ -1,5 +1,8 @@
+@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+
 package com.example.ui.components
 
+import androidx.compose.foundation.gestures.LocalOverscrollConfiguration
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
@@ -433,6 +436,9 @@ private fun ImmersiveScaffold(
             ) {
                 val columnScope = this
                 CompositionLocalProvider(
+                    // Niente overscroll stretch/glow: le liste non si allungano né rimbalzano
+                    // verticalmente quando le tiri oltre il bordo.
+                    LocalOverscrollConfiguration provides null,
                     LocalDialogDragHandle provides dragHandle,
                     LocalDialogScrollConnection provides if (dismissible) childConnection else null,
                     LocalPanelDismiss provides onDismiss
@@ -654,6 +660,8 @@ private fun ImmersiveOverlayScaffold(
         ) {
             val columnScope = this
             CompositionLocalProvider(
+                // Niente overscroll stretch/glow (liste che si allungano/rimbalzano).
+                LocalOverscrollConfiguration provides null,
                 LocalDialogDragHandle provides dragHandle,
                 LocalDialogScrollConnection provides if (dismissible) childConnection else null,
                 LocalPanelDismiss provides { dismissWithExit() }
