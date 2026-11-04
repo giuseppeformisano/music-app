@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -1848,7 +1849,9 @@ private fun LiveUserMinimalItem(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(62.dp),
+                // altezza MINIMA, non fissa: con caratteri di sistema ingranditi la riga
+                // cresce quanto basta invece di tagliare la terza riga (username).
+                .heightIn(min = 62.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             val availableWidthPx = constraints.maxWidth.toFloat()
@@ -2194,7 +2197,9 @@ private fun SupernovaEntranceItem(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(62.dp)
+                // altezza MINIMA, non fissa (vedi LiveUserMinimalItem): niente taglio con
+                // font di sistema ingranditi. clipToBounds resta per l'animazione orizzontale.
+                .heightIn(min = 62.dp)
                 .clipToBounds(),
             contentAlignment = Alignment.CenterStart
         ) {
