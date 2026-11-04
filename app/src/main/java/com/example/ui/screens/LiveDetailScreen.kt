@@ -1194,8 +1194,8 @@ private fun AvatarDot(user: User?, size: Dp) {
             modifier = Modifier
                 .requiredSize(size)
                 .clip(CircleShape)
-                .background(Color(0xFF3A3A42))
-                .border(1.dp, PureWhite.copy(alpha = 0.12f), CircleShape)
+                .background(Color(0xFF8A8A95))
+                .border(1.dp, PureWhite.copy(alpha = 0.14f), CircleShape)
         )
     }
 }
