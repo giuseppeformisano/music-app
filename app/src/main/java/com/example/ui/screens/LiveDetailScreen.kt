@@ -385,9 +385,11 @@ fun LiveDetailScreen(
                     .padding(top = 12.dp, bottom = 12.dp),
                 verticalArrangement = Arrangement.SpaceEvenly
             ) {
-                // 0. CAROSELLO ASCOLTATORI NEL MONDO — elemento equidistante, sopra il badge
+                // 0. CAROSELLO ASCOLTATORI NEL MONDO — un po' più in alto rispetto alla
+                // posizione equidistante (offset negativo: sposta solo visivamente).
                 val worldN = maxOf(globalCount, globalListeners.size)
                 if (worldN > 0) {
+                    Box(modifier = Modifier.offset(y = (-14).dp)) {
                     ListenersWorldCarousel(
                         users = globalListeners,
                         count = worldN,
@@ -395,6 +397,7 @@ fun LiveDetailScreen(
                         accent = primaryColor,
                         onClick = { onOpenGlobalListeners(track) }
                     )
+                    }
                 }
 
                 // 1. HEADER: LIVE @username
