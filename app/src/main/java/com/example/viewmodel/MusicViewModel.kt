@@ -110,7 +110,9 @@ data class MusicUiState(
     val showGlobalListeners: Boolean = false,
     val globalListenersTrack: Track? = null,
     val globalListenersLoading: Boolean = false,
-    val globalListenersRanked: List<Pair<User, Int>> = emptyList()
+    val globalListenersRanked: List<Pair<User, Int>> = emptyList(),
+    // Cuori già messi: chiave "broadcasterId:trackId" → un solo cuore per brano per persona.
+    val heartedLiveKeys: Set<String> = emptySet()
 )
 
 class MusicViewModel(app: Application) : AndroidViewModel(app) {
@@ -1793,7 +1795,14 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         )
     }
 
-    fun heartLive(userId: String) {
+    // Un solo cuore per brano per ogni persona: se ho già messo il cuore su QUESTO brano di
+    // QUESTO utente, non incremento più. Niente auto-cuore sui propri brani.
+    fun heartLive(userId: String, trackId: String?) {
+        if (userId.isBlank() || trackId.isNullOrBlank()) return
+        if (userId == _uiState.value.currentUser.id) return
+        val key = "$userId:$trackId"
+        if (_uiState.value.heartedLiveKeys.contains(key)) return
+        _uiState.update { it.copy(heartedLiveKeys = it.heartedLiveKeys + key) }
         FirebaseRepository.incrementLiveHearts(userId)
     }
 

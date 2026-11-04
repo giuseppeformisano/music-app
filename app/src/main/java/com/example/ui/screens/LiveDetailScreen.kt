@@ -56,7 +56,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.filled.Headphones
-import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Smartphone
@@ -161,6 +161,8 @@ fun LiveDetailScreen(
     onSetTrackAsCover: (Track) -> Unit = {},
     onShareToFeed: (Track) -> Unit = {},
     onHeart: () -> Unit = {},
+    isSelf: Boolean = false,
+    alreadyHearted: Boolean = false,
     // Conteggio globale "chi ascolta ora nel mondo" + tap → lista per sintonia.
     globalCount: Int = 0,
     onOpenGlobalListeners: (Track) -> Unit = {},
@@ -733,6 +735,8 @@ fun LiveDetailScreen(
             }
 
             // Counter + cuore SOTTO la pill (stessa riga orizzontale, centrati verticalmente)
+            // Solo sul dettaglio live ALTRUI: non si chatta né si mettono cuori a se stessi.
+            if (!isSelf) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -824,10 +828,12 @@ fun LiveDetailScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Un solo cuore per brano: se già messo resta pieno e non è più toccabile.
+                        val heartFilled = heartTapped || alreadyHearted
                         Icon(
-                            imageVector = if (heartTapped) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
+                            imageVector = if (heartFilled) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
                             contentDescription = "Cuore",
-                            tint = if (heartTapped) Color(0xFFE8315A) else PureWhite,
+                            tint = if (heartFilled) Color(0xFFE8315A) else PureWhite,
                             modifier = Modifier
                                 .size(28.dp)
                                 // graphicsLayer non sposta il layout, evita il rimpicciolimento della pill
@@ -836,6 +842,7 @@ fun LiveDetailScreen(
                                     scaleY = heartScale.value
                                 }
                                 .clickable(
+                                    enabled = !alreadyHearted,
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
                                     onClick = {
@@ -860,6 +867,7 @@ fun LiveDetailScreen(
                     }
                 }
             }
+            } // fine if (!isSelf)
         }
 
         // Particelle reazioni
@@ -1065,7 +1073,7 @@ fun LiveDetailScreen(
                 .size(44.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.IosShare,
+                imageVector = Icons.Default.Share,
                 contentDescription = "Condividi nel mio feed",
                 tint = PureWhite,
                 modifier = Modifier.size(22.dp)

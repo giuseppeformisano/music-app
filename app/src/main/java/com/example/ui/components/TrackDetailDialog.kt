@@ -30,7 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.IosShare
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Wallpaper
 import kotlinx.coroutines.delay
@@ -442,7 +442,9 @@ fun TrackDetailDialog(
                     }
                 }
 
-                // 4. REACTION CUSTOM (Diamond, Soundwave, Star) E INPUT TESTUALE COMMENTO GIÙ A TUTTO
+                // 4. INPUT TESTUALE COMMENTO GIÙ A TUTTO — solo sui brani ALTRUI:
+                // non si commenta/chatta con se stessi sul proprio dettaglio feed.
+                if (!isMyTrack) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -533,6 +535,7 @@ fun TrackDetailDialog(
                         }
                     }
                 }
+                } // fine if (!isMyTrack)
             }
 
             // Freccia indietro in alto a sinistra — stessa posizione degli altri pannelli.
@@ -588,7 +591,7 @@ fun TrackDetailDialog(
                         .size(44.dp)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.IosShare,
+                        imageVector = Icons.Default.Share,
                         contentDescription = "Condividi nel mio feed",
                         tint = PureWhite,
                         modifier = Modifier.size(22.dp)

@@ -537,7 +537,11 @@ fun MusicApp(viewModel: MusicViewModel) {
                     globalCount = uiState.globalListenersCount,
                     onOpenGlobalListeners = { trk -> viewModel.openGlobalListeners(trk) },
                     onLiveTrackChanged = { trk -> viewModel.onLiveTrackChanged(trk) },
-                    onHeart = { viewModel.heartLive(liveUser.id) },
+                    isSelf = liveUser.id == uiState.currentUser.id,
+                    alreadyHearted = uiState.heartedLiveKeys.contains(
+                        "${liveUser.id}:${liveUser.currentTrack?.id}"
+                    ),
+                    onHeart = { viewModel.heartLive(liveUser.id, liveUser.currentTrack?.id) },
                     listeners = uiState.feedUsers.filter {
                         it.currentTrack?.id == liveUser.currentTrack?.id && it.id != liveUser.id && it.isActuallyLive
                     },
