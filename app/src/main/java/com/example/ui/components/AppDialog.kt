@@ -168,6 +168,11 @@ private fun PanelBackdrop(offset: () -> Float, fraction: () -> Float) {
 private const val DISMISS_DISTANCE = 620f
 private const val DISMISS_THRESHOLD = 240f
 
+// SWIPE-TO-DISMISS TEMPORANEAMENTE DISATTIVATO: quando false il pannello NON si muove affatto
+// con lo swipe verticale (nessuna traslazione), si chiude solo con la freccia o il back di
+// sistema. Rimetti true per riattivare lo swipe up/down.
+private const val SWIPE_DISMISS_ENABLED = false
+
 /**
  * Contenitore comune per TUTTE le dialog:
  * - backdrop a tutto schermo, GIÀ fullscreen dietro status bar/barra di navigazione
@@ -256,7 +261,7 @@ private fun ImmersiveScaffold(
         // Stato drag condiviso: applica resistenza rubber-band oltre 200px per un feel fisico.
         val draggableState = rememberDraggableState { rawDelta ->
             val damped = if (kotlin.math.abs(offsetY.value) > 200f) rawDelta * 0.4f else rawDelta
-            scope.launch { offsetY.snapTo(offsetY.value + damped) }
+            if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(offsetY.value + damped) }
         }
 
         // nested: applicato sull'outer Box. Gestisce SOLO lo snap-back quando il dialog
@@ -269,13 +274,13 @@ private fun ImmersiveScaffold(
                     if (offsetY.value > 0f && dy < 0f) {
                         val target = (offsetY.value + dy).coerceAtLeast(0f)
                         val consumed = target - offsetY.value
-                        scope.launch { offsetY.snapTo(target) }
+                        if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                         return Offset(0f, consumed)
                     }
                     if (offsetY.value < 0f && dy > 0f) {
                         val target = (offsetY.value + dy).coerceAtMost(0f)
                         val consumed = target - offsetY.value
-                        scope.launch { offsetY.snapTo(target) }
+                        if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                         return Offset(0f, consumed)
                     }
                     return Offset.Zero
@@ -286,7 +291,7 @@ private fun ImmersiveScaffold(
                     // childConnection. Le dialog con childConnection consumano prima di qui.
                     if (swipeAnywhere && available.y != 0f) {
                         val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
-                        scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                        if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(offsetY.value + damped) }
                         return Offset(0f, available.y)
                     }
                     return Offset.Zero
@@ -323,13 +328,13 @@ private fun ImmersiveScaffold(
                     if (offsetY.value > 0f && dy < 0f) {
                         val target = (offsetY.value + dy).coerceAtLeast(0f)
                         val consumed = target - offsetY.value
-                        scope.launch { offsetY.snapTo(target) }
+                        if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                         return Offset(0f, consumed)
                     }
                     if (offsetY.value < 0f && dy > 0f) {
                         val target = (offsetY.value + dy).coerceAtMost(0f)
                         val consumed = target - offsetY.value
-                        scope.launch { offsetY.snapTo(target) }
+                        if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                         return Offset(0f, consumed)
                     }
                     return Offset.Zero
@@ -348,7 +353,7 @@ private fun ImmersiveScaffold(
                         if (kotlin.math.abs(overscrollAccum) < DEAD_ZONE) return Offset.Zero
                     }
                     val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
-                    scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                    if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(offsetY.value + damped) }
                     return Offset(0f, available.y)
                 }
 
@@ -498,7 +503,7 @@ private fun ImmersiveOverlayScaffold(
 
     val draggableState = rememberDraggableState { rawDelta ->
         val damped = if (kotlin.math.abs(offsetY.value) > 200f) rawDelta * 0.4f else rawDelta
-        scope.launch { offsetY.snapTo(offsetY.value + damped) }
+        if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(offsetY.value + damped) }
     }
 
     val nested = remember(swipeAnywhere) {
@@ -508,13 +513,13 @@ private fun ImmersiveOverlayScaffold(
                 if (offsetY.value > 0f && dy < 0f) {
                     val target = (offsetY.value + dy).coerceAtLeast(0f)
                     val consumed = target - offsetY.value
-                    scope.launch { offsetY.snapTo(target) }
+                    if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                     return Offset(0f, consumed)
                 }
                 if (offsetY.value < 0f && dy > 0f) {
                     val target = (offsetY.value + dy).coerceAtMost(0f)
                     val consumed = target - offsetY.value
-                    scope.launch { offsetY.snapTo(target) }
+                    if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                     return Offset(0f, consumed)
                 }
                 return Offset.Zero
@@ -522,7 +527,7 @@ private fun ImmersiveOverlayScaffold(
             override fun onPostScroll(consumed: Offset, available: Offset, source: androidx.compose.ui.input.nestedscroll.NestedScrollSource): Offset {
                 if (swipeAnywhere && available.y != 0f) {
                     val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
-                    scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                    if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(offsetY.value + damped) }
                     return Offset(0f, available.y)
                 }
                 return Offset.Zero
@@ -547,13 +552,13 @@ private fun ImmersiveOverlayScaffold(
                 if (offsetY.value > 0f && dy < 0f) {
                     val target = (offsetY.value + dy).coerceAtLeast(0f)
                     val consumed = target - offsetY.value
-                    scope.launch { offsetY.snapTo(target) }
+                    if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                     return Offset(0f, consumed)
                 }
                 if (offsetY.value < 0f && dy > 0f) {
                     val target = (offsetY.value + dy).coerceAtMost(0f)
                     val consumed = target - offsetY.value
-                    scope.launch { offsetY.snapTo(target) }
+                    if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(target) }
                     return Offset(0f, consumed)
                 }
                 return Offset.Zero
@@ -569,7 +574,7 @@ private fun ImmersiveOverlayScaffold(
                     if (kotlin.math.abs(overscrollAccum) < DEAD_ZONE) return Offset.Zero
                 }
                 val damped = if (kotlin.math.abs(offsetY.value) > 200f) available.y * 0.4f else available.y
-                scope.launch { offsetY.snapTo(offsetY.value + damped) }
+                if (SWIPE_DISMISS_ENABLED) scope.launch { offsetY.snapTo(offsetY.value + damped) }
                 return Offset(0f, available.y)
             }
             override suspend fun onPreFling(available: Velocity): Velocity {
