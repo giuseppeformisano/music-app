@@ -1100,8 +1100,8 @@ private fun ListenersWorldCarousel(
         run {
             val visibleCount = 5
             val avatarDp = 32.dp
-            val overlapDp = 8.dp
-            val stepDp = avatarDp - overlapDp // passo tra un avatar e il successivo (24dp)
+            val overlapDp = 6.dp // sovrapposizione lieve
+            val stepDp = avatarDp - overlapDp // passo tra un avatar e il successivo (26dp)
             val viewportW = avatarDp + stepDp * (visibleCount - 1)
             // Anello di 8 slot: se gli ascoltatori sono più di 8 ne prendo 8 a caso; se meno,
             // riempio fino a 8 con tondini grigi accennati (null). remember evita di rimescolare
@@ -1119,7 +1119,7 @@ private fun ListenersWorldCarousel(
                 initialValue = 0f,
                 targetValue = 1f,
                 animationSpec = infiniteRepeatable(
-                    tween(4000, easing = LinearEasing),
+                    tween(7000, easing = LinearEasing),
                     RepeatMode.Restart
                 ),
                 label = "scroll"
