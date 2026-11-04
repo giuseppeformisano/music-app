@@ -14,6 +14,11 @@ object SpotifyWebApiRepository {
     private const val TAG = "SpotifyWebApi"
     private val client = OkHttpClient()
 
+    // Il genere non esiste per-brano su Spotify: lo si ricava dai generi dell'ARTISTA
+    // (GET /v1/artists/{id}). Cache per id: il genere di un artista non cambia, così
+    // non interroghiamo l'API ad ogni heartbeat ma una sola volta per artista.
+    private val artistGenreCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
     /**
      * Esito distinto per non azzerare la live su errori transitori:
      * - Playing: brano in riproduzione
@@ -49,14 +54,14 @@ object SpotifyWebApiRepository {
             authError(r2.code)?.let { return@withContext PlaybackResult.Unknown(it) }
             if (r2.code == 204) return@withContext PlaybackResult.NotPlaying
             if (r2.code in 200..299 && r2.body != null) {
-                parsePlayback(r2.body)?.let { return@withContext it }
+                parsePlayback(r2.body, token)?.let { return@withContext it }
             }
 
             // Passo 2 - Fallback: currently-playing (senza info device)
             val r1 = get("https://api.spotify.com/v1/me/player/currently-playing", token)
             authError(r1.code)?.let { return@withContext PlaybackResult.Unknown(it) }
             if (r1.code != 204 && r1.code in 200..299 && r1.body != null) {
-                parsePlayback(r1.body)?.let { return@withContext it }
+                parsePlayback(r1.body, token)?.let { return@withContext it }
             }
 
             // 204 su entrambi → davvero nulla in play
@@ -74,8 +79,8 @@ object SpotifyWebApiRepository {
         else -> null
     }
 
-    private fun parsePlayback(body: String): PlaybackResult? {
-        val track = parseTrack(body) ?: return null
+    private fun parsePlayback(body: String, token: String): PlaybackResult? {
+        val track = parseTrack(body, token) ?: return null
         val obj = JSONObject(body)
         val progressMs = obj.optLong("progress_ms", 0L)
         // In pausa resta in live: Paused mantiene l'utente live, esce solo con 204
@@ -83,13 +88,15 @@ object SpotifyWebApiRepository {
                else PlaybackResult.Paused(track, progressMs)
     }
 
-    private fun parseTrack(json: String): Track? {
+    private fun parseTrack(json: String, token: String): Track? {
         return try {
             val obj = JSONObject(json)
             // NB: niente check su is_playing qui — lo gestisce parsePlayback (Playing/Paused)
             val item = obj.optJSONObject("item") ?: return null
             val title = item.optString("name").takeIf { it.isNotEmpty() } ?: return null
-            val rawArtist = item.optJSONArray("artists")?.optJSONObject(0)?.optString("name") ?: return null
+            val artistObj = item.optJSONArray("artists")?.optJSONObject(0) ?: return null
+            val rawArtist = artistObj.optString("name").takeIf { it.isNotEmpty() } ?: return null
+            val artistId = artistObj.optString("id")
             val artist = sanitizeContext(rawArtist)
             val album = item.optJSONObject("album")
             val albumName = album?.optString("name") ?: ""
@@ -109,7 +116,8 @@ object SpotifyWebApiRepository {
                 durationText = formatDuration(durationMs),
                 durationMs = durationMs,
                 accentColorHex = 0xFF1DB954L,
-                genre = "",
+                // Genere reale ricavato dall'artista (cache). Vuoto se Spotify non lo espone.
+                genre = fetchArtistGenre(artistId, token),
                 releaseYear = "",
                 source = "spotify",
                 deviceType = deviceType,
@@ -118,6 +126,30 @@ object SpotifyWebApiRepository {
         } catch (e: Exception) {
             Log.e(TAG, "parseTrack error: ${e.message}")
             null
+        }
+    }
+
+    // Genere dell'artista da GET /v1/artists/{id} (campo genres[]). Spotify non dà il genere
+    // del brano, solo dell'artista. Prende il PRIMO genere (il più rappresentativo), Title-case,
+    // e lo mette in cache per id così non richiama l'API ad ogni heartbeat. "" se assente o errore
+    // (meglio vuoto che un placeholder: un genere vuoto non viene conteggiato nella firma gusti).
+    private fun fetchArtistGenre(artistId: String?, token: String): String {
+        if (artistId.isNullOrBlank()) return ""
+        artistGenreCache[artistId]?.let { return it }
+        return try {
+            val r = get("https://api.spotify.com/v1/artists/$artistId", token)
+            if (r.code in 200..299 && r.body != null) {
+                val genres = JSONObject(r.body).optJSONArray("genres")
+                val primary = if (genres != null && genres.length() > 0) genres.optString(0) else ""
+                val nice = primary.trim().split(" ")
+                    .filter { it.isNotBlank() }
+                    .joinToString(" ") { w -> w.replaceFirstChar { it.uppercase() } }
+                if (nice.isNotBlank()) artistGenreCache[artistId] = nice
+                nice
+            } else ""
+        } catch (e: Exception) {
+            Log.e(TAG, "fetchArtistGenre error: ${e.message}")
+            ""
         }
     }
 
