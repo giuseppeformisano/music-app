@@ -109,14 +109,25 @@ jobs:
       # (Rimuovibile quando tutti sono passati a release.)
       - name: Migrazione — spingi la release anche su latest-debug
         if: ${{ (inputs.build_type || 'release') == 'release' }}
+        # Best-effort: è solo per le vecchie installazioni debug. Se GitHub risponde 500
+        # (transitorio) non deve far fallire tutta la build: la release principale è già
+        # pubblicata su latest-release.
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/release/app-release.apk app-debug.apk
           gh release delete latest-debug --yes --cleanup-tag 2>/dev/null || true
-          gh release create latest-debug \
-            --prerelease \
-            --title "Latest debug build" \
-            --notes "Migrazione automatica a release: ${{ github.sha }}" \
-            app-debug.apk \
-            version.json
+          # Piccola attesa dopo la cancellazione del tag + retry: evita il 500 transitorio
+          # che GitHub restituisce se si ricrea la release troppo in fretta.
+          sleep 5
+          for i in 1 2 3; do
+            gh release create latest-debug \
+              --prerelease \
+              --title "Latest debug build" \
+              --notes "Migrazione automatica a release: ${{ github.sha }}" \
+              app-debug.apk \
+              version.json && break
+            echo "Tentativo $i fallito, riprovo tra 10s..."
+            sleep 10
+          done
