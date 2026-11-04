@@ -390,7 +390,8 @@ private fun ImmersiveScaffold(
         // onPostScroll riceve il delta residuo non consumato e muove la dialog.
         // Per le LazyColumn CON contenuto, onPreScroll/onPostScroll gestiscono
         // il dismiss quando la lista raggiunge i propri estremi.
-        val swipeAnywhereModifier: Modifier = if (dismissible && swipeAnywhere) {
+        // SWIPE_DISMISS_ENABLED=false → nessun gesto di drag verticale (header/area/nested).
+        val swipeAnywhereModifier: Modifier = if (dismissible && swipeAnywhere && SWIPE_DISMISS_ENABLED) {
             Modifier.draggable(
                 state = draggableState,
                 orientation = Orientation.Vertical,
@@ -399,13 +400,13 @@ private fun ImmersiveScaffold(
         } else Modifier
 
         val boxModifier = when {
-            dismissible -> Modifier.fillMaxSize().nestedScroll(nested)
+            dismissible && SWIPE_DISMISS_ENABLED -> Modifier.fillMaxSize().nestedScroll(nested)
             else -> Modifier.fillMaxSize()
         }
 
         // Handle esposto ai contenuti: le dialog con scroll interno lo attaccano al proprio
         // header (titolo ± barra di ricerca). Fuori dai casi chiudibili è un no-op.
-        val dragHandle: Modifier = if (dismissible)
+        val dragHandle: Modifier = if (dismissible && SWIPE_DISMISS_ENABLED)
             Modifier.draggable(
                 state = draggableState,
                 orientation = Orientation.Vertical,
@@ -606,7 +607,9 @@ private fun ImmersiveOverlayScaffold(
         }
     }
 
-    val swipeAnywhereModifier: Modifier = if (dismissible && swipeAnywhere) {
+    // SWIPE_DISMISS_ENABLED=false → nessun gesto di drag verticale: niente draggable su
+    // header/area, niente nestedScroll che intercetta. Le finestre non si muovono proprio.
+    val swipeAnywhereModifier: Modifier = if (dismissible && swipeAnywhere && SWIPE_DISMISS_ENABLED) {
         Modifier.draggable(
             state = draggableState,
             orientation = Orientation.Vertical,
@@ -615,11 +618,11 @@ private fun ImmersiveOverlayScaffold(
     } else Modifier
 
     val boxModifier = when {
-        dismissible -> Modifier.fillMaxSize().nestedScroll(nested)
+        dismissible && SWIPE_DISMISS_ENABLED -> Modifier.fillMaxSize().nestedScroll(nested)
         else -> Modifier.fillMaxSize()
     }
 
-    val dragHandle: Modifier = if (dismissible)
+    val dragHandle: Modifier = if (dismissible && SWIPE_DISMISS_ENABLED)
         Modifier.draggable(
             state = draggableState,
             orientation = Orientation.Vertical,
