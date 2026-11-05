@@ -8,14 +8,11 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -59,7 +56,6 @@ fun FloatingLiveBar(
         modifier = modifier
             .fillMaxWidth()
             .background(BlackPitch.copy(alpha = 0.9f))
-            .windowInsetsPadding(WindowInsets.safeDrawing)
             .padding(horizontal = 12.dp, vertical = 12.dp)
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically

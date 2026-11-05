@@ -37,7 +37,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -740,17 +739,13 @@ fun LiveDetailScreen(
             // riserviamo solo i ~56dp del pulsante chiuso, così su risoluzioni basse il
             // bordo inferiore non finisce tagliato fuori dallo spazio disponibile.
             // (Il ventaglio aperto può uscire dal limite: è temporaneo e sopra l'input.)
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
-                    .clipToBounds(),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .height(56.dp),
+                contentAlignment = Alignment.TopCenter
             ) {
-                com.example.ui.components.ListenOnPill(
-                    track = track,
-                    modifier = Modifier.requiredHeight(160.dp)
-                )
+                com.example.ui.components.ListenOnPill(track = track)
             }
             Spacer(modifier = Modifier.height(10.dp))
 
