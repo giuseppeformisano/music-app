@@ -294,6 +294,22 @@ fun LiveDetailScreen(
         label = "hintBlink"
     )
 
+    // Badge "LIVE": colore FISSO (rosso live) svincolato dalla palette della copertina,
+    // altrimenti con artwork chiari/scuri il riquadro diventava illeggibile.
+    // Pulsazione leggera (scala + alone) per evidenziare che la diretta è attiva.
+    val liveBadgeRed = Color(0xFFFF2D55)
+    val liveBadgeTransition = rememberInfiniteTransition(label = "liveBadge")
+    val liveBadgeScale by liveBadgeTransition.animateFloat(
+        initialValue = 1f, targetValue = 1.06f,
+        animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "liveBadgeScale"
+    )
+    val liveBadgeGlow by liveBadgeTransition.animateFloat(
+        initialValue = 0.78f, targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(1100, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "liveBadgeGlow"
+    )
+
     LaunchedEffect(pulseRecording) {
         if (!pulseRecording) return@LaunchedEffect
         val recorder = com.example.data.PulseRecorder()
@@ -416,7 +432,6 @@ fun LiveDetailScreen(
                         users = globalListeners,
                         count = worldN,
                         trackId = track.id,
-                        accent = primaryColor,
                         onClick = { onOpenGlobalListeners(track) }
                     )
                     }
@@ -435,15 +450,26 @@ fun LiveDetailScreen(
                 ) {
                     Box(
                         modifier = Modifier
+                            .graphicsLayer {
+                                scaleX = liveBadgeScale
+                                scaleY = liveBadgeScale
+                                alpha = liveBadgeGlow
+                            }
+                            .shadow(
+                                elevation = (2f + 6f * liveBadgeGlow).dp,
+                                shape = RoundedCornerShape(6.dp),
+                                ambientColor = liveBadgeRed.copy(alpha = 0.55f),
+                                spotColor = liveBadgeRed.copy(alpha = 0.80f)
+                            )
                             .clip(RoundedCornerShape(6.dp))
-                            .background(primaryColor.copy(alpha = 0.25f))
-                            .border(0.8.dp, primaryColor, RoundedCornerShape(6.dp))
+                            .background(liveBadgeRed.copy(alpha = 0.22f))
+                            .border(0.8.dp, liveBadgeRed, RoundedCornerShape(6.dp))
                             .padding(horizontal = 7.dp, vertical = 3.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = "LIVE",
-                            color = primaryColor,
+                            color = PureWhite,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
                             letterSpacing = 0.8.sp
@@ -1142,7 +1168,6 @@ private fun ListenersWorldCarousel(
     users: List<User>,
     count: Int,
     trackId: String,
-    accent: Color,
     onClick: () -> Unit
 ) {
     // Tutto su UNA riga: avatar che scorrono + "N ascoltano nel mondo" + freccetta.
@@ -1230,7 +1255,7 @@ private fun ListenersWorldCarousel(
             ) { state -> if (state == EnterExitState.Visible) 0.dp else 7.dp }
             Text(
                 text = if (count == 1) "1 ascolta nel mondo" else "$count ascoltano nel mondo",
-                color = accent.copy(alpha = 0.85f),
+                color = PureWhite.copy(alpha = 0.92f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
                 letterSpacing = 0.2.sp,
@@ -1241,7 +1266,7 @@ private fun ListenersWorldCarousel(
         Icon(
             imageVector = Icons.Filled.ChevronRight,
             contentDescription = null,
-            tint = accent.copy(alpha = 0.6f),
+            tint = PureWhite.copy(alpha = 0.65f),
             modifier = Modifier.size(13.dp)
         )
     }
