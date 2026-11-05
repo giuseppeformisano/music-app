@@ -477,7 +477,8 @@ fun LiveDetailScreen(
                     )
 
                     // Anelli pulsanti (idle) che invitano a premere l'avatar
-                    if (!pulseRecording) {
+                    // (solo sulla live degli amici: sulla propria live il Pulse non esiste)
+                    if (!isSelf && !pulseRecording) {
                         Box(
                             modifier = Modifier
                                 .size(180.dp)
@@ -516,16 +517,18 @@ fun LiveDetailScreen(
                             .clip(CircleShape)
                             .background(Color(0xFF141418))
                             // Tocca/tieni premuto la foto per INCIDERE un Pulse (5s). Il profilo
-                            // si apre dal @username in alto.
-                            .pointerInput(user.id) {
-                                awaitEachGesture {
-                                    awaitFirstDown(requireUnconsumed = false)
-                                    pulsePressed.value = true
-                                    if (!pulseRecording) pulseRecording = true
-                                    waitForUpOrCancellation()
-                                    pulsePressed.value = false
+                            // si apre dal @username in alto. Disattivato sulla propria live.
+                            .then(
+                                if (isSelf) Modifier else Modifier.pointerInput(user.id) {
+                                    awaitEachGesture {
+                                        awaitFirstDown(requireUnconsumed = false)
+                                        pulsePressed.value = true
+                                        if (!pulseRecording) pulseRecording = true
+                                        waitForUpOrCancellation()
+                                        pulsePressed.value = false
+                                    }
                                 }
-                            },
+                            ),
                         contentAlignment = Alignment.Center
                     ) {
                         AsyncImage(
@@ -541,7 +544,7 @@ fun LiveDetailScreen(
                     }
 
                     // Onda circolare di registrazione Pulse (visibile solo mentre incidi)
-                    if (pulseRecording) {
+                    if (!isSelf && pulseRecording) {
                         com.example.ui.components.PulseCircleWave(
                             intensity = pulseIntensity,
                             accent = pulseAccent,
@@ -550,36 +553,39 @@ fun LiveDetailScreen(
                     }
 
                     // Hint "HOLD TO PULSE" — sotto l'avatar, nella stessa area wave
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .offset { IntOffset(0, 86.dp.roundToPx()) }
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
+                    // (solo sulla live degli amici)
+                    if (!isSelf) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .offset { IntOffset(0, 86.dp.roundToPx()) }
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(1.dp)
-                                    .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
-                            )
-                            Spacer(modifier = Modifier.width(7.dp))
-                            Text(
-                                text = "HOLD TO PULSE",
-                                color = pulseAccent.copy(alpha = if (pulseRecording) 0.20f else hintBlink),
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp
-                            )
-                            Spacer(modifier = Modifier.width(7.dp))
-                            Box(
-                                modifier = Modifier
-                                    .width(20.dp)
-                                    .height(1.dp)
-                                    .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(20.dp)
+                                        .height(1.dp)
+                                        .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
+                                )
+                                Spacer(modifier = Modifier.width(7.dp))
+                                Text(
+                                    text = "HOLD TO PULSE",
+                                    color = pulseAccent.copy(alpha = if (pulseRecording) 0.20f else hintBlink),
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 2.sp
+                                )
+                                Spacer(modifier = Modifier.width(7.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .width(20.dp)
+                                        .height(1.dp)
+                                        .background(pulseAccent.copy(alpha = if (pulseRecording) 0.12f else hintBlink * 0.5f))
+                                )
+                            }
                         }
                     }
                 }

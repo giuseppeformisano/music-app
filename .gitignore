@@ -66,3 +66,6 @@ htmlcov/
 *.tar.bz2
 *.tar.xz
 *.tar.zst
+# Firebase admin service account (segreto)
+scripts/serviceAccountKey.json
+scripts/node_modules/
