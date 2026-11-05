@@ -26,6 +26,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -68,6 +69,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -86,6 +89,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -348,10 +352,31 @@ fun LiveDetailScreen(
     val totalFormatted = String.format("%d:%02d", totalSeconds / 60, totalSeconds % 60)
     val progressFraction = (elapsedSeconds.toFloat() / totalSeconds.toFloat()).coerceIn(0f, 1f)
 
+    // ADATTAMENTO RISOLUZIONI BASSE: su schermi con altezza dp ridotta (es. 720p compatti,
+    // dispositivi piccoli o foldable chiusi) il contenuto verticale del dettaglio live non
+    // sta e la parte sotto — pill "ascolta su", input e cuore — viene tagliata. Invece di
+    // lasciar tagliare, scala proporzionalmente l'intera composizione (header, onda/avatar,
+    // player, pill e input) fino a farla stare per intero. Sopra ~600dp di altezza utile
+    // la scala resta 1: comportamento identico a prima sui dispositivi più grandi.
+    // Scala di adattamento calcolata sull'altezza reale del Box root (in px): è la stessa
+    // unità in cui sono definite le quote .dp della schermata, quindi il confronto è diretto.
+    var rootHeightPx by remember(track.id) { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    val fitScale = if (rootHeightPx <= 0) 1f else liveDetailFitScale(rootHeightPx, density.density)
+    val scaledDensity = if (fitScale >= 1f) density else Density(
+        density = density.density * fitScale,
+        fontScale = density.fontScale // testo leggibile: si assottigliano solo le quote fisse
+    )
+    val contentScale = if (fitScale >= 1f) Modifier else Modifier.graphicsLayer {
+        scaleX = fitScale; scaleY = fitScale
+    }
+    CompositionLocalProvider(LocalDensity provides scaledDensity) {
     com.example.ui.components.TrackOverlay(coverUrl = track.coverUrl, onDismiss = onClose, swipeAnywhere = true) {
       Box(
         modifier = Modifier
             .fillMaxSize()
+            .onSizeChanged { rootHeightPx = it.height }
+            .then(contentScale)
             .testTag("live_detail_fullscreen")
     ) {
         Box(
@@ -708,13 +733,24 @@ fun LiveDetailScreen(
                 }
             }
 
-            // Pill "ascolta su" — apri il brano su altra piattaforma
-            com.example.ui.components.ListenOnPill(
-                track = track,
+            // Pill "ascolta su" — apri il brano su altra piattaforma. Il Box della pill è
+            // alto 160dp per ospitare il ventaglio (visibile solo da espanso): qui ne
+            // riserviamo solo i ~56dp del pulsante chiuso, così su risoluzioni basse il
+            // bordo inferiore non finisce tagliato fuori dallo spazio disponibile.
+            // (Il ventaglio aperto può uscire dal limite: è temporaneo e sopra l'input.)
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-            )
+                    .height(56.dp)
+                    .clipToBounds(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                com.example.ui.components.ListenOnPill(
+                    track = track,
+                    modifier = Modifier.requiredHeight(160.dp)
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
 
             // INPUT + CUORE — GIÙ A TUTTO
             val heartScale = remember { Animatable(1f) }
