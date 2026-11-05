@@ -67,6 +67,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import com.example.ui.components.FloatingLiveBar
 import androidx.compose.material3.Text
 import androidx.compose.ui.res.painterResource
 import com.example.R
