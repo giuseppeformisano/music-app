@@ -70,8 +70,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -90,7 +88,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -364,14 +361,11 @@ fun LiveDetailScreen(
     var rootHeightPx by remember(track.id) { mutableIntStateOf(0) }
     val density = LocalDensity.current
     val fitScale = if (rootHeightPx <= 0) 1f else liveDetailFitScale(rootHeightPx, density.density)
-    val scaledDensity = if (fitScale >= 1f) density else Density(
-        density = density.density * fitScale,
-        fontScale = density.fontScale // testo leggibile: si assottigliano solo le quote fisse
-    )
     val contentScale = if (fitScale >= 1f) Modifier else Modifier.graphicsLayer {
-        scaleX = fitScale; scaleY = fitScale
+        scaleX = fitScale
+        scaleY = fitScale
+        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0f)
     }
-    CompositionLocalProvider(LocalDensity provides scaledDensity) {
     com.example.ui.components.TrackOverlay(coverUrl = track.coverUrl, onDismiss = onClose, swipeAnywhere = true) {
       Box(
         modifier = Modifier
@@ -739,14 +733,7 @@ fun LiveDetailScreen(
             // riserviamo solo i ~56dp del pulsante chiuso, così su risoluzioni basse il
             // bordo inferiore non finisce tagliato fuori dallo spazio disponibile.
             // (Il ventaglio aperto può uscire dal limite: è temporaneo e sopra l'input.)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                contentAlignment = Alignment.TopCenter
-            ) {
-                com.example.ui.components.ListenOnPill(track = track)
-            }
+            com.example.ui.components.ListenOnPill(track = track)
             Spacer(modifier = Modifier.height(10.dp))
 
             // INPUT + CUORE — GIÙ A TUTTO
@@ -1126,7 +1113,6 @@ fun LiveDetailScreen(
             onSetAsCover = { trk -> onSetTrackAsCover(trk) }
         )
     }
-    } // fine CompositionLocalProvider
 }
 
 /**
