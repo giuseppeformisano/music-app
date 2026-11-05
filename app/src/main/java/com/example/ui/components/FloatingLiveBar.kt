@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.calculateStart
-import androidx.compose.foundation.layout.calculateEnd
-import androidx.compose.foundation.layout.calculateBottom
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateBottomPadding
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -27,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,17 +61,18 @@ fun FloatingLiveBar(
 ) {
     // Use WindowInsets for safe area padding to prevent cutting off
     val windowInsets = WindowInsets.safeDrawing.asPaddingValues()
-    
+    val layoutDirection = LocalLayoutDirection.current
+
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(BlackPitch.copy(alpha = 0.9f))
             // Adaptive padding for different screen sizes and safe areas
             .padding(
-                start = maxOf(12.dp, windowInsets.calculateStart()),
-                end = maxOf(12.dp, windowInsets.calculateEnd()),
+                start = maxOf(12.dp, windowInsets.calculateStartPadding(layoutDirection)),
+                end = maxOf(12.dp, windowInsets.calculateEndPadding(layoutDirection)),
                 top = 12.dp,
-                bottom = maxOf(12.dp, windowInsets.calculateBottom())
+                bottom = maxOf(12.dp, windowInsets.calculateBottomPadding())
             )
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically
