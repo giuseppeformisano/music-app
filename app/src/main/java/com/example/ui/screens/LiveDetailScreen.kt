@@ -37,7 +37,9 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -1129,6 +1131,18 @@ fun LiveDetailScreen(
             onSetAsCover = { trk -> onSetTrackAsCover(trk) }
         )
     }
+    } // fine CompositionLocalProvider
+}
+
+/**
+ * Scala di adattamento per risoluzioni basse: se l'altezza disponibile (px) è inferiore
+ * a ~600dp, restituisce un fattore < 1 tale da far stare il contenuto per intero.
+ * Sopra la soglia restituisce 1f (nessuna scala).
+ */
+private fun liveDetailFitScale(rootHeightPx: Int, density: Float): Float {
+    val thresholdDp = 600f
+    val heightDp = rootHeightPx / density
+    return if (heightDp >= thresholdDp) 1f else (heightDp / thresholdDp).coerceAtLeast(0.65f)
 }
 
 /**
