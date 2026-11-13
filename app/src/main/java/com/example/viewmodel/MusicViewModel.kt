@@ -501,7 +501,7 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         spotifyPollingJob = viewModelScope.launch {
             while (isActive) {
                 try { fetchCurrentlyPlaying() } catch (_: Exception) {}
-                delay(3_000)
+                delay(1_500)
             }
         }
     }
@@ -759,7 +759,9 @@ class MusicViewModel(app: Application) : AndroidViewModel(app) {
         val shown = appContext.getSharedPreferences("app_prefs", android.content.Context.MODE_PRIVATE)
             .getBoolean("notif_onboarding_shown", false)
         val enabled = com.example.MusicNotificationListenerService.isEnabled(appContext)
-        if (!shown && !enabled && _uiState.value.isLoggedIn) {
+        val needsListener = (_uiState.value.connectedServices["spotify_free"] == true) ||
+                (_uiState.value.connectedServices["amazon_music"] == true)
+        if (!shown && !enabled && _uiState.value.isLoggedIn && needsListener) {
             _uiState.update { it.copy(showNotificationOnboarding = true) }
         }
     }
